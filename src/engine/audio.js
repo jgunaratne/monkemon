@@ -5,7 +5,7 @@
 // - ElevenLabs sample-based creature-adventure SFX (`assets/sfx/*.mp3`) with zero-latency Web Audio
 //   synthesizer fallback while samples decode.
 
-export const ASSET_VERSION = '20261108b';
+export const ASSET_VERSION = '20261108hq';
 
 function withVer(url) {
   if (!url || typeof url !== 'string') return url;

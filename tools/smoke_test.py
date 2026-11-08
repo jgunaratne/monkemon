@@ -10,6 +10,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
 
 PORT = os.environ.get("PORT", "8731")
 BASE = f"http://127.0.0.1:{PORT}/?touch=0&"
@@ -18,10 +19,17 @@ SCENES = [
     ("title", "screen=title"),
     ("zone1-alex-house", "screen=play&zone=sunpalm&house=1"),
     ("interior-alex-house", "screen=play&zone=sunpalm&interior=alex_house"),
+    ("interior-north-cave", "screen=play&zone=sunpalm&interior=north_cave"),
     ("zone2-pb-house", "screen=play&zone=canopy&house=1"),
-    ("zone3-fish-house", "screen=play&zone=sparkstone&house=1"),
-    ("zone4-pork-house", "screen=play&zone=frostpeak&house=1"),
-    ("zone5-beef-house", "screen=play&zone=cinderpeak&house=1"),
+    ("zone3-giants-realm", "screen=play&zone=giants_realm&house=1"),
+    ("interior-giants-manor", "screen=play&zone=giants_realm&interior=giants_manor"),
+    ("zone4-fish-house", "screen=play&zone=sparkstone&house=1"),
+    ("interior-race-course", "screen=play&zone=race_realm&interior=race_course"),
+    ("zone8-pork-house", "screen=play&zone=frostpeak&house=1"),
+    ("interior-shogun-roof", "screen=play&zone=frostpeak&interior=shogun_rooftop"),
+    ("zone9-cloud-isles", "screen=play&zone=cloud_realm&house=1"),
+    ("zone10-beef-house", "screen=play&zone=cinderpeak&house=1"),
+    ("interior-central-shrine", "screen=play&zone=cinderpeak&interior=central_shrine"),
     ("monkeball-aim", "screen=play&zone=sunpalm&aim=1"),
     ("wild-battle-menu", "screen=battle&zone=sunpalm&mode=wild&ready=1"),
     ("battle-shader-cast", "screen=battle&zone=sunpalm&action=cast"),
@@ -37,29 +45,30 @@ SCENES = [
 
 
 def shoot(query: str):
+    """Deterministic canvas capture via tools/capture_canvas.mjs (Chrome DevTools Protocol).
+
+    The previous `--screenshot` + `--virtual-time-budget` approach raced the compositor on slow
+    SwiftShader frames and intermittently produced black canvases; the CDP helper instead waits
+    for asset loading to go idle plus a few rendered frames and reads the finished drawing buffer.
+    """
     with tempfile.TemporaryDirectory() as udir:
         out = os.path.join(udir, "shot.png")
         cmd = [
-            "google-chrome",
-            "--headless=new",
-            "--disable-extensions",
-            "--use-angle=swiftshader",
-            "--enable-unsafe-swiftshader",
-            "--hide-scrollbars",
-            "--no-first-run",
-            f"--user-data-dir={udir}",
-            "--proxy-server=direct://",
-            "--proxy-bypass-list=*",
-            "--window-size=960,600",
-            "--virtual-time-budget=4500",
-            f"--screenshot={out}",
-            BASE + query,
-            "--enable-logging=stderr",
-            "--v=0",
+            "node",
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "capture_canvas.mjs"),
+            query,
+            out,
+            "3",
+            "960x600",
+            "150",
         ]
         try:
-            res = subprocess.run(cmd, capture_output=True, text=True, timeout=65)
-            err = res.stderr or ""
+            res = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=170, env={**os.environ, "PORT": PORT}
+            )
+            err = (res.stdout or "") + "\n" + (res.stderr or "")
+            if res.returncode == 2:
+                err += "\nTIMEOUT"
         except subprocess.TimeoutExpired:
             err = "TIMEOUT"
 
@@ -68,6 +77,7 @@ def shoot(query: str):
             for line in err.splitlines()
             if (
                 "Uncaught" in line
+                or "Monkemon frame error" in line
                 or "TIMEOUT" in line
                 or "Shader Error" in line
                 or "THREE.WebGLProgram" in line
@@ -83,7 +93,11 @@ def main():
     fails = 0
     for name, q in SCENES:
         size, errs = shoot(q)
-        if not errs and size == 0:
+        # Empty captures are almost always transient (another headless Chrome saturating the box) — retry twice
+        for _ in range(2):
+            if errs or size > 0:
+                break
+            time.sleep(4)
             size, errs = shoot(q)
         ok = (not errs) and size > 25000
         if not ok:

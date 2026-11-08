@@ -101,24 +101,46 @@ export function computeComboMultiplier(comboCount = 0) {
 }
 
 export function calculateHitDamage(attackerMon, defenderMon, move, opts = {}) {
+  // Support both positional `(attackerMon, defenderMon, move, opts)` and object `{ attacker, defender, move, ... }`
+  if (
+    attackerMon &&
+    typeof attackerMon === 'object' &&
+    !attackerMon.speciesId &&
+    (attackerMon.attacker || attackerMon.attackerMon)
+  ) {
+    const cfg = attackerMon;
+    opts = {
+      ...cfg,
+      attackerBuffed: Boolean(cfg.attackerBuffed ?? cfg.atkBuffed),
+      comboCount: cfg.comboCount ?? 0,
+    };
+    defenderMon = cfg.defender || cfg.defenderMon;
+    move = cfg.move;
+    attackerMon = cfg.attacker || cfg.attackerMon;
+  }
+
   const atkSp = getSpecies(attackerMon.speciesId);
   const defSp = getSpecies(defenderMon.speciesId);
   const elem = resolveMoveElement(move, atkSp);
   const typeMult = getTypeMultiplier(elem, defSp.element, defSp.secondaryElement);
   const stab = elem === atkSp.element || elem === atkSp.secondaryElement ? 1.15 : 1.0;
   const atkBuff = opts.attackerBuffed ? 1.28 : 1.0;
-  const comboMult = computeComboMultiplier(opts.comboCount || 0);
+  const comboMult =
+    typeof opts.comboMult === 'number' && Number.isFinite(opts.comboMult)
+      ? opts.comboMult
+      : computeComboMultiplier(opts.comboCount || 0);
   const rngVal = typeof opts.rng === 'number' ? opts.rng : Math.random();
   const isCrit = Boolean(opts.forceCrit) || rngVal > 0.91;
   const critMult = isCrit ? 1.42 : 1.0;
-  const variance = 0.92 + (rngVal * 0.16);
+  const variance = 0.92 + rngVal * 0.16;
 
-  const power = Math.max(10, move.power || 45);
-  const raw =
-    (((2 * attackerMon.level) / 5 + 4) * power * (attackerMon.atk * atkBuff * comboMult)) /
-      (Math.max(8, defenderMon.def) * 18) +
-    3;
-  const damage = Math.max(2, Math.round(raw * stab * typeMult * critMult * variance));
+  const power = Math.max(10, (move && move.power) || 45);
+  const atkStat = Math.max(6, Number(attackerMon.atk) || 14);
+  const defStat = Math.max(8, Number(defenderMon.def) || 12);
+  const atkLv = Math.max(1, Number(attackerMon.level) || 5);
+  const raw = (((2 * atkLv) / 5 + 4) * power * (atkStat * atkBuff * comboMult)) / (defStat * 18) + 3;
+  const computed = Math.round(raw * stab * typeMult * critMult * variance);
+  const damage = Number.isFinite(computed) ? Math.max(2, computed) : 8;
 
   let label = '';
   if (typeMult >= 1.35) label = 'SUPER EFFECTIVE!';

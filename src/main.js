@@ -5,6 +5,7 @@
 // and Turn-Based Command-Menu Battles with Multi-Layered Reactive GLSL Shaders!
 
 import { CORE_SPECIES, registerForgedSpecies } from './data/species.js';
+import { buildStoryScene } from './data/storyline.js';
 import { ZONES } from './data/zones.js';
 import { AudioSys } from './engine/audio.js';
 import { Input } from './engine/input.js';
@@ -16,6 +17,7 @@ import { BattleController } from './game/battle.js';
 import { createMonkemonInstance } from './game/combat_math.js';
 import {
   createInitialGameState,
+  grantStoryProgress,
   healAllParty,
   loadGameFromStorage,
   saveGameToStorage,
@@ -42,7 +44,12 @@ async function boot() {
   const params = new URLSearchParams(window.location.search);
   const canvas = document.getElementById('game-canvas');
   const renderer = new DioramaRenderer(canvas);
-  const modelBank = new ModelBank(renderer.isSoftwareGl);
+  const maxAniso =
+    renderer.renderer && renderer.renderer.capabilities
+      ? renderer.renderer.capabilities.getMaxAnisotropy()
+      : 8;
+  const modelBank = new ModelBank(renderer.isSoftwareGl, maxAniso);
+  modelBank.quality = renderer.quality;
   const audio = new AudioSys();
   const input = new Input(canvas);
   const touch = setupTouchControls(document.getElementById('touch-controls'), input, params);
@@ -62,6 +69,28 @@ async function boot() {
 
   const net = new NetClient(modelBank, renderer.scene);
 
+  const playStoryScene = (sceneOrId, opts = {}) => {
+    if (!ui || !sceneOrId) {
+      if (opts.onComplete) opts.onComplete();
+      return false;
+    }
+    const scene =
+      typeof sceneOrId === 'string' ? buildStoryScene(sceneOrId, state.playerName) : sceneOrId;
+    if (!scene) {
+      if (opts.onComplete) opts.onComplete();
+      return false;
+    }
+    if (typeof sceneOrId === 'string') {
+      if (!Array.isArray(state.seenStoryScenes)) state.seenStoryScenes = [];
+      if (!state.seenStoryScenes.includes(sceneOrId)) {
+        state.seenStoryScenes.push(sceneOrId);
+      }
+      saveGameToStorage(state);
+    }
+    ui.openStoryDialogue(scene, opts);
+    return true;
+  };
+
   world = new WorldController({
     sceneRoot: renderer.scene,
     modelBank,
@@ -72,11 +101,16 @@ async function boot() {
     onFloatText: (x, y, t, c) => ui && ui.spawnFloatingText(x, y, t, c),
     onOpenShop: () => ui && ui.openMenuHub('bag', { shopFocus: true }),
     onOpenPartyBox: () => ui && ui.openMenuHub('party'),
+    onOpenStoryScene: (sceneOrId, opts) => playStoryScene(sceneOrId, opts),
     onStartWildBattle: (wildEnt, centerPos) => {
       world.entitiesGroup.visible = false;
       if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
       if (world.diorama && world.diorama.setBattleClearance) {
-        world.diorama.setBattleClearance(centerPos?.x || 0, centerPos?.z || 0, 10.6);
+        world.diorama.setBattleClearance(
+          centerPos?.x || 0,
+          centerPos?.z || 0,
+          world.isInsideHouse ? 6.2 : 10.6,
+        );
       }
       battle.startWildBattle(wildEnt, centerPos);
       touch.updateMode(true);
@@ -85,7 +119,11 @@ async function boot() {
       world.entitiesGroup.visible = false;
       if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
       if (world.diorama && world.diorama.setBattleClearance) {
-        world.diorama.setBattleClearance(centerPos?.x || 0, centerPos?.z || 0, 10.6);
+        world.diorama.setBattleClearance(
+          centerPos?.x || 0,
+          centerPos?.z || 0,
+          world.isInsideHouse ? 6.2 : 10.6,
+        );
       }
       battle.startTrainerBattle(trainerDef, centerPos);
       touch.updateMode(true);
@@ -97,6 +135,13 @@ async function boot() {
       }
     },
     onApexVictory: () => {
+      grantStoryProgress(state, {
+        relics: 3,
+        relicId: 'boss:king_monkezilla',
+        flag: 'defeated_king_monkezilla',
+      });
+      state.guestCompanion = null;
+      world.refreshCompanionActor();
       saveGameToStorage(state);
       if (ui) ui.openEndingModal();
     },
@@ -108,6 +153,11 @@ async function boot() {
     renderer,
     audio,
     state,
+    // Combatants stand on the real terrain (outdoor island or house interior floor)
+    groundHeightAt: (x, z) => {
+      const d = world && world.isInsideHouse ? world.interiorDiorama : world && world.diorama;
+      return d && typeof d.getHeightAt === 'function' ? d.getHeightAt(x, z) : 0;
+    },
     onToast: (m) => ui && ui.showToast(m),
     onFloatText: (x, y, t, c) => ui && ui.spawnFloatingText(x, y, t, c),
     onBattleEnd: (res) => {
@@ -118,50 +168,114 @@ async function boot() {
       touch.updateMode(false);
       input._latched = {};
 
+      let pendingVictoryScene = null;
       if (res.outcome === 'caught' && res.wildRef) {
         world.removeWildEntity(res.wildRef);
+        if (res.beatFinalBoss || res.wildRef.isFinalBoss) {
+          grantStoryProgress(state, {
+            relics: 3,
+            relicId: 'boss:king_monkezilla',
+            flag: 'defeated_king_monkezilla',
+          });
+          state.guestCompanion = null;
+        }
         ui.showToast(`🎉 Caught ${res.capturedMon.nickname} inside a smiling Monkeball!`);
       } else if (res.outcome === 'won') {
         if (res.wildRef) world.removeWildEntity(res.wildRef);
         world.refreshTrainerLabels();
+
+        let storySuffix = '';
+        if (battle.trainerDef) {
+          const td = battle.trainerDef;
+          const prog = grantStoryProgress(state, {
+            relics: td.victoryRelics !== undefined ? td.victoryRelics : td.isWarden ? 2 : 0,
+            relicId: `trainer:${td.id}`,
+            keyItem: td.victoryKeyItem,
+            flag: td.victoryFlag,
+          });
+          if (
+            td.postVictoryClearCompanion &&
+            (td.postVictoryClearCompanion === true || state.guestCompanion === td.postVictoryClearCompanion)
+          ) {
+            state.guestCompanion = null;
+          }
+          if (td.postVictoryJoinCompanion) {
+            state.guestCompanion = td.postVictoryJoinCompanion;
+          }
+          if (td.postVictoryScene) {
+            pendingVictoryScene = td.postVictoryScene;
+          }
+          const parts = [];
+          if (prog.addedRelics > 0) parts.push(`+${prog.addedRelics} 🍌 Relics (${state.bananaRelics}/77)`);
+          if (prog.newKeyItem) {
+            parts.push(`${prog.newKeyItem.icon} ${prog.newKeyItem.name}`);
+          }
+          if (parts.length) storySuffix = ` · ${parts.join(' & ')}`;
+        }
+        if (res.beatFinalBoss) {
+          grantStoryProgress(state, {
+            relics: 3,
+            relicId: 'boss:king_monkezilla',
+            flag: 'defeated_king_monkezilla',
+          });
+          state.guestCompanion = null;
+        }
+
         if (res.badgeAwarded) {
-          ui.showToast(`🏅 Earned the ${res.badgeAwarded}! (${state.badges.length}/4 House Badges)`);
+          ui.showToast(
+            `🏅 Earned the ${res.badgeAwarded}! (${state.badges.length}/4 House Badges)${storySuffix}`,
+          );
         } else {
-          ui.showToast('🏆 Victory! Your Monkemon grew stronger!');
+          ui.showToast(`🏆 Victory! Your Monkemon grew stronger!${storySuffix}`);
         }
       } else if (res.outcome === 'lost') {
         healAllParty(state);
-        if (!world.isInsideHouse) {
-          const house = (world.zone && world.zone.houses && world.zone.houses[0]) || null;
-          if (house) {
-            world.heroX = house.x;
-            world.heroZ = house.z + 3.4;
-            world.heroY = world.diorama ? world.diorama.getHeightAt(world.heroX, world.heroZ) : 0;
+        if (!state.storyFlags.includes('earned_cloud_aegis')) {
+          pendingVictoryScene = 'skyfather_revival_pact';
+          ui.showToast('⚡ Sky-Father Bamboon revived your squad to 100% HP — remember your Cloud Realm duel!');
+        } else {
+          if (!world.isInsideHouse) {
+            const house = (world.zone && world.zone.houses && world.zone.houses[0]) || null;
+            if (house) {
+              world.heroX = house.x;
+              world.heroZ = house.z + 3.4;
+              world.heroY = world.diorama ? world.diorama.getHeightAt(world.heroX, world.heroZ) : 0;
+            }
           }
+          ui.showToast('🏠 Rested safely — your Monkemon are back to 100% HP!');
         }
-        ui.showToast('🏠 Rested safely at the House — your Monkemon are back to 100% HP!');
       } else if (res.outcome === 'ran') {
         ui.showToast('🏃 Stepped away safely from battle!');
       }
 
       world.pushNearbyWildsAway(3.8);
       world.refreshPartnerActor();
+      world.refreshCompanionActor();
       saveGameToStorage(state);
-      renderer.setCameraFraming(
-        world.heroX,
-        world.heroY + 0.7,
-        world.heroZ,
-        world.isInsideHouse ? 'interior' : 'overworld',
-        false,
-      );
+      if (world.isInsideHouse) {
+        renderer.setCameraFraming(
+          world.heroX * 0.45,
+          world.heroY + 0.85,
+          world.heroZ * 0.38 + 0.5,
+          'interior',
+          false,
+        );
+      } else {
+        renderer.setCameraFraming(world.heroX, world.heroY + 0.7, world.heroZ, 'overworld', false);
+      }
       if (canvas && canvas.focus) {
         try { canvas.focus({ preventScroll: true }); } catch {}
       }
 
       if (res.beatFinalBoss) {
         ui.openEndingModal();
-      } else if (world.zone) {
-        audio.playMusic(world.zone.music || 'sunpalm', true);
+      } else {
+        if (world.zone) {
+          audio.playMusic(world.zone.music || 'sunpalm', true);
+        }
+        if (pendingVictoryScene) {
+          playStoryScene(pendingVictoryScene);
+        }
       }
     },
   });
@@ -180,11 +294,9 @@ async function boot() {
         saveGameToStorage(state);
         world.initHeroActors();
         world.loadZone('sunpalm');
+        world.enterHouseById('alex_house');
         net.sendName(state.playerName);
-        audio.playVoice('prof_welcome', {
-          speaker: 'PROF. MACAQUE',
-          line: 'Welcome to the Monkemon Archipelago, Alex! Visit all five Houses and tame Boss Twenty—King Monkezilla!',
-        });
+        playStoryScene('opening_bedroom_night');
       },
       onContinueGame: () => {
         world.initHeroActors();
@@ -263,7 +375,7 @@ async function boot() {
       ];
       state.storage = [
         createMonkemonInstance('mooboon', 7, { caughtZone: 'canopy' }),
-        createMonkemonInstance('plushimian', 8, { caughtZone: 'canopy' }),
+        createMonkemonInstance('plushaki', 8, { caughtZone: 'canopy' }),
       ];
     }
   }
@@ -338,18 +450,25 @@ async function boot() {
     }
   } else if (screenParam === 'boss20') {
     state.starterChosen = true;
+    state.guestCompanion = 'goddess_liana';
+    state.keyItems = ['prism_detector', 'banana_calibur', 'aegis_charm', 'goddess_heart'];
     state.party = [
       createMonkemonInstance('mugchimp', 28),
       createMonkemonInstance('bobmonk', 28),
       createMonkemonInstance('duckaque', 28),
+      createMonkemonInstance('puppuchin', 28),
     ];
     ui.closeAllModals();
     world.loadZone('cinderpeak');
-    const bossEnt = world.wildEntities.find((w) => w.isFinalBoss) || world.wildEntities[0];
+    world.enterHouseById('central_shrine');
+    const bossEnt =
+      world.interiorWildEntities.find((w) => w.isFinalBoss) ||
+      world.wildEntities.find((w) => w.isFinalBoss) ||
+      world.activeWildEntities[0];
     world.entitiesGroup.visible = false;
     if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
-    if (world.diorama && world.diorama.setBattleClearance) world.diorama.setBattleClearance(8, -6, 10.6);
-    battle.startWildBattle(bossEnt, { x: 8, y: 0, z: -6 });
+    if (world.diorama && world.diorama.setBattleClearance) world.diorama.setBattleClearance(0, -2, 8.0);
+    battle.startWildBattle(bossEnt, { x: 0, y: 0, z: -2 });
     if (params.get('ready') === '1') {
       battle.stepQueue = [];
       battle.activeStep = null;
@@ -357,7 +476,7 @@ async function boot() {
     }
   } else if (screenParam === 'party') {
     state.starterChosen = true;
-    ui.openMenuHub('party');
+    ui.openMenuHub(params.get('home') === '1' ? 'home' : 'party');
   } else if (screenParam === 'dex') {
     state.starterChosen = true;
     if (params.get('view') === 'board') ui.dexViewMode = 'board';
@@ -432,7 +551,7 @@ async function boot() {
         if (world.diorama) world.diorama.update(now * 0.001, dt);
         ui.handleModalInput(input);
       } else {
-        if (!battle.active && input.pressed.menu) ui.toggleMenuHub('party');
+        if (!battle.active && input.pressed.menu) ui.toggleMenuHub('home');
         else if (!battle.active && input.pressed.party) ui.toggleMenuHub('party');
         else if (!battle.active && input.pressed.dex) ui.toggleMenuHub('dex');
         else if (!battle.active && input.pressed.map) ui.toggleMenuHub('map');
