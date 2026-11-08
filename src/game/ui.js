@@ -211,6 +211,37 @@ export class UIManager {
     this.elModal.classList.add('hidden');
   }
 
+  handleModalInput(input) {
+    if (!input || input.typing) return;
+    if (this.modal === 'title') {
+      const starters = CORE_SPECIES.filter((s) => s.starter);
+      if (input.pressed.left || input.pressed.right) {
+        const curIdx = Math.max(0, starters.findIndex((s) => s.id === this.selectedStarter));
+        const nextIdx = (curIdx + (input.pressed.right ? 1 : -1) + starters.length) % starters.length;
+        this.selectedStarter = starters[nextIdx].id;
+        this.audio.playSfx('menu');
+        const hasSave = Boolean(this.elTitle.querySelector('#btn-continue-save'));
+        this.openTitleScreen(hasSave);
+        return;
+      }
+      if (input.pressed.btnA) {
+        const startBtn = document.getElementById('btn-continue-save') || document.getElementById('btn-new-adventure');
+        if (startBtn) startBtn.click();
+      }
+      return;
+    }
+    if (
+      input.pressed.back ||
+      input.pressed.btnB ||
+      (this.modal === 'dex' && input.pressed.dex) ||
+      (this.modal === 'map' && input.pressed.map) ||
+      (this.modal === 'forge' && input.pressed.forge)
+    ) {
+      this.closeAllModals();
+      this.audio.playSfx('menu');
+    }
+  }
+
   toggleModal(kind) {
     if (this.modal === kind) {
       this.closeAllModals();
@@ -721,6 +752,20 @@ export class UIManager {
 
     setTxt('battle-banner-txt', battle.bannerText || 'Move with Left Stick / WASD · Cast Moves with [A] [B] [X] [Y] [RB]!');
     setTxt('bcmd-ball-count', `🐵 Monkeball (${this.state.monkeballs}) [LB/C]`);
+
+    const comboEl = document.getElementById('battle-combo-pill');
+    if (comboEl) {
+      const c = battle.playerCombo || 0;
+      const mult = battle.getComboMultiplier ? battle.getComboMultiplier() : 1.0;
+      const label =
+        c >= 2
+          ? `🔥 COMBO ×${c} · ${mult.toFixed(2)}× ATK`
+          : p.atkBuff > 0
+            ? '🍌 ATK UP +28%'
+            : '⚡ ARENA FLOW 1.0×';
+      if (comboEl.textContent !== label) comboEl.textContent = label;
+      comboEl.classList.toggle('hot', c >= 2 || p.atkBuff > 0);
+    }
 
     // Sync the 5 Real-Time Controller Move Cards ([A], [B], [X], [Y], [RB])
     const moveRow = document.getElementById('battle-moves-row');

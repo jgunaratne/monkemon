@@ -60,7 +60,12 @@ def shoot(query: str):
         errs = [
             line
             for line in err.splitlines()
-            if ("Uncaught" in line or "TIMEOUT" in line)
+            if (
+                "Uncaught" in line
+                or "TIMEOUT" in line
+                or "Shader Error" in line
+                or "THREE.WebGLProgram" in line
+            )
             and "chrome-extension" not in line
             and "extensions::" not in line
         ]

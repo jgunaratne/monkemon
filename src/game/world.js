@@ -75,6 +75,7 @@ export class WorldController {
       primaryColor: '#38bdf8',
       secondaryColor: '#fef08a',
       shadowRadius: 0.55,
+      animateRig: true,
     });
     const badge = makeLabelSprite({
       title: this.state.playerName || 'ALEX',
@@ -102,6 +103,7 @@ export class WorldController {
       primaryColor: sp.palette.primary,
       secondaryColor: sp.palette.secondary,
       shadowRadius: 0.5,
+      animateRig: true,
     });
     this.partnerX = this.heroX - 1.35;
     this.partnerZ = this.heroZ + 1.05;
@@ -232,6 +234,7 @@ export class WorldController {
       primaryColor: sp.palette.primary,
       secondaryColor: sp.palette.secondary,
       shadowRadius: cfg.isAlpha ? 1.15 : 0.55,
+      animateRig: true,
     });
     actor.root.position.set(cfg.homeX, 0, cfg.homeZ);
 
@@ -285,6 +288,7 @@ export class WorldController {
         primaryColor: tr.isWarden ? '#f59e0b' : '#fb7185',
         secondaryColor: '#fef3c7',
         shadowRadius: 0.62,
+        animateRig: true,
       });
       actor.root.position.set(tr.x, 0, tr.z);
       actor.animRoot.rotation.y = tr.yaw || 0;
@@ -325,6 +329,25 @@ export class WorldController {
       });
       tr.label.position.set(0, 2.35, 0);
       tr.actor.root.add(tr.label);
+    }
+  }
+
+  pushNearbyWildsAway(minDist = 3.0) {
+    if (!this.zone) return;
+    const { halfW, halfD } = this.zone.bounds;
+    for (const w of this.wildEntities) {
+      if (w.isFinalBoss) continue;
+      const dx = w.x - this.heroX;
+      const dz = w.z - this.heroZ;
+      const d = Math.hypot(dx, dz);
+      if (d < minDist) {
+        const ang = d > 0.01 ? Math.atan2(dx, dz) : Math.random() * Math.PI * 2;
+        w.x = Math.max(-halfW + 1.5, Math.min(halfW - 1.5, this.heroX + Math.sin(ang) * (minDist + 0.5)));
+        w.z = Math.max(-halfD + 1.5, Math.min(halfD - 1.5, this.heroZ + Math.cos(ang) * (minDist + 0.5)));
+        w.vx = 0;
+        w.vz = 0;
+        w.actor.root.position.set(w.x, 0, w.z);
+      }
     }
   }
 
@@ -723,32 +746,55 @@ export class WorldController {
       this.state.pos = { x: this.heroX, z: this.heroZ };
     }
 
-    // Bouncy miniature-toy hop on Hero
+    // Expressive 3D leg-stride / arm-swing walk & sprint rig on Hero!
     if (this.heroActor) {
       this.heroActor.root.position.set(this.heroX, 0, this.heroZ);
-      this.heroActor.animRoot.rotation.y = this.heroYaw;
-      this.heroActor.animRoot.position.y = this.heroMoving
-        ? Math.abs(Math.sin(this.time * (sprinting ? 14 : 10))) * 0.18
-        : 0;
+      if (this.heroActor.updateMotion) {
+        this.heroActor.updateMotion(dt, {
+          targetYaw: this.heroYaw,
+          moveSpeed: this.heroMoving ? speed : 0,
+        });
+      }
+    }
+    if (this.diorama && this.diorama.setHeroPosition) {
+      this.diorama.setHeroPosition(this.heroX, this.heroZ);
     }
 
-    // Following Partner Monkemon AI
+    // Following Partner Monkemon AI with animated stride!
     if (this.partnerActor) {
       const targetPx = this.heroX - Math.sin(this.heroYaw) * 1.45;
       const targetPz = this.heroZ - Math.cos(this.heroYaw) * 1.45;
       const pdx = targetPx - this.partnerX;
       const pdz = targetPz - this.partnerZ;
       const pDist = Math.hypot(pdx, pdz);
+      let pMoveSpd = 0;
       if (pDist > 0.25) {
-        const step = Math.min(pDist, (sprinting ? 9.8 : 7.0) * dt);
+        pMoveSpd = sprinting ? 9.8 : 7.0;
+        const step = Math.min(pDist, pMoveSpd * dt);
         this.partnerX += (pdx / pDist) * step;
         this.partnerZ += (pdz / pDist) * step;
         this.partnerYaw = Math.atan2(pdx, pdz);
       }
       this.partnerActor.root.position.set(this.partnerX, 0, this.partnerZ);
-      this.partnerActor.animRoot.rotation.y = this.partnerYaw;
-      this.partnerActor.animRoot.position.y =
-        pDist > 0.3 ? Math.abs(Math.sin(this.time * 11.5)) * 0.22 : Math.abs(Math.sin(this.time * 3.2)) * 0.05;
+      if (this.partnerActor.updateMotion) {
+        this.partnerActor.updateMotion(dt, {
+          targetYaw: this.partnerYaw,
+          moveSpeed: pDist > 0.3 ? pMoveSpd : 0,
+        });
+      }
+    }
+
+    // Animate Trainers (turn toward Alex & wave/cheer gently when nearby!)
+    for (const tr of this.trainerEntities) {
+      const distTr = Math.hypot(tr.x - this.heroX, tr.z - this.heroZ);
+      const faceYaw = distTr < 5.5 ? Math.atan2(this.heroX - tr.x, this.heroZ - tr.z) : tr.yaw;
+      if (tr.actor && tr.actor.updateMotion) {
+        tr.actor.updateMotion(dt, {
+          targetYaw: faceYaw,
+          moveSpeed: 0,
+          cheer: distTr < 3.6 && !this.state.defeatedTrainers.includes(tr.def.id) ? 0.5 : 0,
+        });
+      }
     }
 
     this.renderer.setCameraFraming(this.heroX, 0.7, this.heroZ, 'overworld', false);
@@ -772,8 +818,8 @@ export class WorldController {
         w.wanderTimer = 1.6 + Math.random() * 2.4;
         if (Math.random() < 0.55 && !w.isAlpha) {
           const ang = Math.random() * Math.PI * 2;
-          w.vx = Math.sin(ang) * 1.45;
-          w.vz = Math.cos(ang) * 1.45;
+          w.vx = Math.sin(ang) * 1.65;
+          w.vz = Math.cos(ang) * 1.65;
           w.yaw = ang;
         } else {
           w.vx = 0;
@@ -788,10 +834,17 @@ export class WorldController {
       } else {
         w.vx *= -0.6;
         w.vz *= -0.6;
+        if (Math.hypot(w.vx, w.vz) > 0.1) w.yaw = Math.atan2(w.vx, w.vz);
       }
       w.actor.root.position.set(w.x, 0, w.z);
-      w.actor.animRoot.rotation.y = w.yaw;
-      w.actor.animRoot.position.y = Math.abs(Math.sin(this.time * 4.5 + w.homeX)) * (w.isAlpha ? 0.14 : 0.1);
+      if (w.actor.updateMotion) {
+        const wSpd = Math.hypot(w.vx, w.vz);
+        w.actor.updateMotion(dt, {
+          targetYaw: w.yaw,
+          moveSpeed: wSpd > 0.15 ? wSpd * 2.4 : 0,
+          inBattle: Boolean(w.isAlpha),
+        });
+      }
 
       // Direct bump into wild Monkemon launches real-time arena battle!
       if (this.gateCooldown <= 0 && Math.hypot(w.x - this.heroX, w.z - this.heroZ) < (w.isAlpha ? 1.75 : 1.15)) {

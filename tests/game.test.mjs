@@ -10,16 +10,20 @@ import { ZONE_LIST, ZONES } from '../src/data/zones.js';
 import {
   calculateHitDamage,
   computeCatchProbability,
+  computeComboMultiplier,
   createMonkemonInstance,
   gradeTimingRing,
   grantExpToMon,
 } from '../src/game/combat_math.js';
 import {
   addCaughtMonToState,
+  buyShopItem,
   createInitialGameState,
   healAllParty,
   loadGameFromStorage,
   saveGameToStorage,
+  setLeadPartyIndex,
+  swapPartyWithStorage,
 } from '../src/game/save_store.js';
 
 const ROOT = path.dirname(path.dirname(fileURLToPath(import.meta.url)));
@@ -106,6 +110,14 @@ test('Type effectiveness, damage math, Monkeball capture ring, and party levelin
   const lvRes = grantExpToMon(duck, 5000);
   assert.ok(lvRes.levelsGained >= 1);
   assert.ok(duck.level > 10);
+
+  assert.equal(computeComboMultiplier(0), 1.0);
+  assert.equal(computeComboMultiplier(1), 1.0);
+  assert.ok(computeComboMultiplier(4) > 1.2);
+  assert.equal(computeComboMultiplier(12), 1.5);
+  const comboHit = calculateHitDamage(duck, mon, MOVES.squeak_tsunami, { rng: 0.5, comboCount: 5 });
+  const baseHit = calculateHitDamage(duck, mon, MOVES.squeak_tsunami, { rng: 0.5, comboCount: 0 });
+  assert.ok(comboHit.damage > baseHit.damage);
 });
 
 test('Save store initializes ALEX, manages 6-slot party + overflow storage, and round-trips JSON', () => {
@@ -134,4 +146,51 @@ test('Save store initializes ALEX, manages 6-slot party + overflow storage, and 
   assert.equal(loaded.playerName, 'ALEX');
   assert.equal(loaded.party.length, 6);
   assert.equal(getAllSpecies().length, 20);
+
+  assert.ok(setLeadPartyIndex(state, 2));
+  assert.equal(state.activeIndex, 2);
+
+  const oldParty1 = state.party[1].speciesId;
+  const oldStorage0 = state.storage[0].speciesId;
+  assert.ok(swapPartyWithStorage(state, 1, 0));
+  assert.equal(state.party[1].speciesId, oldStorage0);
+  assert.equal(state.storage[0].speciesId, oldParty1);
+
+  const startBalls = state.monkeballs;
+  const buyRes = buyShopItem(state, 'monkeball_pack');
+  assert.ok(buyRes.ok);
+  assert.equal(state.monkeballs, startBalls + 5);
+});
+
+test('All 16 Nano Banana PBR surface albedo & tangent-space normal maps and 7 GLSL shaders exist', () => {
+  const texBases = [
+    'grass_meadow',
+    'grass_grove',
+    'cobble_path',
+    'cliff_rock',
+    'harbor_stone',
+    'snow_alpine',
+    'volcano_basalt',
+    'wood_timber',
+  ];
+  for (const base of texBases) {
+    for (const suffix of ['', '_normal']) {
+      const p = path.join(ROOT, 'assets', 'textures', `${base}${suffix}.jpg`);
+      assert.ok(fs.existsSync(p), `Missing PBR texture map: ${p}`);
+      assert.ok(fs.statSync(p).size > 25_000, `Expected rich PBR texture >25KB: ${p}`);
+    }
+  }
+
+  const shaderSrc = fs.readFileSync(path.join(ROOT, 'src', 'engine', 'shaders.js'), 'utf8');
+  for (const fn of [
+    'createOceanMagmaShaderMaterial',
+    'attachTerrainDetailShader',
+    'attachCliffWetnessShader',
+    'attachWindGrassShader',
+    'attachFoliageSubsurfaceShader',
+    'createSunbeamShaderMaterial',
+    'createHoloArenaShaderMaterial',
+  ]) {
+    assert.ok(shaderSrc.includes(`export function ${fn}`), `Missing shader builder ${fn}`);
+  }
 });
