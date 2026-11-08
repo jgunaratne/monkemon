@@ -261,19 +261,20 @@ export class BattleController {
     this.bannerText = headline;
     this.narrationSub =
       this.mode === 'wild'
-        ? 'Weaken HP with ⚔️ FIGHT or throw a 🐵 MONKEBALL to catch it!'
-        : `Defeat all ${this.enemyTeam.length} of ${this.trainerDef.name}’s Monkemon!`;
+        ? 'Pick 1 action below: ⚔️ Attack, ✨ Special, 🐵 Catch, or 🏃 Run Away anytime!'
+        : `Duel vs ${this.trainerDef.name} — pick ⚔️ Attack, ✨ Special, 🍌 Heal, or 🏃 Run Away anytime!`;
 
     if (this.arenaGroup.userData.flareCombatant) {
       this.arenaGroup.userData.flareCombatant('player', 1.2);
       this.arenaGroup.userData.flareCombatant('enemy', 1.2);
     }
-    this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, pElemColor, 0.75);
-    this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, eElemColor, 0.75);
+    this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, pElemColor, 0.65);
+    this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, eElemColor, 0.65);
 
+    // Open the 1-screen action bar immediately after a brief 0.45s summon flare so commands work right away!
     this.menuState = 'animating';
     this.stepQueue.push({
-      duration: 0.85,
+      duration: 0.45,
       text: headline,
       sub: this.narrationSub,
       onDone: () => {
@@ -367,20 +368,30 @@ export class BattleController {
     if (!this.active || this.pendingEnd) return;
     this.menuState = 'root';
     const pName = this.playerUnit ? this.playerUnit.mon.nickname : 'Partner';
-    this.bannerText = `What will ${pName} do?`;
+    this.bannerText = `Your Turn — Choose ${pName}’s Action!`;
     this.narrationSub =
       this.mode === 'wild'
-        ? `Choose an action — take all the time you need! (🐵 ${this.state.monkeballs} Balls · 🌟 ${this.state.superBalls} Super)`
-        : `Choose your command carefully — turn-based duel vs ${this.trainerDef.name}!`;
+        ? `1-click commands: ⚔️ Attack · ✨ Special · 🐵 Catch (${this.getLiveCatchPercent(false)}%) · 🏃 Run Away`
+        : `1-click commands: ⚔️ Attack · ✨ Special · 🍌 Heal (+40% HP) · 🏃 Run Away`;
   }
 
   // =========================================================================
-  // PUBLIC MENU & ACTION API (Keyboard + Steam Deck + Mouse/Touch + URL Hooks)
+  // PUBLIC MENU & ACTION API (Simple 1-Screen Direct Commands — Zero Sub-Menus!)
   // =========================================================================
 
   getPlayerMoves() {
     if (!this.playerUnit) return [];
     return getBattleMoves(this.playerUnit.mon, this.playerUnit.species);
+  }
+
+  getQuickStrikeMove() {
+    const moves = this.getPlayerMoves();
+    return moves[1] || moves[0];
+  }
+
+  getSpecialMove() {
+    const moves = this.getPlayerMoves();
+    return moves[0];
   }
 
   getLiveCatchPercent(isSuper = false) {
@@ -389,28 +400,79 @@ export class BattleController {
       species: this.enemyUnit.species,
       currentHp: this.enemyUnit.mon.hp,
       maxHp: this.enemyUnit.mon.maxHp,
-      ringMult: isSuper ? 1.85 : 1.15,
+      ringMult: isSuper ? 1.85 : 1.18,
       berryFed: this.wildBerryFed,
       badgesCount: this.state.badges.length,
     });
     return Math.round(prob * 100);
   }
 
+  _interruptIntroIfReady() {
+    if (
+      this.menuState === 'animating' &&
+      this.activeStep &&
+      !this.activeStep.attackerSide &&
+      !this.catchAnim &&
+      !this.pendingEnd &&
+      this.enemyUnit &&
+      this.enemyUnit.mon.hp > 0 &&
+      this.playerUnit &&
+      this.playerUnit.mon.hp > 0
+    ) {
+      this.stepQueue = [];
+      this.activeStep = null;
+      this.menuState = 'root';
+    }
+  }
+
   selectRootOption(idx) {
-    if (!this.active || this.menuState !== 'root') return;
-    this.rootCursor = idx;
-    this.audio.playSfx('confirm');
-    if (idx === 0) {
-      this.menuState = 'fight';
-      this.subCursor = 0;
-    } else if (idx === 1) {
-      this.menuState = 'bag';
-      this.subCursor = 0;
-    } else if (idx === 2) {
-      this.menuState = 'party';
-      this.subCursor = this.state.activeIndex || 0;
-    } else if (idx === 3) {
+    if (!this.active || this.pendingEnd) return;
+    this._interruptIntroIfReady();
+    if (idx === 3) {
+      this.rootCursor = 3;
       this.tryRunAway();
+      return;
+    }
+    if (this.menuState !== 'root' && this.menuState !== 'fight' && this.menuState !== 'bag') return;
+    this.rootCursor = idx;
+    if (idx === 0) {
+      // 1-Click Quick Attack (`Monk Run` / Fast Strike)
+      const quickMove = this.getQuickStrikeMove();
+      if (quickMove) {
+        this.audio.playSfx('confirm');
+        this._executePlayerMoveTurn(quickMove);
+      }
+    } else if (idx === 1) {
+      // 1-Click Signature Elemental Shader Special (`Cocoa Splash`, etc.)
+      const specMove = this.getSpecialMove();
+      if (specMove) {
+        this.audio.playSfx('confirm');
+        this._executePlayerMoveTurn(specMove);
+      }
+    } else if (idx === 2) {
+      // 1-Click Catch (Wild) or Berry Heal (Trainer)
+      if (this.mode === 'wild') {
+        const useSuper = (this.state.monkeballs || 0) <= 0 && (this.state.superBalls || 0) > 0;
+        this._executeThrowBallTurn(useSuper);
+      } else {
+        this._executeUseBerryTurn();
+      }
+    }
+  }
+
+  advanceOrSkipStep() {
+    if (!this.active || this.pendingEnd || this.catchAnim) return;
+    if (this.menuState === 'animating' && this.activeStep) {
+      // If attack hasn't applied its damage yet, apply it immediately before finishing step!
+      if (this.activeStep.attackerSide && !this.activeStep.impactApplied) {
+        const atkUnit = this.activeStep.attackerSide === 'player' ? this.playerUnit : this.enemyUnit;
+        const defUnit = this.activeStep.attackerSide === 'player' ? this.enemyUnit : this.playerUnit;
+        this.activeStep.impactApplied = true;
+        this._applyMoveImpact(atkUnit, defUnit, this.activeStep.move, this.activeStep._elemColor || '#fde047');
+      }
+      const finished = this.activeStep;
+      this.activeStep = null;
+      if (finished.onDone) finished.onDone();
     }
   }
 
@@ -423,7 +485,9 @@ export class BattleController {
   }
 
   selectFightMove(slotIdx) {
-    if (!this.active || (this.menuState !== 'fight' && this.menuState !== 'root')) return;
+    if (!this.active || this.pendingEnd) return;
+    this._interruptIntroIfReady();
+    if (this.menuState !== 'fight' && this.menuState !== 'root') return;
     const moves = this.getPlayerMoves();
     const move = moves[slotIdx] || moves[0];
     if (!move) return;
@@ -432,11 +496,13 @@ export class BattleController {
   }
 
   selectBagItem(slotIdx) {
-    if (!this.active || (this.menuState !== 'bag' && this.menuState !== 'root')) return;
+    if (!this.active || this.pendingEnd) return;
+    this._interruptIntroIfReady();
     if (slotIdx === 3) {
       this.cancelSubMenu();
       return;
     }
+    if (this.menuState !== 'bag' && this.menuState !== 'root') return;
     if (slotIdx === 0) {
       this._executeThrowBallTurn(false);
     } else if (slotIdx === 1) {
@@ -447,7 +513,9 @@ export class BattleController {
   }
 
   selectPartySlot(partyIdx) {
-    if (!this.active || (this.menuState !== 'party' && this.menuState !== 'root')) return;
+    if (!this.active || this.pendingEnd) return;
+    this._interruptIntroIfReady();
+    if (this.menuState !== 'party' && this.menuState !== 'root') return;
     const targetMon = this.state.party[partyIdx];
     if (!targetMon) return;
     if (partyIdx === this.state.activeIndex) {
@@ -465,24 +533,30 @@ export class BattleController {
 
   // Backwards-compatible helpers for URL test hooks (`?screen=battle&action=cast`) & direct triggers
   triggerPlayerMoveSlot(slotIdx = 0) {
-    if (!this.active) return;
-    // Complete any intro step immediately if called programmatically on frame 1
-    if (this.menuState === 'animating' && this.stepQueue.length === 0 && this.activeStep) {
-      this.activeStep = null;
-      this.menuState = 'root';
-    }
+    if (!this.active || this.pendingEnd) return;
+    this._interruptIntroIfReady();
     const moves = this.getPlayerMoves();
     const picked = moves[Math.min(moves.length - 1, Math.max(0, slotIdx === 4 ? 0 : slotIdx))];
     if (picked) this._executePlayerMoveTurn(picked);
   }
 
   tryThrowBattleMonkeball(useSuper = false) {
-    if (!this.active) return;
+    if (!this.active || this.pendingEnd) return;
+    this._interruptIntroIfReady();
     this._executeThrowBallTurn(useSuper);
   }
 
+  useBerryInBattle() {
+    if (!this.active || this.pendingEnd) return;
+    this._interruptIntroIfReady();
+    if (this.menuState !== 'root' && this.menuState !== 'bag') return;
+    this._executeUseBerryTurn();
+  }
+
   cyclePartySwitch() {
-    if (!this.active) return;
+    if (!this.active || this.pendingEnd) return;
+    this._interruptIntroIfReady();
+    if (this.menuState !== 'root' && this.menuState !== 'party') return;
     if (this.state.party.length <= 1) {
       this.onToast('Catch more wild Monkemon first to switch squad members!');
       return;
@@ -499,20 +573,24 @@ export class BattleController {
 
   tryRunAway() {
     if (!this.active || this.pendingEnd) return;
-    if (this.mode === 'trainer') {
-      this.audio.playSfx('cancel');
-      this.onToast('Cannot run away from an official Tamer or House Leader match!');
-      return;
+    // Player can ALWAYS run away from ANY battle (Wild, Scout Tamer, House Leader, or Boss)!
+    if (this.catchAnim && this.catchAnim.ballActor) {
+      this.sceneRoot.remove(this.catchAnim.ballActor.root);
+      this.catchAnim = null;
     }
     this.audio.playSfx('monk_run');
+    const foeLabel =
+      this.mode === 'trainer' && this.trainerDef
+        ? this.trainerDef.name
+        : `wild ${this.enemyUnit ? this.enemyUnit.mon.nickname : 'Monkemon'}`;
     this.menuState = 'animating';
     this.stepQueue = [
       {
-        duration: 0.75,
-        text: `💨 Got away safely from wild ${this.enemyUnit.mon.nickname}!`,
-        sub: '',
+        duration: 0.45,
+        text: `🏃 Stepped back safely from ${foeLabel}!`,
+        sub: 'Returning to the island...',
         onDone: () => {
-          this.pendingEnd = { timer: 0.05, result: { outcome: 'ran', wildRef: this.wildRef } };
+          this.pendingEnd = { timer: 0.04, result: { outcome: 'ran', wildRef: this.wildRef } };
         },
       },
     ];
@@ -593,7 +671,7 @@ export class BattleController {
 
   _enqueueAttackStep(attackerSide, move) {
     this.stepQueue.push({
-      duration: 1.28,
+      duration: 0.84,
       attackerSide,
       move,
       elapsed: 0,
@@ -618,9 +696,10 @@ export class BattleController {
         // Launch complex 3D GLSL shader attack beam / pillar!
         if (move.healPct) {
           this.audio.playSfx('eat_snack');
-          this._spawnAuraPillar(atkUnit.homeX, atkUnit.homeZ, '#4ade80', 1.05);
+          this._spawnAuraPillar(atkUnit.homeX, atkUnit.homeZ, '#4ade80', 0.85);
         } else if (move.id === 'monk_run') {
           this.audio.playSfx('monk_run');
+          this._spawnShaderBeam(atkUnit.homeX, atkUnit.homeZ, defUnit.homeX, defUnit.homeZ, '#fef08a', elemColor);
         } else if (move.id === 'sky_jump') {
           this.audio.playSfx('sky_jump');
         } else if (move.id === 'fake_out') {
@@ -639,30 +718,30 @@ export class BattleController {
         const defUnit = attackerSide === 'player' ? this.enemyUnit : this.playerUnit;
         const u = Math.min(1, step.elapsed / step.duration);
 
-        // Animate 3D Lunge / Sky Jump Arc on Attacker!
-        if (u < 0.55) {
-          const swing = Math.sin((u / 0.55) * Math.PI);
-          const dx = (defUnit.homeX - atkUnit.homeX) * 0.52;
-          const dz = (defUnit.homeZ - atkUnit.homeZ) * 0.52;
+        // Animate expressive 3D Lunge / Sky Jump Arc on Attacker!
+        if (u < 0.58) {
+          const swing = Math.sin((u / 0.58) * Math.PI);
+          const dx = (defUnit.homeX - atkUnit.homeX) * 0.62;
+          const dz = (defUnit.homeZ - atkUnit.homeZ) * 0.62;
           if (move.pattern === 'dash_strike' || move.pattern === 'chomp_heal') {
             atkUnit.offsetX = dx * swing;
             atkUnit.offsetZ = dz * swing;
           } else if (move.pattern === 'jump_slam') {
             atkUnit.offsetX = dx * swing * 0.85;
             atkUnit.offsetZ = dz * swing * 0.85;
-            atkUnit.offsetY = Math.sin((u / 0.55) * Math.PI) * 2.55;
+            atkUnit.offsetY = Math.sin((u / 0.58) * Math.PI) * 2.55;
           } else {
-            atkUnit.offsetX = dx * swing * 0.22;
-            atkUnit.offsetZ = dz * swing * 0.22;
+            atkUnit.offsetX = dx * swing * 0.34;
+            atkUnit.offsetZ = dz * swing * 0.34;
           }
         } else {
-          atkUnit.offsetX *= Math.max(0, 1 - dt * 12);
-          atkUnit.offsetY *= Math.max(0, 1 - dt * 12);
-          atkUnit.offsetZ *= Math.max(0, 1 - dt * 12);
+          atkUnit.offsetX *= Math.max(0, 1 - dt * 14);
+          atkUnit.offsetY *= Math.max(0, 1 - dt * 14);
+          atkUnit.offsetZ *= Math.max(0, 1 - dt * 14);
         }
 
-        // Apply Damage & Impact Shader Wave at `u >= 0.42`!
-        if (!step.impactApplied && u >= 0.42) {
+        // Apply Damage & Impact Shader Wave at `u >= 0.34`!
+        if (!step.impactApplied && u >= 0.34) {
           step.impactApplied = true;
           this._applyMoveImpact(atkUnit, defUnit, move, step._elemColor);
         }
@@ -694,7 +773,7 @@ export class BattleController {
 
     // 2. Calculate & apply hit damage
     if (atkUnit.side === 'player') this._bumpPlayerCombo(1);
-    const comboMult = atkUnit.side === 'player' ? Math.min(1.25, this.getComboMultiplier()) : 1.0;
+    const comboMult = atkUnit.side === 'player' ? Math.min(1.3, this.getComboMultiplier()) : 1.0;
     const hit = calculateHitDamage({
       attacker: atkUnit.mon,
       attackerSpecies: atkUnit.species,
@@ -706,54 +785,62 @@ export class BattleController {
     });
     if (atkUnit.atkBuffTurns > 0) atkUnit.atkBuffTurns -= 1;
 
-    // Gentle safety cushion on early-island wild encounters so fights feel fair & tactical
-    const dmg = defUnit.side === 'player' ? Math.max(2, Math.round(hit.damage * 0.85)) : hit.damage;
+    // Gentle safety cushion on enemy hits vs crisp punchy player damage
+    const dmg =
+      defUnit.side === 'player'
+        ? Math.max(2, Math.round(hit.damage * 0.78))
+        : Math.max(4, Math.round(hit.damage * 1.15));
     defUnit.mon.hp = Math.max(0, defUnit.mon.hp - dmg);
-    defUnit.hitFlash = 0.35;
+    defUnit.hitFlash = 0.42;
+    if (defUnit.actor && defUnit.actor.setHitFlash) {
+      defUnit.actor.setHitFlash(1.0, 0xff4d4d);
+    }
 
     if (defUnit.side === 'enemy' && this.wildRef) {
       this.wildRef.hpFrac = Math.max(0.05, defUnit.mon.hp / Math.max(1, defUnit.mon.maxHp));
     }
 
-    // 3. Trigger Supersonic Shader Impact Wave + Arena Floor Shockwave + Sparks!
+    const isSuperEff = hit.effectiveness >= 1.35;
+    const isResist = hit.effectiveness <= 0.75;
+
+    // 3. Trigger Supersonic Shader Impact Wave + Arena Floor Shockwave + Sparks + Camera Shake!
     this._spawnImpactWave(
       defUnit.homeX,
       defUnit.homeZ,
       elemColor,
-      hit.effectiveness === 'super' ? '#fde047' : '#ffffff',
-      hit.effectiveness === 'super' ? 4.4 : 3.2,
+      isSuperEff ? '#fde047' : '#ffffff',
+      isSuperEff ? 4.4 : 3.4,
     );
     if (this.arenaGroup && this.arenaGroup.userData.triggerShockwave) {
       this.arenaGroup.userData.triggerShockwave(defUnit.homeX, defUnit.homeZ, elemColor);
     }
-    if (hit.effectiveness === 'super') {
-      this._spawnAuraPillar(defUnit.homeX, defUnit.homeZ, '#fde047', 0.85);
+    if (isSuperEff) {
+      this._spawnAuraPillar(defUnit.homeX, defUnit.homeZ, '#fde047', 0.8);
       this.audio.playSfx('super_hit');
-      this.renderer.triggerCameraShake(0.26);
-      this.narrationSub = `★ IT'S SUPER EFFECTIVE! (-${dmg} HP)`;
-    } else if (hit.effectiveness === 'resist') {
+      if (this.renderer.triggerShake) this.renderer.triggerShake(0.28, 0.24);
+      this.narrationSub = `★ IT'S SUPER EFFECTIVE! (-${dmg} HP · ${defUnit.mon.hp}/${defUnit.mon.maxHp} left)`;
+    } else if (isResist) {
       this.audio.playSfx('hit');
-      this.renderer.triggerCameraShake(0.11);
-      this.narrationSub = `Not very effective... (-${dmg} HP)`;
+      if (this.renderer.triggerShake) this.renderer.triggerShake(0.12, 0.16);
+      this.narrationSub = `Not very effective... (-${dmg} HP · ${defUnit.mon.hp}/${defUnit.mon.maxHp} left)`;
     } else {
       this.audio.playSfx('hit');
-      this.renderer.triggerCameraShake(0.16);
-      this.narrationSub = `Dealt ${dmg} damage!`;
+      if (this.renderer.triggerShake) this.renderer.triggerShake(0.18, 0.2);
+      this.narrationSub = `Direct hit for -${dmg} HP! (${defUnit.mon.hp}/${defUnit.mon.maxHp} HP left)`;
     }
 
-    this._spawnBurstParticles(defUnit.homeX, 0.9, defUnit.homeZ, elemColor, hit.effectiveness === 'super' ? 18 : 11);
+    this._spawnBurstParticles(defUnit.homeX, 0.9, defUnit.homeZ, elemColor, isSuperEff ? 18 : 12);
 
     const pDef = this.renderer.projectToScreen(
       new THREE.Vector3(this.center.x + defUnit.homeX, this.center.y + 1.9, this.center.z + defUnit.homeZ),
     );
     if (pDef.visible && this.onFloatText) {
-      const label =
-        hit.effectiveness === 'super'
-          ? `★ SUPER! -${dmg}`
-          : hit.isCrit
-            ? `CRIT! -${dmg}`
-            : `-${dmg}`;
-      const col = hit.effectiveness === 'super' ? '#fde047' : hit.effectiveness === 'resist' ? '#94a3b8' : '#ffffff';
+      const label = isSuperEff
+        ? `★ SUPER! -${dmg} HP`
+        : hit.isCrit
+          ? `CRIT! -${dmg} HP`
+          : `-${dmg} HP`;
+      const col = isSuperEff ? '#fde047' : isResist ? '#cbd5e1' : '#fb7185';
       this.onFloatText(pDef.x, pDef.y, label, col);
     }
 
@@ -1202,10 +1289,15 @@ export class BattleController {
       if (nav.down && this.rootCursor < 2) this.rootCursor += 2;
       if (this.rootCursor !== prev) this.audio.playSfx('menu');
 
+      // Escape / Backspace / (B) or [4] ALWAYS runs away cleanly from any battle!
+      if (input.pressed.back || input.pressed.btnB || input.pressed.slot4) {
+        return this.tryRunAway();
+      }
       if (input.pressed.slot1) return this.selectRootOption(0);
-      if (input.pressed.slot2) return this.selectRootOption(1);
-      if (input.pressed.slot3) return this.selectRootOption(2);
-      if (input.pressed.slot4) return this.selectRootOption(3);
+      if (input.pressed.slot2 || input.pressed.btnX) return this.selectRootOption(1);
+      if (input.pressed.slot3 || input.pressed.btnY) return this.selectRootOption(2);
+      if (input.pressed.btnLB) return this.useBerryInBattle();
+      if (input.pressed.btnLT) return this.cyclePartySwitch();
       if (input.pressed.btnA) return this.selectRootOption(this.rootCursor);
       return;
     }
@@ -1275,16 +1367,20 @@ export class BattleController {
       const targetHp = unit.mon.hp;
       const diff = targetHp - unit.displayHp;
       if (Math.abs(diff) > 0.05) {
-        const speed = Math.max(18, unit.mon.maxHp * 0.95);
+        const speed = Math.max(24, unit.mon.maxHp * 1.25);
         unit.displayHp += Math.sign(diff) * Math.min(Math.abs(diff), speed * dt);
       } else {
         unit.displayHp = targetHp;
       }
 
-      // Position & animate 3D Combatant Rig
-      unit.hitFlash = Math.max(0, unit.hitFlash - dt);
+      // Position & animate 3D Combatant Rig + Hit Flash & Flinch
+      const prevFlash = unit.hitFlash || 0;
+      unit.hitFlash = Math.max(0, prevFlash - dt);
       if (unit.actor) {
-        const shakeX = unit.hitFlash > 0 ? Math.sin(this.time * 55) * 0.16 : 0;
+        if (prevFlash > 0 && unit.actor.setHitFlash) {
+          unit.actor.setHitFlash(unit.hitFlash > 0 ? unit.hitFlash / 0.42 : 0, 0xff4d4d);
+        }
+        const shakeX = unit.hitFlash > 0 ? Math.sin(this.time * 55) * 0.18 : 0;
         unit.actor.root.position.set(
           this.center.x + unit.homeX + unit.offsetX + shakeX,
           this.center.y + unit.offsetY,
@@ -1294,6 +1390,7 @@ export class BattleController {
           unit.actor.updateMotion(dt, {
             targetYaw: unit.yaw,
             moveSpeed: Math.hypot(unit.offsetX, unit.offsetZ) > 0.15 ? 8.5 : 0,
+            hitRecoil: Math.min(1, unit.hitFlash * 2.2),
             inBattle: true,
           });
         }
@@ -1384,6 +1481,12 @@ export class BattleController {
       return;
     }
 
+    // Allow Escape / Backspace / (B) / [4] to flee immediately even during catch or attack animations!
+    if (input && input.pressed && (input.pressed.back || input.pressed.btnB || input.pressed.slot4)) {
+      this.tryRunAway();
+      return;
+    }
+
     // Catch animation in flight
     if (this.catchAnim) {
       this._updateCatchAnim(dt);
@@ -1401,20 +1504,25 @@ export class BattleController {
       }
 
       if (this.activeStep) {
+        // If player presses 1–4 while the opening summon banner is still showing, execute immediately!
+        if (!this.activeStep.attackerSide && input && input.pressed) {
+          if (input.pressed.slot4) return this.tryRunAway();
+          if (input.pressed.slot1) return this.selectRootOption(0);
+          if (input.pressed.slot2) return this.selectRootOption(1);
+          if (input.pressed.slot3) return this.selectRootOption(2);
+        }
+
         this.activeStep.elapsed += dt;
         if (this.activeStep.onUpdate) this.activeStep.onUpdate(this.activeStep, dt);
 
         const canSkip =
-          !this.activeStep.attackerSide &&
-          this.activeStep.elapsed > 0.32 &&
+          this.activeStep.elapsed > 0.28 &&
           input &&
           input.pressed &&
           input.pressed.btnA;
 
-        if (this.activeStep.elapsed >= (this.activeStep.duration || 1.0) || canSkip) {
-          const finished = this.activeStep;
-          this.activeStep = null;
-          if (finished.onDone) finished.onDone();
+        if (this.activeStep.elapsed >= (this.activeStep.duration || 0.85) || canSkip) {
+          this.advanceOrSkipStep();
         }
       } else if (this.stepQueue.length === 0 && !this.pendingEnd) {
         this._enterRootMenu();
@@ -1422,7 +1530,7 @@ export class BattleController {
       return;
     }
 
-    // Player is calmly browsing the Turn-Based Menu!
+    // Player is calmly browsing the 1-Screen Action Bar!
     if (input) {
       this._handleMenuNavigation(input);
     }

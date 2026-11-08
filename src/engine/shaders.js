@@ -1010,3 +1010,229 @@ export function createBattleImpactWaveShaderMaterial({
     `,
   });
 }
+
+/**
+ * Dedicated Island Stream / Harbor Canal / Volcanic Lava-Channel Shader (`createStreamChannelShaderMaterial`).
+ * - Flat/micro-rippled height (`±0.003m`) so river & canal water NEVER dips below island terrain or bridges!
+ * - True directional flow along channel `vUv.y`, shallow turquoise banks -> deep sapphire center trough,
+ *   animated Voronoi caustics, bank foam ribbons, organic coastline clipping, and soft under-bridge shadow!
+ */
+export function createStreamChannelShaderMaterial({
+  waterColor = '#38bdf8',
+  deepColor = '#0369a1',
+  skyColor = '#9be4ff',
+  fogColor = '#9be4ff',
+  fogNear = 46,
+  fogFar = 104,
+  islandHalfW = 28,
+  islandHalfD = 23,
+  coastParams = [0.1, 0.08, 0.05, 0.7],
+  lobeDirs = [],
+  bridges = [],
+  clipToCoast = true,
+  theme = 'tropical',
+} = {}) {
+  const isVolcano = theme === 'volcano';
+  const lobesPadded = [-99, -99, -99, -99];
+  for (let i = 0; i < Math.min(4, lobeDirs.length); i++) lobesPadded[i] = lobeDirs[i];
+
+  // Pack up to 4 bridges as vec4(bx, bz, halfWidth, halfLength) for realistic under-bridge shading
+  const bridgeVecs = [
+    new THREE.Vector4(9999, 9999, 1, 1),
+    new THREE.Vector4(9999, 9999, 1, 1),
+    new THREE.Vector4(9999, 9999, 1, 1),
+    new THREE.Vector4(9999, 9999, 1, 1),
+  ];
+  for (let i = 0; i < Math.min(4, bridges.length); i++) {
+    const br = bridges[i];
+    const swapAxes = Math.abs(Math.sin(br.yaw || 0)) > 0.7;
+    const halfX = swapAxes ? (br.length || 5.2) * 0.48 : (br.width || 3.4) * 0.56;
+    const halfZ = swapAxes ? (br.width || 3.4) * 0.56 : (br.length || 5.2) * 0.48;
+    bridgeVecs[i].set(br.x || 0, br.z || 0, halfX, halfZ);
+  }
+
+  return new THREE.ShaderMaterial({
+    uniforms: {
+      uTime: { value: 0 },
+      uShallowColor: { value: new THREE.Color(waterColor) },
+      uDeepColor: { value: new THREE.Color(deepColor) },
+      uSkyColor: { value: new THREE.Color(skyColor) },
+      uFogColor: { value: new THREE.Color(fogColor) },
+      uFogNear: { value: fogNear },
+      uFogFar: { value: fogFar },
+      uIslandHalf: { value: new THREE.Vector2(islandHalfW, islandHalfD) },
+      uCoastParams: {
+        value: new THREE.Vector4(
+          coastParams[0] ?? 0.1,
+          coastParams[1] ?? 0.08,
+          coastParams[2] ?? 0.05,
+          coastParams[3] ?? 0.7,
+        ),
+      },
+      uLobeDirs: {
+        value: new THREE.Vector4(lobesPadded[0], lobesPadded[1], lobesPadded[2], lobesPadded[3]),
+      },
+      uBridge0: { value: bridgeVecs[0] },
+      uBridge1: { value: bridgeVecs[1] },
+      uBridge2: { value: bridgeVecs[2] },
+      uBridge3: { value: bridgeVecs[3] },
+      uClipCoast: { value: clipToCoast ? 1.0 : 0.0 },
+      uIsVolcano: { value: isVolcano ? 1.0 : 0.0 },
+    },
+    vertexShader: /* glsl */ `
+      uniform float uTime;
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+      varying float vFogDepth;
+
+      void main() {
+        vUv = uv;
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        // Gentle surface micro-ripple (<= 3mm) so stream never clips through terrain or banks
+        wp.y += sin(wp.x * 2.2 + wp.z * 2.0 + uTime * 3.2) * 0.0025;
+        vWorldPos = wp.xyz;
+        vec4 mvPosition = viewMatrix * wp;
+        vFogDepth = -mvPosition.z;
+        gl_Position = projectionMatrix * mvPosition;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uTime;
+      uniform vec3 uShallowColor;
+      uniform vec3 uDeepColor;
+      uniform vec3 uSkyColor;
+      uniform vec3 uFogColor;
+      uniform float uFogNear;
+      uniform float uFogFar;
+      uniform vec2 uIslandHalf;
+      uniform vec4 uCoastParams;
+      uniform vec4 uLobeDirs;
+      uniform vec4 uBridge0;
+      uniform vec4 uBridge1;
+      uniform vec4 uBridge2;
+      uniform vec4 uBridge3;
+      uniform float uClipCoast;
+      uniform float uIsVolcano;
+
+      varying vec2 vUv;
+      varying vec3 vWorldPos;
+      varying float vFogDepth;
+
+      float hash21(vec2 p) {
+        p = fract(p * vec2(123.34, 456.21));
+        p += dot(p, p + 45.32);
+        return fract(p.x * p.y);
+      }
+
+      float voronoiStream(vec2 uv, float t) {
+        vec2 g = floor(uv);
+        vec2 f = fract(uv);
+        float minDist = 1.0;
+        for (int y = -1; y <= 1; y++) {
+          for (int x = -1; x <= 1; x++) {
+            vec2 lattice = vec2(float(x), float(y));
+            float h = hash21(g + lattice);
+            vec2 offset = 0.5 + 0.4 * sin(t + 6.2831 * vec2(h, fract(h * 17.3)));
+            minDist = min(minDist, length(lattice + offset - f));
+          }
+        }
+        return minDist;
+      }
+
+      float wrapAngleDiff(float a, float b) {
+        return mod(a - b + 3.14159265, 6.2831853) - 3.14159265;
+      }
+
+      float organicCoastShoreDist(vec2 xz) {
+        vec2 normP = xz / max(vec2(1.0), uIslandHalf);
+        float theta = atan(normP.y, normP.x);
+        float rNorm = 0.96
+          + uCoastParams.x * cos(2.0 * theta + uCoastParams.w)
+          + uCoastParams.y * sin(3.0 * theta - uCoastParams.w * 1.35)
+          + uCoastParams.z * cos(5.0 * theta + uCoastParams.w * 2.1);
+        if (uLobeDirs.x > -50.0) { float d = wrapAngleDiff(theta, uLobeDirs.x); rNorm = max(rNorm, 1.03 * exp(-(d * d) / 0.11)); }
+        if (uLobeDirs.y > -50.0) { float d = wrapAngleDiff(theta, uLobeDirs.y); rNorm = max(rNorm, 1.03 * exp(-(d * d) / 0.11)); }
+        if (uLobeDirs.z > -50.0) { float d = wrapAngleDiff(theta, uLobeDirs.z); rNorm = max(rNorm, 1.03 * exp(-(d * d) / 0.11)); }
+        if (uLobeDirs.w > -50.0) { float d = wrapAngleDiff(theta, uLobeDirs.w); rNorm = max(rNorm, 1.03 * exp(-(d * d) / 0.11)); }
+        rNorm = clamp(rNorm, 0.72, 1.16);
+        float avgScale = 0.5 * (uIslandHalf.x + uIslandHalf.y);
+        return (length(normP) - rNorm) * avgScale;
+      }
+
+      float bridgeShadeAt(vec2 xz, vec4 br) {
+        if (br.x > 5000.0) return 0.0;
+        vec2 d = abs(xz - br.xy) / max(vec2(0.4), br.zw);
+        float box = max(d.x, d.y);
+        return 1.0 - smoothstep(0.65, 1.18, box);
+      }
+
+      void main() {
+        vec2 xz = vWorldPos.xz;
+        if (uClipCoast > 0.5) {
+          float shoreDist = organicCoastShoreDist(xz);
+          if (shoreDist > 1.35) discard;
+        }
+
+        // Cross-channel coordinate: 0 = center of stream, 1 = bank edge
+        float bankDist = abs(vUv.x - 0.5) * 2.0;
+
+        if (uIsVolcano > 0.5) {
+          vec2 lavaUv = vec2(vUv.x * 2.6, vWorldPos.z * 0.35 + vWorldPos.x * 0.25 - uTime * 0.45);
+          float c = voronoiStream(lavaUv, uTime * 0.8);
+          float glow = smoothstep(0.42, 0.04, c);
+          vec3 crust = vec3(0.16, 0.09, 0.07);
+          vec3 core = mix(uShallowColor, vec3(1.0, 0.9, 0.35), glow);
+          vec3 col = mix(core, crust, smoothstep(0.65, 0.98, bankDist) * 0.65);
+          float fogFactor = smoothstep(uFogNear, uFogFar, vFogDepth);
+          gl_FragColor = vec4(mix(col, uFogColor, fogFactor), 1.0);
+          return;
+        }
+
+        // Downstream directional flow ripples & cellular water caustics!
+        float flowCoord = (xz.x * 0.38 + xz.y * 0.42) - uTime * 1.15;
+        vec2 causticUv = vec2(xz.x * 0.55 - uTime * 0.35, xz.y * 0.55 - uTime * 0.55);
+        float c1 = voronoiStream(causticUv, uTime * 1.25);
+        float c2 = 0.5 + 0.5 * sin(causticUv.x * 5.2 + cos(causticUv.y * 4.7 - uTime * 1.8));
+        float caustic = pow(clamp(c1 * 1.16, 0.0, 1.0), 3.2) * 0.85 + pow(c2, 4.0) * 0.28;
+
+        // Deep sapphire center -> bright turquoise shallow banks
+        float edgeShallow = smoothstep(0.28, 0.95, bankDist);
+        vec3 col = mix(uDeepColor, uShallowColor, 0.35 + 0.65 * edgeShallow);
+        col += vec3(0.46, 0.92, 1.0) * caustic * (0.38 + 0.25 * (1.0 - bankDist));
+
+        // Downstream flow streak highlights
+        float streak = sin(bankDist * 14.0 + sin(flowCoord * 2.6) * 1.5) * 0.5 + 0.5;
+        float streakMask = pow(streak, 5.0) * (1.0 - bankDist * 0.5);
+        col += vec3(0.75, 0.96, 1.0) * streakMask * 0.18;
+
+        // Crisp bubbling white foam ribbons hugging both stone embankments
+        float foamWave = 0.84 + 0.06 * sin(flowCoord * 4.5 + vUv.x * 8.0);
+        float bankFoam = smoothstep(foamWave, 0.99, bankDist);
+        col = mix(col, vec3(0.94, 0.99, 1.0), bankFoam * 0.82);
+
+        // Fresnel sky sheen + solar sparkles
+        vec3 V = normalize(cameraPosition - vWorldPos);
+        vec3 N = normalize(vec3(sin(flowCoord * 3.1) * 0.08, 1.0, cos(flowCoord * 2.7) * 0.08));
+        float fresnel = 0.05 + 0.95 * pow(1.0 - max(dot(N, V), 0.0), 4.0);
+        col = mix(col, uSkyColor, clamp(fresnel * 0.48, 0.0, 0.55));
+
+        vec3 sunDir = normalize(vec3(0.45, 0.78, 0.42));
+        float spec = pow(max(dot(N, normalize(sunDir + V)), 0.0), 96.0);
+        col += vec3(1.0, 0.98, 0.88) * spec * 0.95;
+
+        // Realistic cool bridge-arch ambient shadow as water flows smoothly under bridges!
+        float bShade = max(
+          max(bridgeShadeAt(xz, uBridge0), bridgeShadeAt(xz, uBridge1)),
+          max(bridgeShadeAt(xz, uBridge2), bridgeShadeAt(xz, uBridge3))
+        );
+        if (bShade > 0.01) {
+          col *= mix(1.0, 0.64, bShade);
+        }
+
+        float fogFactor = smoothstep(uFogNear, uFogFar, vFogDepth);
+        col = mix(col, uFogColor, fogFactor);
+        gl_FragColor = vec4(col, 1.0);
+      }
+    `,
+  });
+}

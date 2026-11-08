@@ -121,12 +121,12 @@ export class DioramaRenderer {
     this.scene.environmentIntensity = 0.72;
     pmrem.dispose();
 
-    // Signature 2.5D elevated toy-island camera
+    // Signature 2.5D elevated toy-island camera (near=2.0 maximizes 24-bit depth precision, eliminating z-fighting)
     this.camera = new THREE.PerspectiveCamera(
       30,
       window.innerWidth / Math.max(1, window.innerHeight),
-      0.5,
-      165,
+      2.0,
+      160,
     );
     this.camTarget = new THREE.Vector3(0, 0.8, 0);
     this.camDesiredTarget = new THREE.Vector3(0, 0.8, 0);

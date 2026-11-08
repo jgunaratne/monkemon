@@ -245,6 +245,7 @@ test('All 16 PBR textures, 22 ElevenLabs SFX, bundled fonts, and 11 GLSL shaders
   for (const fn of [
     'computeCoastRadiusNorm',
     'createOceanMagmaShaderMaterial',
+    'createStreamChannelShaderMaterial',
     'attachTerrainDetailShader',
     'attachCliffWetnessShader',
     'attachWindGrassShader',

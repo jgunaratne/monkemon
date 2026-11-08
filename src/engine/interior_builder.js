@@ -9,7 +9,7 @@
 
 import * as THREE from 'three';
 import { makeLabelSprite } from './model_loader.js';
-import { createOceanMagmaShaderMaterial, createSunbeamShaderMaterial } from './shaders.js';
+import { createStreamChannelShaderMaterial, createSunbeamShaderMaterial } from './shaders.js';
 
 const ASSET_VERSION = '20261108a';
 const _texLoader = new THREE.TextureLoader();
@@ -548,31 +548,43 @@ export function buildHouseInteriorDiorama(houseDef, zone, modelBank) {
     dais.position.set(0, 0.18, -halfD + 2.2);
     group.add(dais);
 
-    // Side Biome Features inside the Dojo!
+    // Side Biome Features inside the Dojo (hollow pool border + non-clipping stream shader)!
     if (styleKey === 'fish_house' || styleKey === 'pork_house' || styleKey === 'beef_house') {
-      const poolMat = createOceanMagmaShaderMaterial({
+      const poolMat = createStreamChannelShaderMaterial({
         waterColor: styleKey === 'beef_house' ? '#f97316' : styleKey === 'pork_house' ? '#2dd4bf' : '#0ea5e9',
         deepColor: styleKey === 'beef_house' ? '#450a0a' : '#0369a1',
         skyColor: '#bae6fd',
         fogColor: '#bae6fd',
         fogNear: 60,
         fogFar: 120,
-        islandHalfW: 40,
-        islandHalfD: 40,
+        clipToCoast: false,
         theme: styleKey === 'beef_house' ? 'volcano' : 'tropical',
       });
       animated.push((t) => {
         poolMat.uniforms.uTime.value = t;
       });
       for (const side of [-1, 1]) {
-        const rim = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.28, 7.6), trimMat);
-        rim.position.set(side * (halfW - 1.85), 0.14, -0.4);
-        const liquid = new THREE.Mesh(new THREE.PlaneGeometry(2.05, 7.1, 12, 12), poolMat);
+        const px = side * (halfW - 1.85);
+        const pz = -0.4;
+        const poolBase = new THREE.Mesh(
+          new THREE.BoxGeometry(2.15, 0.04, 7.2),
+          new THREE.MeshStandardMaterial({ color: '#082f49', roughness: 0.9 }),
+        );
+        poolBase.position.set(px, 0.02, pz);
+        const wallL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 7.6), trimMat);
+        wallL.position.set(px - 1.14, 0.14, pz);
+        const wallR = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.28, 7.6), trimMat);
+        wallR.position.set(px + 1.14, 0.14, pz);
+        const wallN = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.28, 0.22), trimMat);
+        wallN.position.set(px, 0.14, pz - 3.69);
+        const wallS = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.28, 0.22), trimMat);
+        wallS.position.set(px, 0.14, pz + 3.69);
+        const liquid = new THREE.Mesh(new THREE.PlaneGeometry(2.04, 7.16, 6, 18), poolMat);
         liquid.rotation.x = -Math.PI / 2;
-        liquid.position.set(side * (halfW - 1.85), 0.29, -0.4);
-        group.add(rim, liquid);
-        colliders.push({ x: side * (halfW - 1.85), z: -0.4 - 2.0, r: 1.25 });
-        colliders.push({ x: side * (halfW - 1.85), z: -0.4 + 2.0, r: 1.25 });
+        liquid.position.set(px, 0.21, pz);
+        group.add(poolBase, wallL, wallR, wallN, wallS, liquid);
+        colliders.push({ x: px, z: pz - 2.0, r: 1.25 });
+        colliders.push({ x: px, z: pz + 2.0, r: 1.25 });
       }
     } else {
       // Peanut Butter House: Giant Golden Honey/Peanut-Butter Barrels & Pillars!
