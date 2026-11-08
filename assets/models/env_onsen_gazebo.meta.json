@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:13693444-4583-4e8b-b5e9-e483efb96ba7",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 51.66,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_onsen_gazebo.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "e1f0c171829f943c"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 507,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "cozy alpine hot-spring rock pool shrine with natural mossy boulders cradling turquoise steaming spring water, bamboo water spout, warm glowing stone lantern, and snow-dusted timber roof",
+    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_onsen_gazebo.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_onsen_gazebo.glb",
+    "file_size_bytes": 3397476,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 12230,
+    "triangle_count": 8552,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.48428,
+      -0.33402,
+      -0.4651
+    ],
+    "bbox_max": [
+      0.48362,
+      0.33212,
+      0.48612
+    ],
+    "bbox_extents": [
+      0.9679,
+      0.66614,
+      0.95122
+    ]
+  }
+}

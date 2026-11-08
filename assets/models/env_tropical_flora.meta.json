@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:ac401e53-58b3-46d9-88f0-2e5cc797aa4c",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 71.38,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_tropical_flora.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "b78c23f0279506c1"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 504,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 7500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "dense vibrant botanical cluster of giant fenestrated monstera leaves, unfurling emerald jungle fern fronds, bright pink and yellow tropical hibiscus blooms, and mossy garden stones",
+    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_tropical_flora.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_tropical_flora.glb",
+    "file_size_bytes": 3195480,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 11708,
+    "triangle_count": 7010,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.44394,
+      -0.50092,
+      -0.39696
+    ],
+    "bbox_max": [
+      0.43155,
+      0.49426,
+      0.45787
+    ],
+    "bbox_extents": [
+      0.87549,
+      0.99518,
+      0.85483
+    ]
+  }
+}

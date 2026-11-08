@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:db8bcf9d-6481-4ace-814e-0f41798fdf89",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 91.35,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_alpine_pine.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "bc0ee56b03dabf6f"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 503,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "picturesque layered alpine evergreen pine tree with rich teal-green boughs capped with fluffy sculpted white snow drifts, warm cedar trunk, pinecones, and a small mossy rock at the base",
+    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_alpine_pine.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_alpine_pine.glb",
+    "file_size_bytes": 2795592,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 8879,
+    "triangle_count": 8465,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.26289,
+      -0.50097,
+      -0.3072
+    ],
+    "bbox_max": [
+      0.26188,
+      0.49766,
+      0.30501
+    ],
+    "bbox_extents": [
+      0.52477,
+      0.99863,
+      0.61221
+    ]
+  }
+}

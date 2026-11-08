@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:8ec3c505-5221-4c3f-a43f-1de798104ec4",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 111.78,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_plaza_fountain.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "e8e316efed4c2166"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 510,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "ornate circular carved cream-limestone town plaza fountain with sparkling turquoise water basin, golden rim trim, and a joyful golden monkey statue centerpiece pouring water from a giant cocoa mug",
+    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_plaza_fountain.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_plaza_fountain.glb",
+    "file_size_bytes": 3063588,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 9326,
+    "triangle_count": 9170,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.49861,
+      -0.38095,
+      -0.49874
+    ],
+    "bbox_max": [
+      0.4998,
+      0.37498,
+      0.49898
+    ],
+    "bbox_extents": [
+      0.99841,
+      0.75593,
+      0.99772
+    ]
+  }
+}

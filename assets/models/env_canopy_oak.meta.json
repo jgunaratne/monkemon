@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:f11f5b06-c321-4f51-973d-25f5c9081ca0",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 100.84,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_canopy_oak.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "2f548219d5b49318"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 502,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "majestic gnarled fantasy grove banyan oak tree with thick twisted mossy roots, warm brown bark branches, lush multi-tiered emerald and golden-amber leafy canopy clusters, and glowing tiny blossoms",
+    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_canopy_oak.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_canopy_oak.glb",
+    "file_size_bytes": 3299008,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 9982,
+    "triangle_count": 8858,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.40408,
+      -0.48424,
+      -0.36788
+    ],
+    "bbox_max": [
+      0.40473,
+      0.49696,
+      0.36456
+    ],
+    "bbox_extents": [
+      0.80881,
+      0.9812,
+      0.73244
+    ]
+  }
+}

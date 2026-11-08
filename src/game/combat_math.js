@@ -163,3 +163,39 @@ export function computeCatchProbability({
   const prob = baseRate * hpFactor * ringMult * berryMult * ballBonus * badgeMult;
   return Math.max(0.08, Math.min(0.98, Math.round(prob * 1000) / 1000));
 }
+
+export function computeCoastRadiusNorm(theta, coastParams = [0.1, 0.08, 0.05, 0.7], lobeDirs = []) {
+  const [a2 = 0.1, a3 = 0.08, a5 = 0.05, phase = 0.7] = coastParams;
+  let r =
+    0.96 +
+    a2 * Math.cos(2.0 * theta + phase) +
+    a3 * Math.sin(3.0 * theta - phase * 1.35) +
+    a5 * Math.cos(5.0 * theta + phase * 2.1);
+
+  for (const lAngle of lobeDirs) {
+    let d = theta - lAngle;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    r = Math.max(r, 1.03 * Math.exp(-(d * d) / 0.11));
+  }
+  return Math.max(0.72, Math.min(1.16, r));
+}
+
+export function getBattleMoves(mon, species) {
+  const sp = species || getSpecies(mon ? mon.speciesId : 'mugchimp');
+  const rawIds = [
+    ...(Array.isArray(mon && mon.moves) ? mon.moves : []),
+    ...(Array.isArray(sp && sp.moves) ? sp.moves : []),
+  ];
+  const specialId =
+    rawIds.find((id) => MOVES[id] && !['monk_run', 'fake_out', 'eat_snack', 'sky_jump'].includes(id)) ||
+    'espresso_geyser';
+
+  const ordered = [specialId, 'monk_run', 'sky_jump', 'eat_snack', 'fake_out'];
+  const unique = [];
+  for (const id of ordered) {
+    if (MOVES[id] && !unique.includes(id)) unique.push(id);
+    if (unique.length === 4) break;
+  }
+  return unique.map((id) => MOVES[id]);
+}

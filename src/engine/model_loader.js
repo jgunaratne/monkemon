@@ -239,10 +239,18 @@ export class ModelBank {
     return p;
   }
 
-  _buildToyStandIn(primaryHex = '#f59e0b', accentHex = '#fef3c7') {
+  _buildToyStandIn(primaryHex = '#f59e0b', accentHex = '#fef3c7', standInKind = 'creature') {
     const g = new THREE.Group();
     const bodyMat = new THREE.MeshStandardMaterial({ color: primaryHex, roughness: 0.35, metalness: 0.08 });
     const bellyMat = new THREE.MeshStandardMaterial({ color: accentHex, roughness: 0.42, metalness: 0.05 });
+    if (standInKind === 'prop') {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.22, 0.42, 10), bellyMat);
+      trunk.position.y = 0.21;
+      const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(0.36, 1), bodyMat);
+      crown.position.y = 0.62;
+      g.add(trunk, crown);
+      return g;
+    }
     const eyeMat = new THREE.MeshStandardMaterial({ color: '#111827', roughness: 0.15 });
 
     const body = new THREE.Mesh(new THREE.SphereGeometry(0.28, 16, 14), bodyMat);
@@ -274,6 +282,7 @@ export class ModelBank {
     secondaryColor = '#fef3c7',
     shadowRadius = 0.55,
     animateRig = false,
+    standInKind = 'creature',
   }) {
     const root = new THREE.Group();
     const animRoot = new THREE.Group();
@@ -299,7 +308,7 @@ export class ModelBank {
       uAttackTwist: { value: 0.0 },
     };
 
-    const standIn = this._buildToyStandIn(primaryColor, secondaryColor);
+    const standIn = this._buildToyStandIn(primaryColor, secondaryColor, standInKind);
     if (animateRig) {
       standIn.traverse((c) => {
         if (c.isMesh) attachCharacterLimbShader(c, rigUniforms);

@@ -2,9 +2,10 @@
 // - Crossfaded seamless Web Audio looper for all 11 Lyria 3 full-song MP3s (`assets/music/*.mp3`)
 // - Daikon TTS character, House Leader, and Boss voice lines (`assets/voice/*.mp3`) routed through
 //   a stereo room impulse response (`ConvolverNode`) with automatic 0.36x music ducking
-// - Crisp synthesized procedural Web Audio SFX for Monkeball throws, wiggles, catches, and battle moves.
+// - ElevenLabs sample-based creature-adventure SFX (`assets/sfx/*.mp3`) with zero-latency Web Audio
+//   synthesizer fallback while samples decode.
 
-export const ASSET_VERSION = '20261108a';
+export const ASSET_VERSION = '20261108b';
 
 function withVer(url) {
   if (!url || typeof url !== 'string') return url;
@@ -47,6 +48,65 @@ export const VOICES = {
   champion_kongo: 'assets/voice/champion_kongo.mp3',
 };
 
+export const SFX_FILES = {
+  menu: 'assets/sfx/menu.mp3',
+  confirm: 'assets/sfx/confirm.mp3',
+  cancel: 'assets/sfx/cancel.mp3',
+  throw_ball: 'assets/sfx/throw_ball.mp3',
+  ball_bounce: 'assets/sfx/ball_bounce.mp3',
+  ball_wiggle: 'assets/sfx/ball_wiggle.mp3',
+  catch_fanfare: 'assets/sfx/catch_fanfare.mp3',
+  break_free: 'assets/sfx/break_free.mp3',
+  berry: 'assets/sfx/berry.mp3',
+  heal: 'assets/sfx/heal.mp3',
+  trainer_spot: 'assets/sfx/trainer_spot.mp3',
+  door_open: 'assets/sfx/door_open.mp3',
+  chest_open: 'assets/sfx/chest_open.mp3',
+  monk_run: 'assets/sfx/monk_run.mp3',
+  fake_out: 'assets/sfx/fake_out.mp3',
+  eat_snack: 'assets/sfx/eat_snack.mp3',
+  sky_jump: 'assets/sfx/sky_jump.mp3',
+  special: 'assets/sfx/special.mp3',
+  super_hit: 'assets/sfx/super_hit.mp3',
+  hit: 'assets/sfx/hit.mp3',
+  faint: 'assets/sfx/faint.mp3',
+  level_up: 'assets/sfx/level_up.mp3',
+};
+
+const MUSICAL_JINGLE_SFX = new Set([
+  'confirm',
+  'catch_fanfare',
+  'heal',
+  'trainer_spot',
+  'chest_open',
+  'level_up',
+]);
+
+const SFX_GAIN = {
+  menu: 0.52,
+  confirm: 0.68,
+  cancel: 0.58,
+  throw_ball: 0.82,
+  ball_bounce: 0.78,
+  ball_wiggle: 0.72,
+  catch_fanfare: 0.92,
+  break_free: 0.8,
+  berry: 0.76,
+  heal: 0.85,
+  trainer_spot: 0.82,
+  door_open: 0.78,
+  chest_open: 0.88,
+  monk_run: 0.8,
+  fake_out: 0.8,
+  eat_snack: 0.82,
+  sky_jump: 0.84,
+  special: 0.85,
+  super_hit: 0.94,
+  hit: 0.82,
+  faint: 0.84,
+  level_up: 0.9,
+};
+
 const FALLBACK_TRACK = 'sunpalm';
 const MAX_DECODED = 5;
 const VOICE_DUCK_RATIO = 0.36;
@@ -76,6 +136,9 @@ export class AudioSys {
     this.musicRaw = new Map();
     this.voiceRaw = new Map();
     this.voiceBuffers = new Map();
+    this.sfxRaw = new Map();
+    this.sfxBuffers = new Map();
+    this.sfxLoading = new Map();
     this.current = null;
     this.pendingTrack = null;
     this.pendingVoice = null;
@@ -85,8 +148,10 @@ export class AudioSys {
     this._voiceSeq = 0;
     this.muted = false;
     this.musicVolume = 0.52;
-    this.sfxVolume = 0.65;
+    this.sfxVolume = 0.74;
     this.onVoiceEvent = null; // ({ active, speaker, line, key, duration }) => void
+
+    this.prefetchAllSfx();
   }
 
   unlock() {
@@ -119,6 +184,11 @@ export class AudioSys {
     this.voiceBus = this.ctx.createGain();
     this.voiceBus.gain.value = 1.0;
     this._initVoiceAcoustics();
+
+    // Decode all prefetched ElevenLabs SFX buffers in the background immediately upon audio unlock
+    for (const key of Object.keys(SFX_FILES)) {
+      this.ensureSfxBuffer(key);
+    }
 
     if (typeof document !== 'undefined' && !this._visBound) {
       this._visBound = true;
@@ -204,6 +274,48 @@ export class AudioSys {
     return this.muted;
   }
 
+  prefetchAllSfx() {
+    if (typeof fetch === 'undefined') return;
+    for (const [key, url] of Object.entries(SFX_FILES)) {
+      if (this.sfxBuffers.has(key) || this.sfxRaw.has(key)) continue;
+      this.sfxRaw.set(
+        key,
+        fetch(withVer(url))
+          .then((r) => (r.ok ? r.arrayBuffer() : null))
+          .catch(() => null),
+      );
+    }
+  }
+
+  ensureSfxBuffer(key) {
+    if (this.sfxBuffers.has(key)) return Promise.resolve(this.sfxBuffers.get(key));
+    if (this.sfxLoading.has(key)) return this.sfxLoading.get(key);
+    const url = SFX_FILES[key];
+    if (!url || !this.ctx) return Promise.resolve(null);
+
+    const p = (async () => {
+      try {
+        let raw = this.sfxRaw.has(key) ? await this.sfxRaw.get(key) : null;
+        if (!raw) {
+          const res = await fetch(withVer(url));
+          if (!res.ok) return null;
+          raw = await res.arrayBuffer();
+        } else {
+          this.sfxRaw.delete(key);
+        }
+        const buf = await this.ctx.decodeAudioData(raw.slice(0));
+        this.sfxBuffers.set(key, buf);
+        return buf;
+      } catch {
+        return null;
+      } finally {
+        this.sfxLoading.delete(key);
+      }
+    })();
+    this.sfxLoading.set(key, p);
+    return p;
+  }
+
   prefetch(name) {
     const url = TRACKS[name];
     if (!url || this.buffers.has(name)) return;
@@ -223,7 +335,9 @@ export class AudioSys {
 
   prefetchVoice(key) {
     const url = VOICES[key];
-    if (!url || this.voiceBuffers.has(key) || this.voiceRaw.has(key) || typeof fetch === 'undefined') return;
+    if (!url || this.voiceBuffers.has(key) || this.voiceRaw.has(key) || typeof fetch !== 'undefined' === false) {
+      return;
+    }
     this.voiceRaw.set(
       key,
       fetch(withVer(url))
@@ -456,10 +570,31 @@ export class AudioSys {
     }
   }
 
-  // Synthesized toy-diorama & real-time combat SFX (zero network latency)
+  // Plays ElevenLabs sample-based SFX buffer when ready, with Web Audio synth fallback
   playSfx(kind) {
     if (this.muted || !this.ctx || !this.sfxBus) return;
     if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
+
+    const sampleBuf = this.sfxBuffers.get(kind);
+    if (sampleBuf) {
+      try {
+        const src = this.ctx.createBufferSource();
+        src.buffer = sampleBuf;
+        if (!MUSICAL_JINGLE_SFX.has(kind)) {
+          src.playbackRate.value = 0.965 + Math.random() * 0.07;
+        }
+        const g = this.ctx.createGain();
+        g.gain.value = SFX_GAIN[kind] || 0.78;
+        src.connect(g).connect(this.sfxBus);
+        src.start(this.ctx.currentTime);
+        return;
+      } catch {
+        // Fall through to procedural synth if buffer source fails
+      }
+    } else if (SFX_FILES[kind]) {
+      this.ensureSfxBuffer(kind);
+    }
+
     const t = Math.max(0, this.ctx.currentTime);
     const tone = (freq0, freq1, dur, type = 'sine', vol = 0.24, delay = 0) => {
       try {
@@ -490,6 +625,23 @@ export class AudioSys {
       case 'confirm':
         tone(523.25, 659.25, 0.09, 'triangle', 0.22, 0);
         tone(659.25, 1046.5, 0.14, 'triangle', 0.22, 0.07);
+        break;
+      case 'cancel':
+        tone(440, 293.66, 0.1, 'triangle', 0.18);
+        break;
+      case 'door_open':
+        tone(320, 480, 0.12, 'triangle', 0.22, 0);
+        tone(480, 640, 0.12, 'sine', 0.18, 0.09);
+        break;
+      case 'chest_open':
+        tone(523.25, 659.25, 0.12, 'triangle', 0.24, 0);
+        tone(659.25, 783.99, 0.12, 'triangle', 0.24, 0.1);
+        tone(1046.5, 1318.5, 0.3, 'triangle', 0.28, 0.2);
+        break;
+      case 'level_up':
+        tone(523.25, 659.25, 0.1, 'triangle', 0.25, 0);
+        tone(659.25, 783.99, 0.1, 'triangle', 0.25, 0.09);
+        tone(783.99, 1046.5, 0.28, 'triangle', 0.28, 0.18);
         break;
       case 'throw_ball':
         tone(310, 920, 0.22, 'sine', 0.26);

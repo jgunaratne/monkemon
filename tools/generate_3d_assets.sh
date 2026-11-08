@@ -12,3 +12,4 @@ CONCURRENCY="${CONCURRENCY:-5}"
 echo "Running TRELLIS.2 batch asset pipeline (concurrency=${CONCURRENCY})..."
 "${TRELLIS_BIN}" batch "${ROOT}/tools/monkemon_assets_manifest.json" -j "${CONCURRENCY}" --retries 2
 "${TRELLIS_BIN}" batch "${ROOT}/tools/monkemon_sticky_spec_manifest.json" -j "${CONCURRENCY}" --retries 2
+"${TRELLIS_BIN}" batch "${ROOT}/tools/monkemon_environment_manifest.json" -j "${CONCURRENCY}" --retries 2

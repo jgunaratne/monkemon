@@ -1,7 +1,8 @@
 // Monkemon 2.5D Main Bootstrapper & Game Loop
 // Orchestrates Three.js r170 Toy-Diorama rendering, TRELLIS.2 PBR `.glb` assets,
-// Lyria 3 music, Daikon TTS voices, Steam Deck Gamepad + Keyboard + Touch controls,
-// WebSocket Archipelago multiplayer, Overworld Monkeball catching, and Real-Time Arena Battles!
+// Organic Non-Square Islands, Walkable Cutaway House Interiors, ElevenLabs SFX + Lyria 3 + Daikon TTS,
+// Steam Deck Gamepad + Keyboard + Touch controls, Unified 5-Tab Tamer Menu + World Map,
+// and Turn-Based Command-Menu Battles with Multi-Layered Reactive GLSL Shaders!
 
 import { CORE_SPECIES, registerForgedSpecies } from './data/species.js';
 import { ZONES } from './data/zones.js';
@@ -69,21 +70,29 @@ async function boot() {
     state,
     onToast: (m) => ui && ui.showToast(m),
     onFloatText: (x, y, t, c) => ui && ui.spawnFloatingText(x, y, t, c),
+    onOpenShop: () => ui && ui.openMenuHub('bag', { shopFocus: true }),
+    onOpenPartyBox: () => ui && ui.openMenuHub('party'),
     onStartWildBattle: (wildEnt, centerPos) => {
       world.entitiesGroup.visible = false;
       if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
+      if (world.diorama && world.diorama.setBattleClearance) {
+        world.diorama.setBattleClearance(centerPos?.x || 0, centerPos?.z || 0, 10.6);
+      }
       battle.startWildBattle(wildEnt, centerPos);
       touch.updateMode(true);
     },
     onStartTrainerBattle: (trainerDef, centerPos) => {
       world.entitiesGroup.visible = false;
       if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
+      if (world.diorama && world.diorama.setBattleClearance) {
+        world.diorama.setBattleClearance(centerPos?.x || 0, centerPos?.z || 0, 10.6);
+      }
       battle.startTrainerBattle(trainerDef, centerPos);
       touch.updateMode(true);
     },
     onZoneChanged: (zone) => {
       saveGameToStorage(state);
-      if (ui && ui.modal !== 'title') {
+      if (ui && ui.modal !== 'title' && !world.isInsideHouse) {
         ui.showToast(`🌴 Entered ${zone.name} — ${zone.subtitle}`);
       }
     },
@@ -104,6 +113,7 @@ async function boot() {
     onBattleEnd: (res) => {
       world.entitiesGroup.visible = true;
       if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(true);
+      if (world.diorama && world.diorama.clearBattleClearance) world.diorama.clearBattleClearance();
       world.gateCooldown = 2.5;
       touch.updateMode(false);
       input._latched = {};
@@ -121,20 +131,29 @@ async function boot() {
         }
       } else if (res.outcome === 'lost') {
         healAllParty(state);
-        const house = (world.zone && world.zone.houses && world.zone.houses[0]) || null;
-        if (house) {
-          world.heroX = house.x;
-          world.heroZ = house.z + 3.0;
+        if (!world.isInsideHouse) {
+          const house = (world.zone && world.zone.houses && world.zone.houses[0]) || null;
+          if (house) {
+            world.heroX = house.x;
+            world.heroZ = house.z + 3.4;
+            world.heroY = world.diorama ? world.diorama.getHeightAt(world.heroX, world.heroZ) : 0;
+          }
         }
         ui.showToast('🏠 Rested safely at the House — your Monkemon are back to 100% HP!');
       } else if (res.outcome === 'ran') {
-        ui.showToast('💨 Dashed safely out of the arena!');
+        ui.showToast('💨 Got away safely from the wild encounter!');
       }
 
       world.pushNearbyWildsAway(3.0);
       world.refreshPartnerActor();
       saveGameToStorage(state);
-      renderer.setCameraFraming(world.heroX, 0.7, world.heroZ, 'overworld', false);
+      renderer.setCameraFraming(
+        world.heroX,
+        world.heroY + 0.7,
+        world.heroZ,
+        world.isInsideHouse ? 'interior' : 'overworld',
+        false,
+      );
       if (canvas && canvas.focus) {
         try { canvas.focus({ preventScroll: true }); } catch {}
       }
@@ -175,6 +194,9 @@ async function boot() {
       onFastTravel: (zoneId) => {
         if (battle.active) return;
         world.loadZone(zoneId);
+      },
+      onPartyChanged: () => {
+        world.refreshPartnerActor();
       },
       onSpawnForgedSpecies: (sp) => {
         const forgedMon = createMonkemonInstance(sp.id, Math.max(8, state.party[0]?.level || 8), {
@@ -230,36 +252,89 @@ async function boot() {
   if (params.get('dex') === 'all') {
     state.seenDex = CORE_SPECIES.map((s) => s.id);
     state.caughtDex = CORE_SPECIES.map((s) => s.id);
+  } else if (params.get('dex') === 'sample') {
+    state.caughtDex = CORE_SPECIES.slice(0, 6).map((s) => s.id);
+    state.seenDex = CORE_SPECIES.slice(0, 13).map((s) => s.id);
+    if (state.party.length < 3) {
+      state.party = [
+        createMonkemonInstance('mugchimp', 9, { caughtZone: 'sunpalm' }),
+        createMonkemonInstance('puppuchin', 8, { hp: 28, caughtZone: 'sunpalm' }),
+        createMonkemonInstance('duckaque', 10, { caughtZone: 'sparkstone' }),
+      ];
+      state.storage = [
+        createMonkemonInstance('mooboon', 7, { caughtZone: 'canopy' }),
+        createMonkemonInstance('plushimian', 8, { caughtZone: 'canopy' }),
+      ];
+    }
   }
+
   const screenParam = params.get('screen');
   if (screenParam === 'play') {
     state.starterChosen = true;
     ui.closeAllModals();
-    if (params.get('house') === '1' && world.zone.houses && world.zone.houses[0]) {
+    const interiorId = params.get('interior');
+    if (interiorId) {
+      world.enterHouseById(interiorId);
+    } else if (params.get('house') === '1' && world.zone.houses && world.zone.houses[0]) {
       const h = world.zone.houses[0];
       world.heroX = h.x;
-      world.heroZ = h.z + (h.scale || 4.4) * 0.56;
+      world.heroZ = h.z + (h.scale || 4.4) * 0.58;
+      world.heroY = world.diorama ? world.diorama.getHeightAt(world.heroX, world.heroZ) : 0;
       world.partnerX = world.heroX - 1.4;
       world.partnerZ = world.heroZ + 0.9;
-      renderer.setCameraFraming(world.heroX, 0.7, world.heroZ, 'overworld', true);
+      world.partnerY = world.heroY;
+      renderer.setCameraFraming(world.heroX, world.heroY + 0.7, world.heroZ, 'overworld', true);
+    } else if (params.get('pos')) {
+      const [px, pz] = params.get('pos').split(',').map(Number);
+      if (!Number.isNaN(px) && !Number.isNaN(pz)) {
+        world.heroX = px;
+        world.heroZ = pz;
+        world.heroY = world.diorama ? world.diorama.getHeightAt(px, pz) : 0;
+        world.partnerX = px - 1.3;
+        world.partnerZ = pz + 0.9;
+        world.partnerY = world.diorama ? world.diorama.getHeightAt(world.partnerX, world.partnerZ) : 0;
+        if (world.heroActor) world.heroActor.root.position.set(world.heroX, world.heroY, world.heroZ);
+        if (world.partnerActor) world.partnerActor.root.position.set(world.partnerX, world.partnerY, world.partnerZ);
+        renderer.setCameraFraming(world.heroX, world.heroY + 0.7, world.heroZ, 'overworld', true);
+      }
     }
     if (params.get('aim') === '1' && world.wildEntities[0]) {
       const w = world.wildEntities[0];
       world.heroX = w.x - 2.6;
       world.heroZ = w.z + 2.2;
-      renderer.setCameraFraming(w.x, 0.7, w.z, 'catch', true);
+      world.heroY = world.diorama ? world.diorama.getHeightAt(world.heroX, world.heroZ) : 0;
+      renderer.setCameraFraming(w.x, w.y + 0.7, w.z, 'catch', true);
       world.startOrReleaseAimRing();
     }
   } else if (screenParam === 'battle') {
     state.starterChosen = true;
     ui.closeAllModals();
-    const tr = (world.zone.trainers && world.zone.trainers[0]) || ZONES.sunpalm.trainers[0];
     world.entitiesGroup.visible = false;
     if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
-    battle.startTrainerBattle(tr, { x: 0, z: 2 });
-    if (params.get('action') === 'cast') {
+    if (world.diorama && world.diorama.setBattleClearance) world.diorama.setBattleClearance(0, 2, 10.6);
+
+    const bCenterY = world.diorama ? world.diorama.getHeightAt(0, 2) : 0;
+    if (params.get('mode') === 'wild' && world.wildEntities[0]) {
+      battle.startWildBattle(world.wildEntities[0], { x: 0, y: bCenterY, z: 2 });
+    } else {
+      const tr = (world.zone.trainers && world.zone.trainers[0]) || ZONES.sunpalm.trainers[0];
+      battle.startTrainerBattle(tr, { x: 0, y: bCenterY, z: 2 });
+    }
+
+    if (params.get('ready') === '1' || params.get('sub')) {
+      battle.stepQueue = [];
+      battle.activeStep = null;
+      battle._enterRootMenu();
+      const sub = params.get('sub');
+      if (sub === 'fight') battle.selectRootOption(0);
+      else if (sub === 'bag') battle.selectRootOption(1);
+      else if (sub === 'party') battle.selectRootOption(2);
+    } else if (params.get('action') === 'cast') {
+      battle.stepQueue = [];
+      battle.activeStep = null;
+      battle._enterRootMenu();
       battle._bumpPlayerCombo(3);
-      battle.triggerPlayerMoveSlot(4);
+      battle.triggerPlayerMoveSlot(0);
     }
   } else if (screenParam === 'boss20') {
     state.starterChosen = true;
@@ -273,16 +348,29 @@ async function boot() {
     const bossEnt = world.wildEntities.find((w) => w.isFinalBoss) || world.wildEntities[0];
     world.entitiesGroup.visible = false;
     if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
-    battle.startWildBattle(bossEnt, { x: 8, z: -6 });
+    if (world.diorama && world.diorama.setBattleClearance) world.diorama.setBattleClearance(8, -6, 10.6);
+    battle.startWildBattle(bossEnt, { x: 8, y: 0, z: -6 });
+    if (params.get('ready') === '1') {
+      battle.stepQueue = [];
+      battle.activeStep = null;
+      battle._enterRootMenu();
+    }
+  } else if (screenParam === 'party') {
+    state.starterChosen = true;
+    ui.openMenuHub('party');
   } else if (screenParam === 'dex') {
     state.starterChosen = true;
-    ui.openMonkeBoardModal();
+    if (params.get('view') === 'board') ui.dexViewMode = 'board';
+    ui.openMenuHub('dex');
+  } else if (screenParam === 'bag') {
+    state.starterChosen = true;
+    ui.openMenuHub('bag');
   } else if (screenParam === 'map') {
     state.starterChosen = true;
-    ui.openWorldMapModal();
+    ui.openMenuHub('map');
   } else if (screenParam === 'forge') {
     state.starterChosen = true;
-    ui.openForgeModal();
+    ui.openMenuHub('forge');
   } else if (screenParam === 'ending') {
     state.starterChosen = true;
     ui.openEndingModal();
@@ -308,14 +396,14 @@ async function boot() {
       if (input.pressed.mute) {
         const m = audio.toggleMute();
         const b = document.getElementById('btn-toggle-mute');
-        if (b) b.textContent = m ? '🔇 Muted [N]' : '🔊 Audio [N]';
+        if (b) b.textContent = m ? '🔇 [N]' : '🔊 [N]';
       }
       if (input.pressed.tilt) {
         const on = renderer.toggleTiltShift();
         ui.showToast(`📷 Miniature Tilt-Shift Lens: ${on ? 'ON' : 'OFF'}`);
       }
 
-      if (audio.activeVoice && input.pressed.back) {
+      if (audio.activeVoice && input.pressed.back && !ui.modal && !battle.active) {
         audio.stopVoice();
       }
 
@@ -328,7 +416,6 @@ async function boot() {
           false,
         );
         if (world.diorama) world.diorama.update(now * 0.001, dt);
-        // Animate roaming wilds & hero gently during the cinematic live-diorama intro!
         if (world.heroActor && world.heroActor.updateMotion) {
           world.heroActor.updateMotion(dt, { targetYaw: Math.sin(now * 0.0008) * 0.4, moveSpeed: 0 });
         }
@@ -345,10 +432,17 @@ async function boot() {
         if (world.diorama) world.diorama.update(now * 0.001, dt);
         ui.handleModalInput(input);
       } else {
-        if (input.pressed.dex && !battle.active) ui.toggleModal('dex');
-        else if (input.pressed.map && !battle.active) ui.toggleModal('map');
-        else if (input.pressed.forge && !battle.active) ui.toggleModal('forge');
+        if (!battle.active && input.pressed.menu) ui.toggleMenuHub('party');
+        else if (!battle.active && input.pressed.party) ui.toggleMenuHub('party');
+        else if (!battle.active && input.pressed.dex) ui.toggleMenuHub('dex');
+        else if (!battle.active && input.pressed.map) ui.toggleMenuHub('map');
+        else if (!battle.active && input.pressed.forge) ui.toggleMenuHub('forge');
         else if (battle.active) {
+          if (params.get('loopcast') === '1' && battle.menuState === 'root') {
+            if (battle.playerUnit?.mon) battle.playerUnit.mon.hp = battle.playerUnit.mon.maxHp;
+            if (battle.enemyUnit?.mon) battle.enemyUnit.mon.hp = battle.enemyUnit.mon.maxHp;
+            battle.triggerPlayerMoveSlot(0);
+          }
           if (world.diorama) world.diorama.update(now * 0.001, dt);
           battle.update(dt, input);
         } else {

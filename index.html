@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
-  <title>Monkemon — 2.5D Toy-Diorama Creature-Taming & Real-Time Arena RPG</title>
+  <title>Monkemon — 2.5D Toy-Diorama Creature-Taming & Turn-Based Adventure RPG</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><text y='50' font-size='52'>🐵</text></svg>" />
   <script type="importmap">
     {
@@ -98,7 +98,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 14px 18px;
+      padding: 12px 16px;
       z-index: 10;
     }
 
@@ -107,21 +107,51 @@
       justify-content: space-between;
       align-items: flex-start;
       gap: 12px;
-      flex-wrap: wrap;
+    }
+
+    .hud-topleft-cluster {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      pointer-events: auto;
+    }
+
+    .minimap-frame {
+      position: relative;
+      background: #0b1729f2;
+      border: 2.5px solid var(--gold);
+      border-radius: 14px;
+      padding: 4px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.48);
+      cursor: pointer;
+    }
+
+    .minimap-frame canvas {
+      display: block;
+      border-radius: 10px;
+    }
+
+    .minimap-caption {
+      font-size: 10px;
+      font-weight: 800;
+      color: var(--gold);
+      text-align: center;
+      margin-top: 2px;
+      letter-spacing: 0.04em;
     }
 
     .zone-plaque {
       background: var(--panel);
-      border: 2px solid var(--gold);
+      border: 2.5px solid var(--gold);
       border-radius: 16px;
-      padding: 8px 16px;
+      padding: 8px 15px;
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.42);
     }
 
     .zone-plaque h2 {
       margin: 0;
       font-family: var(--font-display);
-      font-size: 21px;
+      font-size: 20px;
       font-weight: 400;
       letter-spacing: 0.03em;
       color: var(--cream);
@@ -137,9 +167,11 @@
     .hud-stats-cluster {
       display: flex;
       align-items: center;
-      gap: 8px;
+      justify-content: flex-end;
+      gap: 7px;
       flex-wrap: wrap;
       pointer-events: auto;
+      max-width: 720px;
     }
 
     .stat-pill, .nav-pill {
@@ -147,12 +179,12 @@
       border: 2px solid #334155;
       color: var(--text);
       border-radius: 999px;
-      padding: 7px 13px;
+      padding: 6px 12px;
       font-size: 13px;
       font-weight: 700;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       box-shadow: 0 6px 14px rgba(0, 0, 0, 0.35);
     }
 
@@ -160,6 +192,17 @@
       cursor: pointer;
       border-color: #38bdf8;
       transition: transform 0.1s ease, background 0.15s ease;
+    }
+
+    .nav-pill.menu-primary {
+      border-color: var(--gold);
+      background: linear-gradient(180deg, #273e63 0%, #16263f 100%);
+      color: var(--cream);
+      font-family: var(--font-display);
+      font-weight: 400;
+      font-size: 15px;
+      letter-spacing: 0.03em;
+      padding: 7px 15px;
     }
 
     .nav-pill:hover {
@@ -174,25 +217,125 @@
       gap: 12px;
     }
 
+    .hero-partner-dock {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      pointer-events: auto;
+    }
+
+    .hero-hp-plaque {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      background: var(--panel);
+      border: 2.5px solid var(--gold);
+      border-radius: 16px;
+      padding: 8px 14px;
+      min-width: 330px;
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.48);
+      cursor: pointer;
+    }
+
+    .hhp-portrait {
+      width: 50px;
+      height: 50px;
+      border-radius: 12px;
+      object-fit: cover;
+      border: 2px solid #38bdf8;
+      background: #e2e8f0;
+      flex-shrink: 0;
+    }
+
+    .hhp-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .hhp-tamer-tag {
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.05em;
+      color: var(--gold);
+      margin-bottom: 1px;
+    }
+
+    .hhp-name-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 18px;
+      font-weight: 400;
+      color: #ffffff;
+      text-shadow: 0 2px 0 #09111e;
+    }
+
+    .hhp-lv {
+      font-size: 14px;
+      color: #7dd3fc;
+    }
+
+    .hhp-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 4px;
+    }
+
+    .hhp-label-chip {
+      background: #064e3b;
+      border: 1px solid #34d399;
+      color: #a7f3d0;
+      font-size: 10px;
+      font-weight: 900;
+      padding: 1px 6px;
+      border-radius: 6px;
+    }
+
+    .hhp-track {
+      flex: 1;
+      height: 11px;
+      background: #070f1d;
+      border: 1.5px solid #334155;
+      border-radius: 99px;
+      overflow: hidden;
+    }
+
+    .hhp-fill {
+      height: 100%;
+      width: 100%;
+      background: #22c55e;
+      transition: width 0.2s ease;
+    }
+
+    .hhp-numbers {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--cream);
+      white-space: nowrap;
+    }
+
     .party-strip {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
-      pointer-events: auto;
     }
 
     .party-slot {
       background: var(--panel);
       border: 2px solid #334155;
-      border-radius: 14px;
-      padding: 6px 10px;
+      border-radius: 12px;
+      padding: 5px 9px;
       color: var(--text);
       display: flex;
       align-items: center;
-      gap: 8px;
-      min-width: 138px;
+      gap: 7px;
+      min-width: 124px;
       cursor: pointer;
-      box-shadow: 0 6px 14px rgba(0, 0, 0, 0.38);
+      box-shadow: 0 5px 12px rgba(0, 0, 0, 0.36);
     }
 
     .party-slot.active {
@@ -201,7 +344,7 @@
     }
 
     .ps-icon {
-      font-size: 21px;
+      font-size: 18px;
     }
 
     .ps-info {
@@ -213,22 +356,20 @@
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      gap: 6px;
+      gap: 5px;
       font-family: var(--font-display);
-      font-size: 14px;
-      letter-spacing: 0.02em;
-      margin-bottom: 4px;
-      text-shadow: 0 1.5px 0 #09111e;
+      font-size: 13px;
+      margin-bottom: 3px;
     }
 
     .ps-top span {
       color: var(--gold);
-      font-weight: 400;
+      font-size: 11px;
     }
 
     .hp-track {
       width: 100%;
-      height: 7px;
+      height: 6px;
       background: #09111e;
       border-radius: 99px;
       overflow: hidden;
@@ -240,6 +381,13 @@
       transition: width 0.2s ease;
     }
 
+    .ps-hp-mini {
+      font-size: 10px;
+      color: #cbd5e1;
+      margin-top: 2px;
+      font-weight: 700;
+    }
+
     .controls-hint-box {
       background: var(--panel);
       border: 2px solid #334155;
@@ -247,7 +395,8 @@
       padding: 8px 13px;
       font-size: 12px;
       color: var(--muted);
-      line-height: 1.45;
+      line-height: 1.48;
+      max-width: 445px;
     }
 
     .controls-hint-box strong {
@@ -257,25 +406,28 @@
     #context-prompt {
       position: fixed;
       left: 50%;
-      bottom: 88px;
+      bottom: 144px;
       transform: translateX(-50%);
       background: #0f172af7;
       border: 2.5px solid var(--gold);
       color: var(--cream);
-      padding: 9px 22px;
+      padding: 8px 20px;
       border-radius: 999px;
       font-family: var(--font-display);
       font-size: 15px;
       font-weight: 400;
-      letter-spacing: 0.025em;
+      letter-spacing: 0.02em;
       text-shadow: 0 2px 0 #09111e;
       z-index: 15;
       pointer-events: none;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.52);
       white-space: nowrap;
+      max-width: 94vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
-    /* ---------------- BATTLE SPLIT HUD (STICKY NOTE 3 & 6!) ---------------- */
+    /* ---------------- TURN-BASED COMMAND-MENU BATTLE HUD ---------------- */
     #battle-hud {
       position: fixed;
       inset: 0;
@@ -283,223 +435,272 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 16px 22px;
+      padding: 16px 22px 14px;
       z-index: 14;
     }
 
-    .battle-fighters-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 16px;
+    .battle-plaques-area {
+      flex: 1;
+      position: relative;
+      width: 100%;
     }
 
-    .fighter-card {
+    .tb-status-card {
+      position: absolute;
+      display: flex;
+      align-items: center;
+      gap: 12px;
       background: var(--panel);
       border: 3px solid #38bdf8;
       border-radius: 18px;
-      padding: 10px 16px;
-      width: 320px;
-      max-width: 45vw;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+      padding: 10px 15px;
+      width: 368px;
+      max-width: 46vw;
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
     }
 
-    .fighter-card.enemy {
+    .tb-status-card.enemy-card {
+      top: 0;
+      left: 0;
       border-color: var(--coral);
     }
 
-    .battle-center-badge {
-      background: #132238f8;
-      border: 2.5px solid #475569;
-      border-radius: 999px;
-      padding: 7px 16px;
-      font-family: var(--font-logo);
-      font-size: 15px;
-      font-weight: 400;
-      letter-spacing: 0.05em;
-      color: #bae6fd;
-      text-shadow: 0 2px 0 #09111e;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
-      align-self: center;
-      white-space: nowrap;
-      transition: transform 0.12s ease, border-color 0.15s ease;
-    }
-
-    .battle-center-badge.hot {
+    .tb-status-card.player-card {
+      bottom: 12px;
+      right: 0;
       border-color: var(--gold);
-      background: #2b1d0ef8;
-      color: var(--gold);
-      transform: scale(1.06);
     }
 
-    .fc-coach {
+    .tb-portrait {
+      width: 58px;
+      height: 58px;
+      border-radius: 13px;
+      object-fit: cover;
+      background: #e2e8f0;
+      border: 2px solid #64748b;
+      flex-shrink: 0;
+    }
+
+    .tb-card-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .tb-role-line {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 0.06em;
+      font-weight: 800;
+      letter-spacing: 0.05em;
       color: var(--gold);
-      margin-bottom: 3px;
+      margin-bottom: 2px;
     }
 
-    .fc-title-row {
+    .tb-name-line {
       display: flex;
       justify-content: space-between;
       align-items: baseline;
+      gap: 8px;
+      font-family: var(--font-display);
+      font-size: 21px;
+      font-weight: 400;
+      color: #ffffff;
+      text-shadow: 0 2px 0 #09111e;
+    }
+
+    .tb-lv-tag {
+      font-size: 16px;
+      color: #7dd3fc;
+    }
+
+    .tb-hp-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 5px;
+    }
+
+    .tb-hp-outer {
+      flex: 1;
+      height: 13px;
+      background: #060d18;
+      border-radius: 99px;
+      border: 1.5px solid #475569;
+      overflow: hidden;
+    }
+
+    .tb-hp-inner {
+      height: 100%;
+      width: 100%;
+      background: #22c55e;
+      transition: width 0.14s linear;
+    }
+
+    .tb-hp-meta {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 4px;
+      font-size: 13px;
+    }
+
+    .tb-hp-numbers {
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 400;
+      color: var(--cream);
+    }
+
+    .tb-party-pips {
+      display: flex;
+      gap: 4px;
+    }
+
+    .tb-pip {
+      width: 11px;
+      height: 11px;
+      border-radius: 50%;
+      background: #1e293b;
+      border: 1.5px solid #64748b;
+    }
+    .tb-pip.alive {
+      background: #ef4444;
+      border-color: #fde047;
+    }
+    .tb-pip.fainted {
+      background: #334155;
+      opacity: 0.5;
+    }
+
+    .tb-exp-track {
+      width: 100%;
+      height: 5px;
+      background: #091322;
+      border-radius: 99px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+    .tb-exp-fill {
+      height: 100%;
+      background: #38bdf8;
+      width: 30%;
+    }
+
+    /* Classic Framed Two-Column Turn-Based Command Deck */
+    .tb-command-deck {
+      pointer-events: auto;
+      display: grid;
+      grid-template-columns: 1.18fr 1fr;
+      gap: 12px;
+      background: #0d182af8;
+      border: 3px solid var(--gold);
+      border-radius: 20px;
+      padding: 12px 16px;
+      min-height: 146px;
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65);
+    }
+
+    .tb-narration-box {
+      background: #14243d;
+      border: 2px solid #334155;
+      border-radius: 14px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .tb-prompt-headline {
       font-family: var(--font-display);
       font-size: 21px;
       font-weight: 400;
       letter-spacing: 0.02em;
+      color: var(--cream);
       text-shadow: 0 2px 0 #09111e;
-      margin-bottom: 6px;
     }
 
-    .fc-hp-bar-outer {
-      width: 100%;
-      height: 12px;
-      background: #070d18;
-      border-radius: 99px;
-      border: 1px solid #334155;
-      overflow: hidden;
-    }
-
-    .fc-hp-bar-inner {
-      height: 100%;
-      width: 100%;
-      background: #22c55e;
-      transition: width 0.15s ease;
-    }
-
-    .fc-hp-num {
+    .tb-prompt-sub {
+      font-size: 13px;
+      color: #bae6fd;
       margin-top: 4px;
-      text-align: right;
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--muted);
+      line-height: 1.38;
     }
 
-    .battle-bottom-deck {
+    .tb-controls-footer {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px solid #263b59;
+      font-size: 11.5px;
+      color: #94a3b8;
+    }
+
+    .tb-controls-footer strong {
+      color: var(--gold);
+    }
+
+    .tb-menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      align-content: center;
+    }
+
+    .tb-menu-btn {
+      position: relative;
+      background: #172946;
+      border: 2.5px solid #475569;
+      border-radius: 13px;
+      padding: 9px 12px;
+      color: #f8fafc;
+      text-align: left;
+      cursor: pointer;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      gap: 10px;
-      pointer-events: auto;
-    }
-
-    .battle-banner {
-      background: #0f172af7;
-      border: 2.5px solid var(--gold);
-      color: var(--cream);
-      border-radius: 999px;
-      padding: 8px 24px;
-      font-family: var(--font-display);
-      font-size: 16px;
-      font-weight: 400;
-      letter-spacing: 0.025em;
-      text-shadow: 0 2px 0 #09111e;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
-    }
-
-    .battle-moves-row {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
       justify-content: center;
+      gap: 2px;
+      transition: transform 0.08s ease, border-color 0.1s ease, background 0.1s ease;
     }
 
-    .bmove-card {
-      position: relative;
-      overflow: hidden;
-      background: var(--panel);
-      border: 2px solid var(--mcolor, #fbbf24);
-      border-radius: 15px;
-      padding: 8px 13px;
-      min-width: 142px;
-      color: var(--text);
-      cursor: pointer;
-      text-align: left;
-      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
-      transition: transform 0.08s ease;
+    .tb-menu-btn:hover,
+    .tb-menu-btn.focused {
+      background: #233f6b;
+      border-color: var(--gold);
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.32);
     }
 
-    .bmove-card:hover {
-      transform: translateY(-2px);
-    }
-
-    .bm-top {
+    .tb-btn-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 4px;
-    }
-
-    .bm-btn-glyph {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 24px;
-      height: 24px;
-      padding: 0 6px;
-      border-radius: 99px;
-      font-size: 12px;
-      font-weight: 900;
-      color: #0f172a;
-      background: #fbbf24;
-    }
-    .bm-glyph-a { background: #4ade80; }
-    .bm-glyph-b { background: #f87171; }
-    .bm-glyph-x { background: #38bdf8; }
-    .bm-glyph-y { background: #facc15; }
-    .bm-glyph-rb { background: #c084fc; }
-
-    .bm-type {
-      font-size: 11px;
-      font-weight: 700;
-      color: var(--muted);
-    }
-
-    .bm-name {
+      gap: 6px;
       font-family: var(--font-display);
       font-size: 17px;
       font-weight: 400;
       letter-spacing: 0.02em;
-      text-shadow: 0 1.5px 0 #09111e;
     }
 
-    .bm-key {
-      font-size: 11px;
-      color: #94a3b8;
-      margin-top: 2px;
-    }
-
-    .bm-cd-bar {
-      position: absolute;
-      left: 0;
-      bottom: 0;
-      height: 5px;
-      width: 0%;
-      background: #fbbf24;
-    }
-
-    .battle-cmd-bar {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .bcmd-btn {
-      background: #172740fa;
-      border: 2px solid #475569;
-      color: var(--text);
-      border-radius: 999px;
-      padding: 7px 16px;
-      font-size: 13px;
+    .tb-key-badge {
+      background: #0f172a;
+      border: 1px solid #64748b;
+      color: var(--gold);
+      font-family: var(--font);
+      font-size: 10.5px;
       font-weight: 800;
-      cursor: pointer;
+      padding: 1px 6px;
+      border-radius: 99px;
     }
-    .bcmd-btn.ball { border-color: var(--gold); color: var(--cream); }
-    .bcmd-btn.fight { border-color: #4ade80; }
-    .bcmd-btn.switch { border-color: #38bdf8; }
-    .bcmd-btn.run { border-color: #f87171; }
+
+    .tb-btn-sub {
+      font-size: 11.5px;
+      color: #cbd5e1;
+    }
+
+    .tb-eff-tag {
+      color: #4ade80;
+      font-weight: 800;
+    }
 
     /* ---------------- TITLE SCREEN ---------------- */
     #title-screen {
@@ -509,15 +710,15 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
-      background: radial-gradient(circle at center, rgba(12, 24, 42, 0.55) 0%, rgba(8, 15, 28, 0.88) 100%);
+      padding: 14px;
+      background: radial-gradient(circle at center, rgba(12, 24, 42, 0.5) 0%, rgba(8, 15, 28, 0.86) 100%);
     }
 
     .title-panel {
       background: var(--panel);
       border: 3px solid var(--gold);
       border-radius: 24px;
-      padding: 20px 26px;
+      padding: 18px 24px;
       max-width: 980px;
       width: 100%;
       max-height: 94vh;
@@ -549,7 +750,7 @@
     .game-logo {
       margin: 4px 0 6px;
       font-family: var(--font-logo);
-      font-size: clamp(44px, 6.2vw, 72px);
+      font-size: clamp(44px, 6vw, 68px);
       font-weight: 400;
       letter-spacing: 0.055em;
       line-height: 1.04;
@@ -560,7 +761,7 @@
     }
 
     .game-sub {
-      margin: 0 0 12px;
+      margin: 0 0 10px;
       color: var(--muted);
       font-size: 14px;
     }
@@ -570,7 +771,7 @@
       align-items: center;
       justify-content: center;
       gap: 10px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       font-size: 13px;
       font-weight: 800;
       color: var(--cream);
@@ -583,7 +784,7 @@
       color: #ffffff;
       font-size: 15px;
       font-weight: 800;
-      padding: 6px 12px;
+      padding: 5px 12px;
       width: 170px;
       text-align: center;
       user-select: text;
@@ -605,17 +806,11 @@
       margin-bottom: 10px;
     }
 
-    @media (max-width: 860px) {
-      .starter-grid {
-        grid-template-columns: repeat(4, minmax(95px, 1fr));
-      }
-    }
-
     .starter-card {
       background: #16263f;
       border: 2px solid #334155;
       border-radius: 14px;
-      padding: 8px 6px;
+      padding: 7px 6px;
       color: var(--text);
       cursor: pointer;
       display: flex;
@@ -626,8 +821,8 @@
     }
 
     .starter-card img {
-      width: 68px;
-      height: 68px;
+      width: 64px;
+      height: 64px;
       object-fit: cover;
       border-radius: 10px;
       background: #e5e7eb;
@@ -650,7 +845,6 @@
       font-family: var(--font-display);
       font-size: 15px;
       font-weight: 400;
-      letter-spacing: 0.02em;
     }
 
     .type-pill {
@@ -669,7 +863,7 @@
       padding: 8px 14px;
       font-size: 13px;
       color: var(--muted);
-      margin-bottom: 14px;
+      margin-bottom: 12px;
     }
 
     .title-cta-row {
@@ -682,9 +876,9 @@
     .cta-btn {
       border: none;
       border-radius: 999px;
-      padding: 11px 26px;
+      padding: 10px 24px;
       font-family: var(--font-display);
-      font-size: 17px;
+      font-size: 16px;
       font-weight: 400;
       cursor: pointer;
       letter-spacing: 0.03em;
@@ -702,56 +896,65 @@
       color: #f8fafc;
     }
 
-    /* ---------------- MODALS (20-BOARD DEX, MAP, FORGE, ENDING) ---------------- */
+    /* ---------------- UNIFIED 5-TAB TAMER MENU HUB & MODALS ---------------- */
     #modal-layer {
       position: fixed;
       inset: 0;
       z-index: 28;
-      background: rgba(7, 13, 24, 0.82);
+      background: rgba(7, 13, 24, 0.84);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 16px;
+      padding: 14px;
     }
 
     .modal-card {
       background: var(--panel);
       border: 3px solid var(--border);
       border-radius: 22px;
-      padding: 18px 22px;
-      max-width: 680px;
+      padding: 16px 20px;
+      max-width: 1160px;
       width: 100%;
-      max-height: 92vh;
+      max-height: 94vh;
       overflow-y: auto;
-      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.65);
+      box-shadow: 0 24px 56px rgba(0, 0, 0, 0.7);
     }
 
-    .modal-card.modal-wide {
-      max-width: 1120px;
-    }
-
-    .modal-header {
+    .hub-topbar {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 14px;
+      align-items: center;
+      gap: 10px;
+      padding-bottom: 10px;
+      margin-bottom: 12px;
+      border-bottom: 2px solid #1e3454;
+      flex-wrap: wrap;
     }
 
-    .modal-header h2 {
-      margin: 0;
+    .hub-tabs {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+    }
+
+    .hub-tab-btn {
+      background: #15253e;
+      border: 2px solid #334155;
+      color: #cbd5e1;
+      border-radius: 12px;
+      padding: 7px 13px;
       font-family: var(--font-display);
-      font-size: 23px;
+      font-size: 15px;
       font-weight: 400;
-      letter-spacing: 0.03em;
-      color: var(--gold);
-      text-shadow: 0 2px 0 #09111e;
+      cursor: pointer;
+      letter-spacing: 0.02em;
     }
 
-    .modal-header p {
-      margin: 4px 0 0;
-      font-size: 13px;
-      color: var(--muted);
+    .hub-tab-btn.active {
+      background: linear-gradient(180deg, #fde047 0%, #f59e0b 100%);
+      border-color: #fef08a;
+      color: #0f172a;
+      box-shadow: 0 5px 14px rgba(245, 158, 11, 0.35);
     }
 
     .close-btn {
@@ -764,28 +967,180 @@
       cursor: pointer;
     }
 
-    /* Sticky Note 5 20-Monkemon Perimeter -> Center Board! */
-    .dex-layout {
+    .hub-two-col {
       display: grid;
-      grid-template-columns: 1.45fr 1fr;
-      gap: 16px;
+      grid-template-columns: 1.38fr 1fr;
+      gap: 14px;
       align-items: start;
     }
 
-    @media (max-width: 900px) {
-      .dex-layout {
-        grid-template-columns: 1fr;
-      }
+    .section-label {
+      font-size: 11.5px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      color: var(--gold);
+      margin: 0 0 7px;
+    }
+
+    /* Tab 1: My Caught Monkemon (Squad + Sanctuary Storage Box) */
+    .caught-party-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .mon-collection-card {
+      background: #15253f;
+      border: 2px solid #334155;
+      border-radius: 14px;
+      padding: 8px 10px;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .mon-collection-card.selected {
+      border-color: var(--gold);
+      background: #213a61;
+    }
+
+    .mon-collection-card img {
+      width: 50px;
+      height: 50px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #e2e8f0;
+    }
+
+    .storage-box-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(135px, 1fr));
+      gap: 7px;
+      max-height: 185px;
+      overflow-y: auto;
+      background: #0c1728;
+      border: 1.5px solid #263b59;
+      border-radius: 13px;
+      padding: 8px;
+    }
+
+    .inspector-actions {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .mini-action-btn {
+      background: #1e3a5f;
+      border: 2px solid #38bdf8;
+      color: #f8fafc;
+      border-radius: 10px;
+      padding: 7px 11px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+    .mini-action-btn.gold {
+      border-color: var(--gold);
+      color: var(--cream);
+    }
+
+    /* Tab 2: MonkeDex Encyclopedia & 20-Board */
+    .dex-filter-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+      flex-wrap: wrap;
+    }
+
+    .filter-pill-group {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-pill {
+      background: #14233b;
+      border: 1.5px solid #334155;
+      color: #cbd5e1;
+      border-radius: 999px;
+      padding: 4px 11px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+    }
+
+    .filter-pill.active {
+      border-color: var(--gold);
+      background: #273e63;
+      color: var(--cream);
+    }
+
+    .dex-encyclo-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 7px;
+      max-height: 455px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+
+    .dex-card {
+      position: relative;
+      background: #132238;
+      border: 2px solid #293d5c;
+      border-radius: 13px;
+      padding: 7px 6px;
+      color: var(--text);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .dex-card.caught {
+      border-color: #22c55e;
+      background: #132a38;
+    }
+
+    .dex-card.seen {
+      border-color: #38bdf8;
+    }
+
+    .dex-card.selected {
+      outline: 3px solid var(--gold);
+    }
+
+    .dex-card img {
+      width: 54px;
+      height: 54px;
+      border-radius: 10px;
+      object-fit: cover;
+      background: #e2e8f0;
+    }
+
+    .dex-card.unseen img,
+    .board-tile.unseen img {
+      filter: brightness(0.08) contrast(1.2);
+      opacity: 0.75;
     }
 
     .sticky-board-grid {
       display: grid;
       grid-template-columns: repeat(6, 1fr);
-      grid-template-rows: repeat(5, minmax(76px, auto));
-      gap: 7px;
+      grid-template-rows: repeat(5, minmax(72px, auto));
+      gap: 6px;
       background: #16243b;
-      padding: 10px;
-      border-radius: 16px;
+      padding: 9px;
+      border-radius: 15px;
       border: 2px solid #334155;
     }
 
@@ -793,7 +1148,7 @@
       position: relative;
       background: #0f1b2e;
       border: 2px solid #334155;
-      border-radius: 12px;
+      border-radius: 11px;
       padding: 4px;
       color: var(--text);
       cursor: pointer;
@@ -803,65 +1158,23 @@
       justify-content: center;
       gap: 2px;
     }
-
-    .board-tile img {
-      width: 44px;
-      height: 44px;
-      object-fit: cover;
-      border-radius: 8px;
-    }
-
-    .board-tile.tile-boss19 {
-      background: #2c2210;
-      border-color: #f59e0b;
-    }
-    .board-tile.tile-boss19 img {
-      width: 72px;
-      height: 72px;
-    }
-
-    .board-tile.tile-boss20 {
-      background: radial-gradient(circle, #3b175e 0%, #170f2e 100%);
-      border: 3px solid #facc15;
-    }
-    .board-tile.tile-boss20 img {
-      width: 124px;
-      height: 124px;
-    }
-
-    .board-tile.selected {
-      outline: 3px solid #38bdf8;
-    }
-
-    .bt-num {
-      position: absolute;
-      top: 3px;
-      left: 5px;
-      font-size: 10px;
-      font-weight: 800;
-      color: #94a3b8;
-    }
-
-    .bt-badge {
-      position: absolute;
-      top: 2px;
-      right: 5px;
-      font-size: 12px;
-    }
-
-    .bt-name {
-      font-family: var(--font-display);
-      font-size: 12px;
-      font-weight: 400;
-      letter-spacing: 0.015em;
-      text-align: center;
-    }
+    .board-tile.caught { border-color: #22c55e; }
+    .board-tile.seen { border-color: #38bdf8; }
+    .board-tile img { width: 42px; height: 42px; object-fit: cover; border-radius: 8px; }
+    .board-tile.tile-boss19 { background: #2c2210; border-color: #f59e0b; }
+    .board-tile.tile-boss19 img { width: 68px; height: 68px; }
+    .board-tile.tile-boss20 { background: radial-gradient(circle, #3b175e 0%, #170f2e 100%); border: 3px solid #facc15; }
+    .board-tile.tile-boss20 img { width: 116px; height: 116px; }
+    .board-tile.selected { outline: 3px solid var(--gold); }
+    .bt-num { position: absolute; top: 3px; left: 5px; font-size: 10px; font-weight: 800; color: #94a3b8; }
+    .bt-badge { position: absolute; top: 2px; right: 5px; font-size: 12px; }
+    .bt-name { font-family: var(--font-display); font-size: 11.5px; text-align: center; }
 
     .dex-inspector {
       background: #0c1728;
       border: 2px solid #334155;
       border-radius: 16px;
-      padding: 14px;
+      padding: 13px;
     }
 
     .turntable-wrap {
@@ -871,18 +1184,18 @@
       background: #132338;
       border-radius: 14px;
       border: 2px solid #1e3a5f;
-      margin-bottom: 10px;
-      padding: 6px;
+      margin-bottom: 9px;
+      padding: 4px;
     }
 
     .tt-caption {
       position: absolute;
-      top: 8px;
-      right: 10px;
+      top: 7px;
+      right: 9px;
       font-size: 10px;
       font-weight: 800;
       color: #7dd3fc;
-      background: rgba(15, 23, 42, 0.78);
+      background: rgba(15, 23, 42, 0.82);
       padding: 2px 7px;
       border-radius: 99px;
     }
@@ -897,63 +1210,55 @@
     .dex-title-row h3 {
       margin: 0;
       font-family: var(--font-display);
-      font-size: 23px;
+      font-size: 22px;
       font-weight: 400;
-      letter-spacing: 0.02em;
     }
 
     .dex-num {
       font-family: var(--font-logo);
-      font-size: 21px;
+      font-size: 20px;
       color: var(--gold);
-      font-weight: 400;
     }
 
     .dex-subtitle {
       font-size: 12px;
       color: #93c5fd;
-      margin: 4px 0 8px;
+      margin: 4px 0 7px;
       font-weight: 700;
     }
 
     .dex-bio {
-      font-size: 13px;
+      font-size: 12.5px;
       color: var(--muted);
-      line-height: 1.45;
-      margin: 0 0 10px;
+      line-height: 1.42;
+      margin: 0 0 9px;
     }
 
     .dex-stats {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 6px;
-      margin-bottom: 10px;
+      margin-bottom: 9px;
     }
 
     .dex-stats > div {
       background: #16263f;
       border-radius: 10px;
-      padding: 6px;
+      padding: 5px;
       text-align: center;
       font-size: 11px;
     }
 
     .dex-stats strong {
       display: block;
-      font-size: 16px;
+      font-size: 15px;
       color: var(--gold);
-    }
-
-    .dex-matchup {
-      font-size: 12px;
-      color: var(--cream);
-      margin-bottom: 8px;
     }
 
     .dex-moves {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 5px;
     }
 
     .move-chip, .mini-mon-chip {
@@ -964,297 +1269,114 @@
       font-size: 11px;
       font-weight: 700;
     }
-    .mini-mon-chip.apex {
-      border-color: var(--gold);
-      color: var(--gold);
-    }
 
-    /* World Map Grid */
-    .zone-map-grid {
+    /* Tab 3: Bag, Catching Guide & Monkeball Mart */
+    .bag-cards-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 12px;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 9px;
+      margin-bottom: 12px;
     }
 
-    .zone-map-card {
-      background: #14233a;
+    .bag-item-card {
+      background: #14243d;
       border: 2px solid #334155;
-      border-radius: 16px;
-      padding: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-
-    .zone-map-card.current {
-      border-color: var(--gold);
-    }
-
-    .zm-badge {
-      font-size: 11px;
-      font-weight: 800;
-      color: var(--gold);
-    }
-
-    .zone-map-card h3 {
-      margin: 0;
-      font-family: var(--font-display);
-      font-size: 20px;
-      font-weight: 400;
-      letter-spacing: 0.02em;
-    }
-
-    .zone-map-card p {
-      margin: 0;
-      font-size: 12px;
-      color: var(--muted);
-    }
-
-    .zm-wilds {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin: 4px 0;
-    }
-
-    .zm-travel-btn {
-      margin-top: auto;
-      font-size: 12px;
-      padding: 9px 14px;
-    }
-
-    /* Forge Form */
-    .forge-form {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-
-    .forge-row {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    .forge-row input, .forge-row select, .forge-row textarea {
-      background: #091322;
-      border: 2px solid #334155;
-      border-radius: 10px;
-      color: #ffffff;
-      padding: 9px 12px;
-      font-family: inherit;
-      font-size: 14px;
-      user-select: text;
-      -webkit-user-select: text;
-    }
-
-    .forge-status {
-      background: #0c1728;
-      border: 1px solid #38bdf8;
-      border-radius: 10px;
-      padding: 10px 12px;
-      font-size: 13px;
-      color: #bae6fd;
-    }
-
-    /* Ending Showcase */
-    .ending-card {
-      text-align: center;
-      border-color: var(--gold);
-    }
-
-    .ending-party-showcase {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin: 14px 0;
-    }
-
-    .ending-mon-card {
-      background: #16263f;
-      border: 2px solid var(--gold);
       border-radius: 14px;
-      padding: 8px 12px;
+      padding: 10px 12px;
       display: flex;
       flex-direction: column;
-      align-items: center;
       gap: 4px;
     }
 
-    .ending-mon-card img {
-      width: 68px;
-      height: 68px;
-      object-fit: cover;
+    .guide-step-card {
+      background: #13233a;
+      border-left: 4px solid var(--gold);
       border-radius: 10px;
+      padding: 9px 12px;
+      margin-bottom: 8px;
+      font-size: 12.5px;
+      color: #e2e8f0;
+      line-height: 1.42;
     }
 
-    .ending-stats-bar {
-      display: flex;
-      justify-content: center;
-      gap: 18px;
-      margin-bottom: 16px;
-      font-size: 14px;
-      color: var(--cream);
-    }
-
-    /* ---------------- VOICE SUBTITLE & TOAST & FLOATING POPUPS ---------------- */
-    #voice-banner {
-      position: fixed;
-      top: 76px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #0f172af8;
-      border: 2px solid #38bdf8;
+    /* Tab 4: Illustrated Archipelago World Map */
+    .world-atlas-wrap {
+      background: #0a2239;
+      border: 2.5px solid #38bdf8;
       border-radius: 18px;
-      padding: 10px 18px;
-      max-width: 680px;
-      width: calc(100% - 36px);
-      z-index: 25;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 14px;
+      overflow: hidden;
+      position: relative;
+      box-shadow: inset 0 0 40px rgba(2, 132, 199, 0.35);
+    }
+
+    .world-atlas-wrap svg {
+      width: 100%;
+      height: auto;
+      display: block;
+    }
+
+    .atlas-island-node {
+      cursor: pointer;
+      transition: filter 0.15s ease;
+    }
+    .atlas-island-node:hover {
+      filter: brightness(1.14);
+    }
+
+    /* Forge & Ending */
+    .forge-form { display: flex; flex-direction: column; gap: 11px; }
+    .forge-row { display: flex; flex-direction: column; gap: 4px; font-size: 13px; font-weight: 700; }
+    .forge-row input, .forge-row select, .forge-row textarea {
+      background: #091322; border: 2px solid #334155; border-radius: 10px; color: #ffffff;
+      padding: 8px 12px; font-size: 14px; user-select: text; -webkit-user-select: text;
+    }
+    .forge-status { background: #0c1728; border: 1px solid #38bdf8; border-radius: 10px; padding: 9px 12px; font-size: 13px; color: #bae6fd; }
+    .ending-card { text-align: center; border-color: var(--gold); max-width: 760px; }
+    .ending-party-showcase { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; margin: 14px 0; }
+    .ending-mon-card { background: #16263f; border: 2px solid var(--gold); border-radius: 14px; padding: 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .ending-mon-card img { width: 64px; height: 64px; object-fit: cover; border-radius: 10px; }
+    .ending-stats-bar { display: flex; justify-content: center; gap: 18px; margin-bottom: 14px; font-size: 14px; color: var(--cream); }
+
+    /* Voice, Toast, Floating Popups & Touch */
+    #voice-banner {
+      position: fixed; top: 82px; left: 50%; transform: translateX(-50%);
+      background: #0f172af8; border: 2px solid #38bdf8; border-radius: 18px;
+      padding: 9px 18px; max-width: 660px; width: calc(100% - 36px); z-index: 25;
+      display: flex; align-items: center; justify-content: space-between; gap: 14px;
       box-shadow: 0 12px 28px rgba(0, 0, 0, 0.55);
     }
-
-    #voice-speaker {
-      font-size: 11px;
-      font-weight: 900;
-      color: var(--gold);
-      letter-spacing: 0.05em;
-    }
-
-    #voice-line {
-      font-size: 14px;
-      font-weight: 600;
-      color: #f8fafc;
-      margin-top: 2px;
-    }
-
-    #voice-skip-btn {
-      background: #1e293b;
-      border: 1px solid #64748b;
-      color: #cbd5e1;
-      border-radius: 99px;
-      padding: 5px 11px;
-      font-size: 11px;
-      font-weight: 800;
-      cursor: pointer;
-      white-space: nowrap;
-    }
+    #voice-speaker { font-size: 11px; font-weight: 900; color: var(--gold); letter-spacing: 0.05em; }
+    #voice-line { font-size: 13.5px; font-weight: 600; color: #f8fafc; margin-top: 2px; }
+    #voice-skip-btn { background: #1e293b; border: 1px solid #64748b; color: #cbd5e1; border-radius: 99px; padding: 5px 11px; font-size: 11px; font-weight: 800; cursor: pointer; }
 
     #toast-banner {
-      position: fixed;
-      top: 18px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #0f172af8;
-      border: 2.5px solid var(--gold);
-      color: var(--cream);
-      border-radius: 999px;
-      padding: 8px 22px;
-      font-family: var(--font-display);
-      font-size: 15px;
-      font-weight: 400;
-      letter-spacing: 0.02em;
-      text-shadow: 0 2px 0 #09111e;
-      z-index: 35;
-      pointer-events: none;
-      box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+      position: fixed; top: 14px; left: 50%; transform: translateX(-50%);
+      background: #0f172af8; border: 2.5px solid var(--gold); color: var(--cream);
+      border-radius: 999px; padding: 8px 22px; font-family: var(--font-display);
+      font-size: 15px; font-weight: 400; letter-spacing: 0.02em; text-shadow: 0 2px 0 #09111e;
+      z-index: 35; pointer-events: none; box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
     }
 
-    #float-layer {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 22;
-    }
-
+    #float-layer { position: fixed; inset: 0; pointer-events: none; z-index: 22; }
     .float-popup {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      font-family: var(--font-logo);
-      font-size: 20px;
-      font-weight: 400;
-      letter-spacing: 0.04em;
-      -webkit-text-stroke: 2.5px #09111e;
-      paint-order: stroke fill;
-      text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
-      animation: floatUp 0.92s ease-out forwards;
-      white-space: nowrap;
+      position: absolute; transform: translate(-50%, -50%); font-family: var(--font-logo);
+      font-size: 20px; letter-spacing: 0.04em; -webkit-text-stroke: 2.5px #09111e;
+      paint-order: stroke fill; text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
+      animation: floatUp 0.92s ease-out forwards; white-space: nowrap;
     }
-
     @keyframes floatUp {
       0% { opacity: 1; transform: translate(-50%, 0) scale(0.92); }
       30% { opacity: 1; transform: translate(-50%, -18px) scale(1.06); }
       100% { opacity: 0; transform: translate(-50%, -44px) scale(0.96); }
     }
 
-    /* ---------------- MOBILE VIRTUAL TOUCH OVERLAY ---------------- */
-    #touch-controls {
-      position: fixed;
-      inset: 0;
-      pointer-events: none;
-      z-index: 20;
-    }
-
-    .touch-stick-zone {
-      position: absolute;
-      left: 22px;
-      bottom: 24px;
-      width: 132px;
-      height: 132px;
-      pointer-events: auto;
-      touch-action: none;
-    }
-
-    .touch-stick-base {
-      width: 100%;
-      height: 100%;
-      border-radius: 50%;
-      background: rgba(15, 23, 42, 0.65);
-      border: 2px solid rgba(148, 163, 184, 0.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .touch-stick-nub {
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      background: #38bdf8;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    }
-
-    .touch-diamond {
-      position: absolute;
-      right: 20px;
-      bottom: 22px;
-      width: 190px;
-      height: 190px;
-      pointer-events: auto;
-    }
-
-    .tbtn {
-      position: absolute;
-      width: 58px;
-      height: 58px;
-      border-radius: 50%;
-      border: 2px solid #f8fafc;
-      background: #16263fe8;
-      color: #ffffff;
-      font-weight: 900;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      touch-action: none;
-    }
-    .tbtn small { font-size: 9px; font-weight: 700; opacity: 0.9; }
+    #touch-controls { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+    .touch-stick-zone { position: absolute; left: 22px; bottom: 24px; width: 132px; height: 132px; pointer-events: auto; touch-action: none; }
+    .touch-stick-base { width: 100%; height: 100%; border-radius: 50%; background: rgba(15, 23, 42, 0.65); border: 2px solid rgba(148, 163, 184, 0.6); display: flex; align-items: center; justify-content: center; }
+    .touch-stick-nub { width: 52px; height: 52px; border-radius: 50%; background: #38bdf8; }
+    .touch-diamond { position: absolute; right: 20px; bottom: 22px; width: 190px; height: 190px; pointer-events: auto; }
+    .tbtn { position: absolute; width: 58px; height: 58px; border-radius: 50%; border: 2px solid #f8fafc; background: #16263fe8; color: #ffffff; font-weight: 900; display: flex; flex-direction: column; align-items: center; justify-content: center; touch-action: none; }
+    .tbtn small { font-size: 9px; font-weight: 700; }
     .tbtn.pressed { transform: scale(0.92); background: #2563eb; }
     .tbtn-y { top: 4px; left: 66px; border-color: #facc15; }
     .tbtn-x { top: 66px; left: 4px; border-color: #38bdf8; }
@@ -1270,29 +1392,54 @@
   <!-- Overworld Exploration HUD -->
   <div id="overworld-hud" class="hidden">
     <div class="hud-top-row">
-      <div class="zone-plaque">
-        <h2 id="hud-zone-name">Hometown Cove</h2>
-        <p id="hud-zone-sub">Alex’s House & Sunpalm Beach</p>
+      <div class="hud-topleft-cluster">
+        <div class="minimap-frame" id="hud-minimap-btn" title="Open Full Archipelago World Map [M]">
+          <canvas id="hud-minimap-canvas" width="132" height="104"></canvas>
+          <div class="minimap-caption">🗺️ WORLD MAP [M]</div>
+        </div>
+        <div class="zone-plaque">
+          <h2 id="hud-zone-name">Hometown Cove</h2>
+          <p id="hud-zone-sub">Alex’s House & Sunpalm Bay</p>
+        </div>
       </div>
 
       <div class="hud-stats-cluster">
-        <div class="stat-pill" title="Smiling Monkeballs">🐵 <span id="hud-balls">18</span></div>
-        <div class="stat-pill" title="Peanut-Butter Berries">🍌 <span id="hud-berries">10</span></div>
+        <div class="stat-pill" title="Smiling Monkeballs — Catch Wild Monkemon!">🐵 Balls: <span id="hud-balls">18</span></div>
+        <div class="stat-pill" title="Golden Super Balls (1.85× Catch Rate!)">🌟 Super: <span id="hud-superballs">2</span></div>
+        <div class="stat-pill" title="Sweet Berries (+40% HP / +42% Catch)">🍌 <span id="hud-berries">10</span></div>
+        <div class="stat-pill" title="Tamer Coins">🪙 <span id="hud-coins">280</span></div>
         <div class="stat-pill" title="House Dojo Badges">🏅 <span id="hud-badges">0/4</span></div>
-        <button class="nav-pill" id="btn-open-dex">📋 20-Board (<span id="hud-dex-count">1/20</span>) [B]</button>
-        <button class="nav-pill" id="btn-open-map">🗺️ 5 Houses [M]</button>
-        <button class="nav-pill" id="btn-open-forge">⚒️ 3D Forge [P]</button>
-        <button class="nav-pill" id="btn-toggle-tilt">📷 Tilt-Shift [G]</button>
-        <button class="nav-pill" id="btn-toggle-mute">🔊 Audio [N]</button>
-        <div class="stat-pill" title="Online Tamers in Archipelago">🌐 <span id="hud-online">1</span></div>
+        <button class="nav-pill menu-primary" id="btn-open-menu">☰ MENU [Tab / Start]</button>
+        <button class="nav-pill" id="btn-open-party">🐾 Squad [V]</button>
+        <button class="nav-pill" id="btn-open-dex">📖 MonkeDex (<span id="hud-dex-count">1/20</span>) [B]</button>
+        <button class="nav-pill" id="btn-open-map">🗺️ Map [M]</button>
+        <button class="nav-pill" id="btn-toggle-mute">🔊 [N]</button>
       </div>
     </div>
 
     <div class="hud-bottom-row">
-      <div class="party-strip" id="hud-party-strip"></div>
+      <div class="hero-partner-dock">
+        <div class="hero-hp-plaque" id="hud-partner-card" title="Click to inspect Squad & HP in Menu">
+          <img class="hhp-portrait" id="hud-lead-img" src="./assets/models/concepts/mugchimp.concept.png" alt="Lead Monkemon" />
+          <div class="hhp-body">
+            <div class="hhp-tamer-tag" id="hud-tamer-tag">HERO ALEX · ACTIVE PARTNER</div>
+            <div class="hhp-name-row">
+              <span id="hud-lead-name">☕ Mugchimp</span>
+              <span class="hhp-lv" id="hud-lead-lv">Lv.5</span>
+            </div>
+            <div class="hhp-bar-row">
+              <span class="hhp-label-chip">HP</span>
+              <div class="hhp-track"><div class="hhp-fill" id="hud-lead-hp-fill"></div></div>
+              <span class="hhp-numbers" id="hud-lead-hp-num">40 / 40</span>
+            </div>
+          </div>
+        </div>
+        <div class="party-strip" id="hud-party-strip"></div>
+      </div>
+
       <div class="controls-hint-box">
-        <strong>Move:</strong> WASD / Stick · <strong>[A/Space]</strong> Talk/Heal · <strong>[B/Shift]</strong> Sprint<br />
-        <strong>[Y/F]</strong> Aim Monkeball · <strong>[X/E]</strong> Berry · <strong>[RB/L]</strong> Arena Battle · <strong>[LT/Q]</strong> Swap
+        <strong>Move:</strong> WASD / Stick · <strong>[Enter / Space / (A)]</strong> Interact / Battle / Enter House<br />
+        <strong>Catch Wild:</strong> <strong>[F / (Y)]</strong> Throw Monkeball · <strong>[E / (X)]</strong> Toss Berry · <strong>[Tab / Start]</strong> Menu &amp; Dex
       </div>
     </div>
   </div>
@@ -1300,48 +1447,77 @@
   <!-- Context Action Prompt -->
   <div id="context-prompt" class="hidden"></div>
 
-  <!-- Real-Time Arena Battle Split HUD (Sticky Note 3 & 6!) -->
+  <!-- Turn-Based Command-Menu Battle HUD -->
   <div id="battle-hud" class="hidden">
-    <div class="battle-fighters-row">
-      <div class="fighter-card player">
-        <div class="fc-coach" id="bf-p-coach">ALEX · MONK 1</div>
-        <div class="fc-title-row">
-          <span id="bf-p-name">☕ Mugchimp</span>
-          <span id="bf-p-lv">Lv.5</span>
+    <div class="battle-plaques-area">
+      <!-- Top-Left Opponent Status Plaque -->
+      <div class="tb-status-card enemy-card">
+        <img class="tb-portrait" id="bf-e-img" src="./assets/models/concepts/puppuchin.concept.png" alt="Opponent" />
+        <div class="tb-card-main">
+          <div class="tb-role-line">
+            <span id="bf-e-coach">🌿 WILD MONKEMON</span>
+            <div class="tb-party-pips" id="bf-e-pips"></div>
+          </div>
+          <div class="tb-name-line">
+            <span id="bf-e-name">🐶 Puppuchin</span>
+            <span class="tb-lv-tag" id="bf-e-lv">Lv.4</span>
+          </div>
+          <div class="tb-hp-row">
+            <span class="hhp-label-chip">HP</span>
+            <div class="tb-hp-outer"><div class="tb-hp-inner" id="bf-e-hp-bar"></div></div>
+          </div>
+          <div class="tb-hp-meta">
+            <span id="bf-e-type-tag">🐶 DOG TYPE</span>
+            <span class="tb-hp-numbers" id="bf-e-hp-txt">HP: 36 / 36</span>
+          </div>
         </div>
-        <div class="fc-hp-bar-outer"><div class="fc-hp-bar-inner" id="bf-p-hp-bar"></div></div>
-        <div class="fc-hp-num" id="bf-p-hp-txt">40 / 40</div>
       </div>
 
-      <div class="battle-center-badge" id="battle-combo-pill">⚡ FLOW 1.00×</div>
-
-      <div class="fighter-card enemy">
-        <div class="fc-coach" id="bf-e-coach">RIVAL TAMER · MONK 2</div>
-        <div class="fc-title-row">
-          <span id="bf-e-name">🐶 Puppuchin</span>
-          <span id="bf-e-lv">Lv.4</span>
+      <!-- Bottom-Right Player Partner Status Plaque -->
+      <div class="tb-status-card player-card">
+        <img class="tb-portrait" id="bf-p-img" src="./assets/models/concepts/mugchimp.concept.png" alt="Partner" />
+        <div class="tb-card-main">
+          <div class="tb-role-line">
+            <span id="bf-p-coach">★ ALEX’S PARTNER</span>
+            <div class="tb-party-pips" id="bf-p-pips"></div>
+          </div>
+          <div class="tb-name-line">
+            <span id="bf-p-name">☕ Mugchimp</span>
+            <span class="tb-lv-tag" id="bf-p-lv">Lv.5</span>
+          </div>
+          <div class="tb-hp-row">
+            <span class="hhp-label-chip">HP</span>
+            <div class="tb-hp-outer"><div class="tb-hp-inner" id="bf-p-hp-bar"></div></div>
+          </div>
+          <div class="tb-hp-meta">
+            <span id="bf-p-type-tag">☕ MUG TYPE</span>
+            <span class="tb-hp-numbers" id="bf-p-hp-txt">HP: 40 / 40</span>
+          </div>
+          <div class="tb-exp-track" title="EXP to Next Level"><div class="tb-exp-fill" id="bf-p-exp-bar"></div></div>
         </div>
-        <div class="fc-hp-bar-outer"><div class="fc-hp-bar-inner" id="bf-e-hp-bar"></div></div>
-        <div class="fc-hp-num" id="bf-e-hp-txt">36 / 36</div>
       </div>
     </div>
 
-    <div class="battle-bottom-deck">
-      <div class="battle-banner" id="battle-banner-txt">Real-Time Arena Battle!</div>
-      <div class="battle-moves-row" id="battle-moves-row"></div>
-      <div class="battle-cmd-bar">
-        <button class="bcmd-btn fight" id="bcmd-fight">⚔️ Fight [A]</button>
-        <button class="bcmd-btn ball" id="bcmd-ball"><span id="bcmd-ball-count">🐵 Monkeball [LB/C]</span></button>
-        <button class="bcmd-btn switch" id="bcmd-switch">🔄 Switch [LT/Q]</button>
-        <button class="bcmd-btn run" id="bcmd-run">🏃 Run [Esc]</button>
+    <!-- Bottom Framed Two-Column Turn-Based Command Deck -->
+    <div class="tb-command-deck">
+      <div class="tb-narration-box">
+        <div>
+          <div class="tb-prompt-headline" id="battle-banner-txt">What will Mugchimp do?</div>
+          <div class="tb-prompt-sub" id="battle-sub-txt">Choose a command — calm turn-based battle!</div>
+        </div>
+        <div class="tb-controls-footer" id="battle-controls-footer">
+          <strong>Keyboard:</strong> WASD/Arrows + Enter (or Keys 1–4) · Esc Back &nbsp;|&nbsp; <strong>Steam Deck:</strong> D-Pad/Stick + (A) · (B) Back
+        </div>
       </div>
+
+      <div class="tb-menu-grid" id="battle-menu-grid"></div>
     </div>
   </div>
 
   <!-- Title & Starter Picker -->
   <div id="title-screen" class="hidden"></div>
 
-  <!-- Modal Layer (20-Board MonkeDex, Archipelago Map, TRELLIS.2 Forge, Champion Ending) -->
+  <!-- Unified Tamer Menu Hub & Ending Modal Layer -->
   <div id="modal-layer" class="hidden"></div>
 
   <!-- Daikon TTS Voice Subtitle Banner -->
@@ -1357,7 +1533,7 @@
   <div id="toast-banner" class="hidden"></div>
   <div id="float-layer"></div>
 
-  <!-- Mobile / Tablet Virtual Touch Controls (hidden automatically on Steam Deck `?touch=0`) -->
+  <!-- Mobile / Tablet Virtual Touch Controls -->
   <div id="touch-controls" class="hidden"></div>
 
   <script type="module" src="./src/main.js"></script>

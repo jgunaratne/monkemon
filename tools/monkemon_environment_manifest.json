@@ -1,0 +1,88 @@
+{
+  "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
+  "preset": "lowpoly",
+  "output_dir": "../assets/models",
+  "image_model": "gempix-2-flash-lite-png",
+  "assets": [
+    {
+      "id": "env_palm_tree",
+      "prompt": "lush curved tropical island coconut palm tree with ringed brown timber trunk, flourishing crown of arching emerald-green palm fronds, cluster of ripe coconuts, and small pink hibiscus flowers and ferns at the sandy root base",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 501
+    },
+    {
+      "id": "env_canopy_oak",
+      "prompt": "majestic gnarled fantasy grove banyan oak tree with thick twisted mossy roots, warm brown bark branches, lush multi-tiered emerald and golden-amber leafy canopy clusters, and glowing tiny blossoms",
+      "preset": "lowpoly",
+      "decimation_target": 9500,
+      "texture_size": 1024,
+      "seed": 502
+    },
+    {
+      "id": "env_alpine_pine",
+      "prompt": "picturesque layered alpine evergreen pine tree with rich teal-green boughs capped with fluffy sculpted white snow drifts, warm cedar trunk, pinecones, and a small mossy rock at the base",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 503
+    },
+    {
+      "id": "env_tropical_flora",
+      "prompt": "dense vibrant botanical cluster of giant fenestrated monstera leaves, unfurling emerald jungle fern fronds, bright pink and yellow tropical hibiscus blooms, and mossy garden stones",
+      "preset": "lowpoly",
+      "decimation_target": 7500,
+      "texture_size": 1024,
+      "seed": 504
+    },
+    {
+      "id": "env_berry_bush",
+      "prompt": "bountiful sculpted emerald-green orchard berry tree-bush heavy with oversized glossy golden-orange sweet berries and white star blossoms, rooted in a cozy stone-ringed garden mound",
+      "preset": "lowpoly",
+      "decimation_target": 8000,
+      "texture_size": 1024,
+      "seed": 505
+    },
+    {
+      "id": "env_harbor_lighthouse",
+      "prompt": "charming miniature coastal harbor lighthouse tower with coral-red and cream-white painted stripes, brass lantern dome glowing warm gold, coiled hemp dock rope, and weathered rocky base",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 506
+    },
+    {
+      "id": "env_onsen_gazebo",
+      "prompt": "cozy alpine hot-spring rock pool shrine with natural mossy boulders cradling turquoise steaming spring water, bamboo water spout, warm glowing stone lantern, and snow-dusted timber roof",
+      "preset": "lowpoly",
+      "decimation_target": 9000,
+      "texture_size": 1024,
+      "seed": 507
+    },
+    {
+      "id": "env_volcano_obelisk",
+      "prompt": "dramatic ancient dark basalt and obsidian volcanic ruin pillar carved with glowing molten amber runes, jagged orange magma crystal clusters sprouting from the base",
+      "preset": "lowpoly",
+      "decimation_target": 8000,
+      "texture_size": 1024,
+      "seed": 508
+    },
+    {
+      "id": "env_treasure_chest",
+      "prompt": "ornate curved adventure wooden treasure chest with rich mahogany planks, thick gleaming gold metal trim bands, corner rivets, and a cheerful golden monkey-emblem padlock clasp",
+      "preset": "lowpoly",
+      "decimation_target": 7000,
+      "texture_size": 1024,
+      "seed": 509
+    },
+    {
+      "id": "env_plaza_fountain",
+      "prompt": "ornate circular carved cream-limestone town plaza fountain with sparkling turquoise water basin, golden rim trim, and a joyful golden monkey statue centerpiece pouring water from a giant cocoa mug",
+      "preset": "lowpoly",
+      "decimation_target": 9500,
+      "texture_size": 1024,
+      "seed": 510
+    }
+  ]
+}

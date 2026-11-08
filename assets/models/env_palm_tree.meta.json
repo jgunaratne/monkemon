@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:8f44b025-f28c-4bd8-a8dc-a19236fae0be",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 38.06,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_palm_tree.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "d36c0471262dbb45"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 501,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "lush curved tropical island coconut palm tree with ringed brown timber trunk, flourishing crown of arching emerald-green palm fronds, cluster of ripe coconuts, and small pink hibiscus flowers and ferns at the sandy root base",
+    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_palm_tree.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_palm_tree.glb",
+    "file_size_bytes": 2680736,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 10786,
+    "triangle_count": 8450,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.29944,
+      -0.50079,
+      -0.33511
+    ],
+    "bbox_max": [
+      0.28721,
+      0.4983,
+      0.33646
+    ],
+    "bbox_extents": [
+      0.58665,
+      0.99909,
+      0.67157
+    ]
+  }
+}

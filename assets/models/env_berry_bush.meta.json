@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:83baf05d-3703-43c4-8540-c0f0b0d7de91",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 70.66,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_berry_bush.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "76c4e37801c0ca0c"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 505,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "bountiful sculpted emerald-green orchard berry tree-bush heavy with oversized glossy golden-orange sweet berries and white star blossoms, rooted in a cozy stone-ringed garden mound",
+    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_berry_bush.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_berry_bush.glb",
+    "file_size_bytes": 3250672,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 13110,
+    "triangle_count": 7931,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.43611,
+      -0.49825,
+      -0.40076
+    ],
+    "bbox_max": [
+      0.42101,
+      0.49386,
+      0.41402
+    ],
+    "bbox_extents": [
+      0.85712,
+      0.99211,
+      0.81478
+    ]
+  }
+}
