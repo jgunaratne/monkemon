@@ -1,0 +1,17 @@
+{
+  "name": "monkemon",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monkemon: a 2.5D miniature toy-diorama creature-taming & real-time arena battle RPG powered by the TRELLIS.2 3D asset pipeline.",
+  "type": "module",
+  "scripts": {
+    "start": "bash serve.sh",
+    "test": "node tests/game.test.mjs",
+    "check": "node --check server.mjs && for f in src/*.js src/data/*.js src/engine/*.js src/game/*.js; do node --check \"$f\" || exit 1; done && python3 -m py_compile tools/trellis_forge_server.py && echo syntax ok",
+    "assets:3d": "bash tools/generate_3d_assets.sh",
+    "assets:music": "bash tools/generate_music.sh",
+    "assets:voice": "bash tools/generate_voices.sh",
+    "smoke": "python3 tools/smoke_test.py"
+  },
+  "license": "UNLICENSED"
+}

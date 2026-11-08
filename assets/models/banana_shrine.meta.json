@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:dbefb248-3a2f-4987-be48-6fb17973a284",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 36.56,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/banana_shrine.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "3c677c7899b5ace4"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 302,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "ancient moss-covered carved grey stone monkey statue sitting on an octagonal stepped stone pedestal, holding up a giant glowing golden crystal banana relic wrapped in tropical vines",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/banana_shrine.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/banana_shrine.glb",
+    "file_size_bytes": 2991164,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 8750,
+    "triangle_count": 8328,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.34925,
+      -0.50088,
+      -0.3478
+    ],
+    "bbox_max": [
+      0.34794,
+      0.49953,
+      0.34902
+    ],
+    "bbox_extents": [
+      0.69719,
+      1.00041,
+      0.69682
+    ]
+  }
+}

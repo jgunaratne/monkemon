@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:e64dd144-5eaa-4b7e-9341-5e4214bf5091",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 140.47,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/bobmonk.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "76d31fd52ae483a4"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 407,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "hilarious friendly office-guy monkey named Bob standing upright wearing round glasses, crisp white short-sleeve button shirt, bright red necktie, holding a coffee cup with a cheerful dad smile",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/bobmonk.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/bobmonk.glb",
+    "file_size_bytes": 2367016,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 7204,
+    "triangle_count": 8228,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.2534,
+      -0.50095,
+      -0.24686
+    ],
+    "bbox_max": [
+      0.25407,
+      0.49801,
+      0.24594
+    ],
+    "bbox_extents": [
+      0.50747,
+      0.99896,
+      0.4928
+    ]
+  }
+}

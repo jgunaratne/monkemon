@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:387e76ca-8598-4352-a4f5-bd1c8b410959",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 36.49,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mooboon.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "996e05d47cf977e8"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 404,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "cute chubby black-and-white spotted cow-monkey creature with pink cow snout, small curved cream horns, big round monkey ears, golden cowbell on ribbon around neck, curled tufted tail",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mooboon.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/mooboon.glb",
+    "file_size_bytes": 2135836,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 6057,
+    "triangle_count": 7962,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.39925,
+      -0.50093,
+      -0.33192
+    ],
+    "bbox_max": [
+      0.39979,
+      0.49989,
+      0.33419
+    ],
+    "bbox_extents": [
+      0.79904,
+      1.00082,
+      0.66611
+    ]
+  }
+}

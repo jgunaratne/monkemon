@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:d08322c5-a5f0-4469-a9ec-2ee6e6a185e6",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 98.53,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/alex_house.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "838887496a69f6b1"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 501,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "charming miniature toy-diorama cottage house with glossy sky-blue pitched roof, cream stucco walls, arched red front door, round upstairs window, flower boxes and white picket porch steps",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/alex_house.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/alex_house.glb",
+    "file_size_bytes": 2512832,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 8976,
+    "triangle_count": 8693,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.47089,
+      -0.50086,
+      -0.47237
+    ],
+    "bbox_max": [
+      0.46745,
+      0.49973,
+      0.47388
+    ],
+    "bbox_extents": [
+      0.93834,
+      1.00059,
+      0.94625
+    ]
+  }
+}

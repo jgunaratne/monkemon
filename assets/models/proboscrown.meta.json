@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:466e3d4f-7429-4bdf-b8c6-afae21df9e82",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 36.82,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/proboscrown.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "fcaebabf97a45cdf"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 210,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "regal coral-pink and turquoise sea-monkey proboscis creature wearing iridescent spiral seashell shoulder armor, a small golden pearl crown, and holding a miniature coral reed scepter",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/proboscrown.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/proboscrown.glb",
+    "file_size_bytes": 2891892,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 8593,
+    "triangle_count": 8476,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.34121,
+      -0.49624,
+      -0.49806
+    ],
+    "bbox_max": [
+      0.33994,
+      0.49767,
+      0.4999
+    ],
+    "bbox_extents": [
+      0.68115,
+      0.99391,
+      0.99796
+    ]
+  }
+}

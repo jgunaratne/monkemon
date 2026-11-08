@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:68d4036c-1ebc-4270-927d-51dbbea8dbd9",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 73.3,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/bamboon.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "97267988cb577111"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 205,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "sturdy martial-arts mandrill monkey brawler creature with teal and terracotta face markings, carved green bamboo forearm gauntlets, braided rope belt, powerful crouched fighting stance",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/bamboon.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/bamboon.glb",
+    "file_size_bytes": 3124712,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 11298,
+    "triangle_count": 8189,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.38131,
+      -0.49619,
+      -0.49434
+    ],
+    "bbox_max": [
+      0.38648,
+      0.48487,
+      0.4954
+    ],
+    "bbox_extents": [
+      0.76779,
+      0.98106,
+      0.98974
+    ]
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:6ab8e628-9fed-493b-9862-ff8479f8ffd5",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 56.23,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/beef_house.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "773ecb646addd323"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 505,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 10000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "grand miniature toy-diorama championship arena lodge with dark timber and crimson tiled roof crowned by golden bull horns, glowing brazier torches flanking grand double doors and stone steps",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/beef_house.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/beef_house.glb",
+    "file_size_bytes": 3182924,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 14340,
+    "triangle_count": 9678,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.49461,
+      -0.37018,
+      -0.38513
+    ],
+    "bbox_max": [
+      0.4916,
+      0.35887,
+      0.38738
+    ],
+    "bbox_extents": [
+      0.98621,
+      0.72905,
+      0.77251
+    ]
+  }
+}

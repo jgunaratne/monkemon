@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:d6c8908c-a676-4aea-bc02-11294da1a08c",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 68.72,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/lemuripple.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "a7d018315d61f940"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 202,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "cute sleek cerulean-blue and pearl-white ring-tailed water lemur creature, bubbly sea-foam ruff collar around neck, big glossy sapphire eyes, long striped aqua tail ending in a playful wave fin",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/lemuripple.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/lemuripple.glb",
+    "file_size_bytes": 2768700,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 7154,
+    "triangle_count": 8594,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.22483,
+      -0.35962,
+      -0.49926
+    ],
+    "bbox_max": [
+      0.2938,
+      0.35906,
+      0.46215
+    ],
+    "bbox_extents": [
+      0.51863,
+      0.71868,
+      0.96141
+    ]
+  }
+}

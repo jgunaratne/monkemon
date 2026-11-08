@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:7023b3fd-fa8e-4a32-819c-7d5a9b0c8277",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 56.57,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/puppuchin.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "facf6f4c25c472d2"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 403,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "adorable golden-tan puppy-monkey hybrid creature with floppy golden-retriever dog ears, happy pink tongue sticking out, red dog collar with bone tag, and a curly monkey tail",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/puppuchin.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/puppuchin.glb",
+    "file_size_bytes": 1905136,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 7355,
+    "triangle_count": 8232,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.30998,
+      -0.37416,
+      -0.49724
+    ],
+    "bbox_max": [
+      0.3118,
+      0.37203,
+      0.49913
+    ],
+    "bbox_extents": [
+      0.62178,
+      0.74619,
+      0.99637
+    ]
+  }
+}

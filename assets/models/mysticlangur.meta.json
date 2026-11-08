@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:993e5ad7-02d0-4518-9d07-abec75d6ee31",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 40.84,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mysticlangur.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "9aeaddca8b3e6a80"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 208,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "serene lavender and silver sage langur monkey creature sitting cross-legged atop a sculpted swirling white cloud cushion, glowing purple amethyst gem circlet on forehead, long graceful tail",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mysticlangur.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/mysticlangur.glb",
+    "file_size_bytes": 2474332,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 6997,
+    "triangle_count": 8337,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.38518,
+      -0.49934,
+      -0.41721
+    ],
+    "bbox_max": [
+      0.38467,
+      0.49714,
+      0.41923
+    ],
+    "bbox_extents": [
+      0.76985,
+      0.99648,
+      0.83644
+    ]
+  }
+}

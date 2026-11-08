@@ -1,0 +1,120 @@
+{
+  "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+  "preset": "lowpoly",
+  "output_dir": "../assets/models",
+  "image_model": "gempix-2-flash-lite-png",
+  "assets": [
+    {
+      "id": "monkeball",
+      "prompt": "adorable spherical red-and-cream glossy toy capture ball shaped like a smiling happy monkey face with two round monkey ears on the sides, shiny black button eyes, cheerful open grin, and golden clasp band",
+      "preset": "lowpoly",
+      "decimation_target": 6500,
+      "texture_size": 1024,
+      "seed": 401
+    },
+    {
+      "id": "mugchimp",
+      "prompt": "cute cheeky brown baby monkey sitting cozily inside an oversized glossy ceramic coffee mug with a curved mug handle, whipped cream swirl hat on its head, holding a tiny spoon",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 402
+    },
+    {
+      "id": "puppuchin",
+      "prompt": "adorable golden-tan puppy-monkey hybrid creature with floppy golden-retriever dog ears, happy pink tongue sticking out, red dog collar with bone tag, and a curly monkey tail",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 403
+    },
+    {
+      "id": "mooboon",
+      "prompt": "cute chubby black-and-white spotted cow-monkey creature with pink cow snout, small curved cream horns, big round monkey ears, golden cowbell on ribbon around neck, curled tufted tail",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 404
+    },
+    {
+      "id": "duckaque",
+      "prompt": "cheerful tropical macaque monkey wearing a shiny bright-yellow squeaky rubber ducky inflatable ring around its waist and a tiny rubber duck perched on its head, splashing water droplets",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 405
+    },
+    {
+      "id": "plushaki",
+      "prompt": "adorable pastel patchwork knitted plushie stuffie sock-monkey toy creature with visible yarn stitching, shiny black button eyes, rosy felt cheeks, soft cotton-stuffed limbs and ribbon bow",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 406
+    },
+    {
+      "id": "bobmonk",
+      "prompt": "hilarious friendly office-guy monkey named Bob standing upright wearing round glasses, crisp white short-sleeve button shirt, bright red necktie, holding a coffee cup with a cheerful dad smile",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 407
+    },
+    {
+      "id": "senseibob",
+      "prompt": "cool martial-arts dad-monkey master wearing round glasses, white karate gi uniform with black belt and red necktie tucked in, headband, confident friendly kung-fu stance",
+      "preset": "lowpoly",
+      "decimation_target": 8500,
+      "texture_size": 1024,
+      "seed": 408
+    },
+    {
+      "id": "monkezilla",
+      "prompt": "colossal legendary monster-king gorilla boss creature with purple-and-charcoal scales, glowing neon-green dorsal spikes, twin curved monster horns, golden crown, roaring heroically in toy-diorama vinyl style",
+      "preset": "lowpoly",
+      "decimation_target": 11500,
+      "texture_size": 1024,
+      "seed": 420
+    },
+    {
+      "id": "alex_house",
+      "prompt": "charming miniature toy-diorama cottage house with glossy sky-blue pitched roof, cream stucco walls, arched red front door, round upstairs window, flower boxes and white picket porch steps",
+      "preset": "lowpoly",
+      "decimation_target": 9000,
+      "texture_size": 1024,
+      "seed": 501
+    },
+    {
+      "id": "peanut_butter_house",
+      "prompt": "whimsical miniature toy-diorama dojo building shaped like an oversized golden peanut-butter jar with a bright red screw-cap roof, creamy peanut-butter swirl trim, wooden double doors and peanut lanterns",
+      "preset": "lowpoly",
+      "decimation_target": 9500,
+      "texture_size": 1024,
+      "seed": 502
+    },
+    {
+      "id": "fish_house",
+      "prompt": "whimsical miniature toy-diorama seaside house with a giant glossy turquoise-and-coral tropical fish sculpted across the roof, porthole windows, wooden dock porch, life-preserver ring and warm lanterns",
+      "preset": "lowpoly",
+      "decimation_target": 9500,
+      "texture_size": 1024,
+      "seed": 503
+    },
+    {
+      "id": "pork_house",
+      "prompt": "whimsical miniature toy-diorama cozy mountain lodge with a cute rosy-pink piggy roof crest and curly tail chimney, timber-frame walls, warm glowing ramen-shop lanterns and arched wooden doorway",
+      "preset": "lowpoly",
+      "decimation_target": 9500,
+      "texture_size": 1024,
+      "seed": 504
+    },
+    {
+      "id": "beef_house",
+      "prompt": "grand miniature toy-diorama championship arena lodge with dark timber and crimson tiled roof crowned by golden bull horns, glowing brazier torches flanking grand double doors and stone steps",
+      "preset": "lowpoly",
+      "decimation_target": 10000,
+      "texture_size": 1024,
+      "seed": 505
+    }
+  ]
+}

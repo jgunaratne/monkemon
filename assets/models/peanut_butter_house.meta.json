@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:ff25f9a3-b043-4506-a93d-2e6958ccda42",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 61.82,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/peanut_butter_house.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "a7588746be14939f"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 502,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "whimsical miniature toy-diorama dojo building shaped like an oversized golden peanut-butter jar with a bright red screw-cap roof, creamy peanut-butter swirl trim, wooden double doors and peanut lanterns",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/peanut_butter_house.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/peanut_butter_house.glb",
+    "file_size_bytes": 2945144,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 8457,
+    "triangle_count": 9410,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.40763,
+      -0.50096,
+      -0.40691
+    ],
+    "bbox_max": [
+      0.40756,
+      0.4991,
+      0.40782
+    ],
+    "bbox_extents": [
+      0.81519,
+      1.00006,
+      0.81473
+    ]
+  }
+}

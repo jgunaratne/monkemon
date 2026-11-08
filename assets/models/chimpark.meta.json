@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:b46f0232-1b0c-4a0f-97e4-1c77fb724db2",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 35.88,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/chimpark.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "48f9cb1302dc3d30"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 201,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "adorable scarlet and tangerine-orange baby ember chimpanzee creature standing happily, fluffy cream belly, oversized expressive amber eyes, stylized sculpted orange-yellow flame tuft burning at the tip of its curled tail",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/chimpark.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/chimpark.glb",
+    "file_size_bytes": 1944896,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 7791,
+    "triangle_count": 8648,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.37032,
+      -0.49992,
+      -0.29323
+    ],
+    "bbox_max": [
+      0.36723,
+      0.49701,
+      0.30416
+    ],
+    "bbox_extents": [
+      0.73755,
+      0.99693,
+      0.59739
+    ]
+  }
+}

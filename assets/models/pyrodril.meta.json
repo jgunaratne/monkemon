@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:142d222e-6ba7-42a4-ae9b-97ac69aeb667",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 67.43,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/pyrodril.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "58ea7c44ea36ed3a"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 207,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "fierce dark-obsidian volcanic baboon creature with glowing molten orange magma veins across heavy rock-armored shoulders and a dramatic sculpted flame mane",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/pyrodril.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/pyrodril.glb",
+    "file_size_bytes": 3098080,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 7568,
+    "triangle_count": 8374,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.4172,
+      -0.50001,
+      -0.35257
+    ],
+    "bbox_max": [
+      0.41943,
+      0.49714,
+      0.35449
+    ],
+    "bbox_extents": [
+      0.83663,
+      0.99715,
+      0.70706
+    ]
+  }
+}

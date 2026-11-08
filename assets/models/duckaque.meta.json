@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:85ad843d-1d00-4ee0-9c23-eb6672de6e5f",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 35.6,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/duckaque.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "ef67f9d3676eba68"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 405,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "cheerful tropical macaque monkey wearing a shiny bright-yellow squeaky rubber ducky inflatable ring around its waist and a tiny rubber duck perched on its head, splashing water droplets",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/duckaque.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/duckaque.glb",
+    "file_size_bytes": 2820156,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 7976,
+    "triangle_count": 8476,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.45252,
+      -0.49869,
+      -0.42901
+    ],
+    "bbox_max": [
+      0.45246,
+      0.49834,
+      0.42657
+    ],
+    "bbox_extents": [
+      0.90498,
+      0.99703,
+      0.85558
+    ]
+  }
+}

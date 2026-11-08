@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:9af3c6cb-239b-492d-829b-8dccfc333a77",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 36.07,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/voltamarin.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "e8a70a7c882d8c0d"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 204,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "energetic golden-yellow lion tamarin monkey creature with spiky electric lightning-bolt mane around its face, cobalt-blue cheek markings, and a sharp zigzagging thunderbolt tail",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/voltamarin.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/voltamarin.glb",
+    "file_size_bytes": 2734808,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 8342,
+    "triangle_count": 7932,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.24787,
+      -0.36209,
+      -0.48903
+    ],
+    "bbox_max": [
+      0.24614,
+      0.34702,
+      0.49548
+    ],
+    "bbox_extents": [
+      0.49401,
+      0.70911,
+      0.98451
+    ]
+  }
+}

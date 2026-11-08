@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:88912589-00ca-4a54-80c1-b18bbf129fae",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 104.04,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/plushaki.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "52d91ca0d6bc53f9"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 406,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "adorable pastel patchwork knitted plushie stuffie sock-monkey toy creature with visible yarn stitching, shiny black button eyes, rosy felt cheeks, soft cotton-stuffed limbs and ribbon bow",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/plushaki.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/plushaki.glb",
+    "file_size_bytes": 3472900,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 7917,
+    "triangle_count": 8029,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.47537,
+      -0.49842,
+      -0.44402
+    ],
+    "bbox_max": [
+      0.47524,
+      0.49409,
+      0.44337
+    ],
+    "bbox_extents": [
+      0.95061,
+      0.99251,
+      0.88739
+    ]
+  }
+}

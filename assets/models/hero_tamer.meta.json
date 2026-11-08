@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:3c8d1249-086d-4c26-9d0e-e43c7d9d99ff",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 66.36,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/hero_tamer.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "961b0a155c36ca45"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 101,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "cheerful chibi island explorer hero standing upright in confident pose, bright yellow and cobalt-blue visored cap, red neckerchief scarf, tan canvas satchel bag across chest, teal tunic vest, shorts and sturdy hiking boots",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/hero_tamer.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/hero_tamer.glb",
+    "file_size_bytes": 2752276,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 9509,
+    "triangle_count": 9484,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.26505,
+      -0.5005,
+      -0.23968
+    ],
+    "bbox_max": [
+      0.26168,
+      0.49795,
+      0.24034
+    ],
+    "bbox_extents": [
+      0.52673,
+      0.99845,
+      0.48002
+    ]
+  }
+}

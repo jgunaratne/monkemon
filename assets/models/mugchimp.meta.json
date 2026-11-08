@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:53998dd4-e9fe-4b91-96d7-23117159f1c5",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 98.75,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mugchimp.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "797c4c678210398f"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 402,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 8500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "cute cheeky brown baby monkey sitting cozily inside an oversized glossy ceramic coffee mug with a curved mug handle, whipped cream swirl hat on its head, holding a tiny spoon",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mugchimp.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/mugchimp.glb",
+    "file_size_bytes": 2545812,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 7618,
+    "triangle_count": 8051,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.48233,
+      -0.4992,
+      -0.42875
+    ],
+    "bbox_max": [
+      0.48661,
+      0.49355,
+      0.42986
+    ],
+    "bbox_extents": [
+      0.96894,
+      0.99275,
+      0.85861
+    ]
+  }
+}

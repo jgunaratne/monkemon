@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:5d485598-5147-47dc-8642-f46e18721b01",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 77.04,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/trainer_warden.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "71d3f3542e654386"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 103,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "regal chibi master arena warden standing heroically, crimson and gold embroidered cape, ornate bamboo-and-gold shoulder pauldrons, headband with golden banana crest, holding a short carved wooden staff",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/trainer_warden.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/trainer_warden.glb",
+    "file_size_bytes": 3471204,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 8917,
+    "triangle_count": 8590,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.43353,
+      -0.50042,
+      -0.25089
+    ],
+    "bbox_max": [
+      0.43239,
+      0.4976,
+      0.244
+    ],
+    "bbox_extents": [
+      0.86592,
+      0.99802,
+      0.49489
+    ]
+  }
+}

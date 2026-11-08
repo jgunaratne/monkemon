@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:f4903130-bfc0-44ae-ad66-72b0ff5c8bad",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 67.52,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/pork_house.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "0f43ce031e4f2496"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 504,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "whimsical miniature toy-diorama cozy mountain lodge with a cute rosy-pink piggy roof crest and curly tail chimney, timber-frame walls, warm glowing ramen-shop lanterns and arched wooden doorway",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/pork_house.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/pork_house.glb",
+    "file_size_bytes": 3331884,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 11484,
+    "triangle_count": 9237,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.44017,
+      -0.50083,
+      -0.42449
+    ],
+    "bbox_max": [
+      0.46084,
+      0.48342,
+      0.41366
+    ],
+    "bbox_extents": [
+      0.90101,
+      0.98425,
+      0.83815
+    ]
+  }
+}

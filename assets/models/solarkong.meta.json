@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:2eef9b02-7868-45ba-b450-6e52f178b3eb",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 41.98,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/solarkong.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "87d6d5ea40266ae7"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 212,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 11000,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "majestic ivory-furred and radiant gold legendary silverback ape guardian creature, ornate golden temple gauntlets with sun engravings, sculpted solar halo ring behind shoulders, noble powerful stance",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/solarkong.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/solarkong.glb",
+    "file_size_bytes": 2631184,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 8828,
+    "triangle_count": 10689,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.33972,
+      -0.49961,
+      -0.44299
+    ],
+    "bbox_max": [
+      0.32569,
+      0.49769,
+      0.44307
+    ],
+    "bbox_extents": [
+      0.66541,
+      0.9973,
+      0.88606
+    ]
+  }
+}

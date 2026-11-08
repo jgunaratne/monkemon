@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:373e0491-2550-4e7e-9eed-f376fe125e21",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 121.09,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/healing_pavilion.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "079127d32ad5b45e"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 301,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 9500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "cozy miniature island sanctuary hut building, curved glossy coral-red terracotta roof with golden monkey finial, warm glowing amber paper lanterns, bamboo posts, wooden deck and basket of golden bananas",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/healing_pavilion.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/healing_pavilion.glb",
+    "file_size_bytes": 3207724,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 19137,
+    "triangle_count": 9286,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.45135,
+      -0.49421,
+      -0.40208
+    ],
+    "bbox_max": [
+      0.43758,
+      0.49117,
+      0.40078
+    ],
+    "bbox_extents": [
+      0.88893,
+      0.98538,
+      0.80286
+    ]
+  }
+}

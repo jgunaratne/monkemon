@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:6119fc43-a1b1-4a93-91d9-028fcc2648c2",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 61.46,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/monkezilla.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "8e0ce361b51d6fae"
+  ],
+  "preset": "lowpoly",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 420,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 12,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 12,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 11500,
+    "texture_size": 1024
+  },
+  "prompt_metadata": {
+    "prompt": "colossal legendary monster-king gorilla boss creature with purple-and-charcoal scales, glowing neon-green dorsal spikes, twin curved monster horns, golden crown, roaring heroically in toy-diorama vinyl style",
+    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/monkezilla.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/monkezilla.glb",
+    "file_size_bytes": 2819732,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 9475,
+    "triangle_count": 11386,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.27834,
+      -0.41256,
+      -0.49854
+    ],
+    "bbox_max": [
+      0.27624,
+      0.41168,
+      0.49894
+    ],
+    "bbox_extents": [
+      0.55458,
+      0.82424,
+      0.99748
+    ]
+  }
+}
