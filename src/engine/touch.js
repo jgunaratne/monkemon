@@ -102,19 +102,19 @@ export function setupTouchControls(container, input, params) {
         if (el && el.textContent !== txt) el.textContent = txt;
       };
       if (inBattle) {
-        setLbl('tlbl-a', 'Monk Run');
-        setLbl('tlbl-b', 'Fake Out');
-        setLbl('tlbl-x', 'Eat');
-        setLbl('tlbl-y', 'Jump');
-        setLbl('tlbl-rb', 'Special');
-        setLbl('tlbl-lb', 'Monkeball');
+        setLbl('tlbl-a', 'Select');
+        setLbl('tlbl-b', 'Back');
+        setLbl('tlbl-x', 'Berry');
+        setLbl('tlbl-y', 'Catch');
+        setLbl('tlbl-rb', 'Fight');
+        setLbl('tlbl-lb', 'Switch');
       } else {
-        setLbl('tlbl-a', 'Talk');
+        setLbl('tlbl-a', 'Act');
         setLbl('tlbl-b', 'Sprint');
         setLbl('tlbl-x', 'Berry');
         setLbl('tlbl-y', 'Aim Ball');
         setLbl('tlbl-rb', 'Battle');
-        setLbl('tlbl-lb', 'Quick Ball');
+        setLbl('tlbl-lb', 'Menu');
       }
     },
   };

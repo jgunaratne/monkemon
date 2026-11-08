@@ -305,6 +305,8 @@ export class DioramaRenderer {
     this.camDesiredTarget.set(targetX, targetY, targetZ);
     if (mode === 'battle') {
       this.camDesiredOffset.set(0, 13.6, 17.2);
+    } else if (mode === 'interior') {
+      this.camDesiredOffset.set(0, 14.0, 15.8);
     } else if (mode === 'catch') {
       this.camDesiredOffset.set(0, 9.2, 12.6);
     } else if (mode === 'title') {

@@ -1,10 +1,11 @@
-// 2.5D Realistic Toy-Diorama Zone Builder (Nano Banana PBR Textures + Custom GLSL Shaders)
-// Constructs each of the 5 interconnected islands with:
-// - Seamless Nano Banana PBR albedo + tangent-space normal maps (`assets/textures/*.jpg`)
-// - Custom GLSL Ocean / Caustics / Fresnel / SDF Shoreline Surf Foam & Convective Magma Shader
-// - Custom GLSL Terrain Anti-Tiling + Cloud-Dappled Sunlight Shader
-// - Custom GLSL Wind-Swaying 5-Blade Curved 3D Grass Clumps (parting around the player!)
-// - Volumetric Sunbeam Light Shafts + Warm Lamp/Shrine PointLights + Rich 3D Props & Waterfalls!
+// 2.5D Realistic Archipelago Toy-Diorama Builder
+// Constructs each of the 5 interconnected non-square islands with:
+// - Organic multi-bay / peninsula coastlines (`computeCoastRadiusNorm` + `ExtrudeGeometry`)
+// - Sloping sandy beaches, wet mossy coastal cliffs, elevated walkable terraces & 3D stone stairs
+// - Flowing rivers / harbor canals / magma rifts spanned by walkable arched 3D bridges & piers
+// - TRELLIS.2-4B `.glb` 3D trees, flora, fountains, lighthouses, gazebos, obelisks & supply chests
+// - 1,150+ wind-swaying 5-blade curved 3D grass clumps (dense tall-grass wild habitats!)
+// - Multi-layered Reactive GLSL Battle Stadium Shader Suite (`buildBattleArenaGroup`)
 
 import * as THREE from 'three';
 import { ASSET_VERSION } from './audio.js';
@@ -14,6 +15,9 @@ import {
   attachFoliageSubsurfaceShader,
   attachTerrainDetailShader,
   attachWindGrassShader,
+  computeCoastRadiusNorm,
+  createBattleBarrierDomeShaderMaterial,
+  createCombatantPadShaderMaterial,
   createHoloArenaShaderMaterial,
   createOceanMagmaShaderMaterial,
   createSunbeamShaderMaterial,
@@ -30,62 +34,13 @@ function seededRand(seed) {
 const _texLoader = new THREE.TextureLoader();
 const _texCache = new Map();
 let _cachedGrassClumpGeo = null;
+let _cachedFernGeo = null;
 
 function withVer(url) {
   return `${url}?v=${ASSET_VERSION}`;
 }
 
-function loadRepeatTexture(url, isSRGB = true) {
-  const key = `${url}:${isSRGB ? 'srgb' : 'lin'}`;
-  if (_texCache.has(key)) return _texCache.get(key);
-  const tex = _texLoader.load(withVer(url));
-  tex.colorSpace = isSRGB ? THREE.SRGBColorSpace : THREE.NoColorSpace;
-  tex.wrapS = THREE.RepeatWrapping;
-  tex.wrapT = THREE.RepeatWrapping;
-  tex.anisotropy = 8;
-  _texCache.set(key, tex);
-  return tex;
-}
-
-function cloneRepeatPair(baseName, rx, rz) {
-  const baseMap = loadRepeatTexture(`assets/textures/${baseName}.jpg`, true);
-  const baseNormal = loadRepeatTexture(`assets/textures/${baseName}_normal.jpg`, false);
-
-  const map = baseMap.clone();
-  map.colorSpace = THREE.SRGBColorSpace;
-  map.wrapS = THREE.RepeatWrapping;
-  map.wrapT = THREE.RepeatWrapping;
-  map.repeat.set(rx, rz);
-  map.needsUpdate = true;
-  if (baseMap.image) {
-    map.image = baseMap.image;
-  } else {
-    baseMap.onUpdate = () => {
-      map.image = baseMap.image;
-      map.needsUpdate = true;
-    };
-  }
-
-  const normalMap = baseNormal.clone();
-  normalMap.colorSpace = THREE.NoColorSpace;
-  normalMap.wrapS = THREE.RepeatWrapping;
-  normalMap.wrapT = THREE.RepeatWrapping;
-  normalMap.repeat.set(rx, rz);
-  normalMap.needsUpdate = true;
-  if (baseNormal.image) {
-    normalMap.image = baseNormal.image;
-  } else {
-    baseNormal.onUpdate = () => {
-      normalMap.image = baseNormal.image;
-      normalMap.needsUpdate = true;
-    };
-  }
-
-  // Simpler & guaranteed immediate sync: if `rx === 1 && rz === 1`, return shared directly!
-  return { map: rx === 1 && rz === 1 ? baseMap : map, normalMap: rx === 1 && rz === 1 ? baseNormal : normalMap };
-}
-
-function loadDedicatedPair(baseName, rx, rz) {
+function loadDedicatedPair(baseName, rx = 1, rz = 1) {
   const key = `ded:${baseName}:${rx}:${rz}`;
   if (_texCache.has(key)) return _texCache.get(key);
   const map = _texLoader.load(withVer(`assets/textures/${baseName}.jpg`));
@@ -127,8 +82,8 @@ function makeParticleSpriteTexture() {
 }
 
 /**
- * Builds a multi-blade curved 3D grass tuft `BufferGeometry` (5 arched tapered blades per clump)
- * so meadows look lush and natural instead of spiky cones!
+ * Builds a multi-blade curved 3D grass tuft `BufferGeometry` (7 arched tapered blades per clump)
+ * so meadows and tall-grass patches look rich, full, and natural!
  */
 function getCurvedGrassClumpGeometry() {
   if (_cachedGrassClumpGeo) return _cachedGrassClumpGeo;
@@ -136,18 +91,19 @@ function getCurvedGrassClumpGeometry() {
   const positions = [];
   const normals = [];
   const bladeConfigs = [
-    { angle: 0.0, lean: 0.16, h: 0.62, w: 0.058, ox: 0.0, oz: 0.0 },
-    { angle: 1.25, lean: 0.24, h: 0.54, w: 0.052, ox: 0.07, oz: 0.04 },
-    { angle: 2.51, lean: 0.22, h: 0.58, w: 0.054, ox: -0.06, oz: 0.06 },
-    { angle: 3.77, lean: 0.26, h: 0.49, w: 0.048, ox: -0.07, oz: -0.05 },
-    { angle: 5.02, lean: 0.2, h: 0.55, w: 0.05, ox: 0.06, oz: -0.06 },
+    { angle: 0.0, lean: 0.17, h: 0.68, w: 0.062, ox: 0.0, oz: 0.0 },
+    { angle: 0.9, lean: 0.25, h: 0.58, w: 0.056, ox: 0.08, oz: 0.04 },
+    { angle: 1.85, lean: 0.23, h: 0.63, w: 0.058, ox: -0.06, oz: 0.07 },
+    { angle: 2.75, lean: 0.28, h: 0.53, w: 0.052, ox: -0.08, oz: -0.04 },
+    { angle: 3.68, lean: 0.22, h: 0.6, w: 0.055, ox: -0.02, oz: -0.08 },
+    { angle: 4.55, lean: 0.26, h: 0.56, w: 0.052, ox: 0.07, oz: -0.06 },
+    { angle: 5.42, lean: 0.2, h: 0.64, w: 0.058, ox: 0.05, oz: 0.07 },
   ];
 
   const segs = 3;
   for (const bc of bladeConfigs) {
     const ca = Math.cos(bc.angle);
     const sa = Math.sin(bc.angle);
-    // Tangent along blade width (perpendicular to lean direction)
     const wx = -sa;
     const wz = ca;
 
@@ -158,7 +114,7 @@ function getCurvedGrassClumpGeometry() {
       const y1 = t1 * bc.h;
       const curve0 = t0 * t0 * bc.lean;
       const curve1 = t1 * t1 * bc.lean;
-      const w0 = bc.w * (1.0 - t0 * 0.78);
+      const w0 = bc.w * (1.0 - t0 * 0.76);
       const w1 = bc.w * (1.0 - t1 * 0.94);
 
       const cx0 = bc.ox + ca * curve0;
@@ -171,13 +127,12 @@ function getCurvedGrassClumpGeometry() {
       const p1L = [cx1 - wx * w1, y1, cz1 - wz * w1];
       const p1R = [cx1 + wx * w1, y1, cz1 + wz * w1];
 
-      // Upward-tilted normal so both sides catch warm sunlight smoothly
       const nx = ca * 0.35;
       const ny = 0.88;
       const nz = sa * 0.35;
 
       if (s === segs - 1) {
-        const tip = [cx1, y1 + 0.04, cz1];
+        const tip = [cx1, y1 + 0.045, cz1];
         positions.push(...p0L, ...p0R, ...tip);
         normals.push(nx, ny, nz, nx, ny, nz, nx, ny, nz);
       } else {
@@ -194,14 +149,129 @@ function getCurvedGrassClumpGeometry() {
   return geo;
 }
 
-export function buildZoneDiorama(zone, modelBank) {
+/**
+ * Builds a 6-frond spreading 3D woodland fern rosette for forest & tropical undergrowth!
+ */
+function getFernRosetteGeometry() {
+  if (_cachedFernGeo) return _cachedFernGeo;
+  const positions = [];
+  const normals = [];
+  const frondCount = 6;
+  for (let f = 0; f < frondCount; f++) {
+    const ang = (f / frondCount) * Math.PI * 2 + 0.25;
+    const ca = Math.cos(ang);
+    const sa = Math.sin(ang);
+    const wx = -sa;
+    const wz = ca;
+    const len = 0.58;
+    const archH = 0.28;
+    const segs = 3;
+    for (let s = 0; s < segs; s++) {
+      const t0 = s / segs;
+      const t1 = (s + 1) / segs;
+      const r0 = 0.06 + t0 * len;
+      const r1 = 0.06 + t1 * len;
+      const y0 = Math.sin(t0 * Math.PI * 0.82) * archH + 0.04;
+      const y1 = Math.sin(t1 * Math.PI * 0.82) * archH + 0.04;
+      const w0 = 0.13 * Math.sin(t0 * Math.PI * 0.85 + 0.25);
+      const w1 = 0.13 * Math.sin(t1 * Math.PI * 0.85 + 0.25) * (s === segs - 1 ? 0.15 : 1.0);
+
+      const p0L = [ca * r0 - wx * w0, y0, sa * r0 - wz * w0];
+      const p0R = [ca * r0 + wx * w0, y0, sa * r0 + wz * w0];
+      const p1L = [ca * r1 - wx * w1, y1, sa * r1 - wz * w1];
+      const p1R = [ca * r1 + wx * w1, y1, sa * r1 + wz * w1];
+      positions.push(...p0L, ...p0R, ...p1R, ...p0L, ...p1R, ...p1L);
+      for (let k = 0; k < 6; k++) normals.push(ca * 0.25, 0.94, sa * 0.25);
+    }
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+  geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+  _cachedFernGeo = geo;
+  return geo;
+}
+
+/**
+ * Applies crisp world-space planar UVs on top/bottom faces and cylindrical UVs on cliff walls
+ * so `ExtrudeGeometry` islands show Nano Banana PBR textures + normal maps cleanly without stretching.
+ */
+function applyWorldPlanarUVs(geo, tileScale = 4.6) {
+  const pos = geo.attributes.position;
+  const norm = geo.attributes.normal;
+  const uv = geo.attributes.uv;
+  if (!pos || !uv) return geo;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const ny = norm ? Math.abs(norm.getY(i)) : 1.0;
+    if (ny > 0.55) {
+      uv.setXY(i, x / tileScale, z / tileScale);
+    } else {
+      const perim = Math.atan2(z, x) * 7.5;
+      uv.setXY(i, perim, y / 1.8);
+    }
+  }
+  uv.needsUpdate = true;
+  return geo;
+}
+
+function buildOrganicIslandGeometry({
+  halfW,
+  halfD,
+  coastParams,
+  lobeDirs,
+  scaleFactor = 1.0,
+  depth = 0.45,
+  bevelThickness = 0.08,
+  bevelSize = 0.14,
+  segments = 96,
+  tileScale = 4.6,
+}) {
+  const pts = [];
+  for (let i = 0; i < segments; i++) {
+    const theta = (i / segments) * Math.PI * 2;
+    const rNorm = computeCoastRadiusNorm(theta, coastParams, lobeDirs) * scaleFactor;
+    const px = Math.cos(theta) * halfW * rNorm;
+    const pz = Math.sin(theta) * halfD * rNorm;
+    // After `rotateX(-Math.PI / 2)`, `(x, y, z)` becomes `(x, z, -y)` => `(px, zExt, pz)`!
+    pts.push(new THREE.Vector2(px, -pz));
+  }
+  const shape = new THREE.Shape(pts);
+  shape.closePath();
+  const geo = new THREE.ExtrudeGeometry(shape, {
+    depth,
+    bevelEnabled: bevelSize > 0,
+    bevelSegments: 2,
+    steps: 1,
+    bevelSize,
+    bevelThickness,
+  });
+  geo.rotateX(-Math.PI / 2);
+  applyWorldPlanarUVs(geo, tileScale);
+  return geo;
+}
+
+function distToSegment2D(px, pz, x0, z0, x1, z1) {
+  const vx = x1 - x0;
+  const vz = z1 - z0;
+  const lenSq = vx * vx + vz * vz;
+  if (lenSq < 1e-5) return Math.hypot(px - x0, pz - z0);
+  const t = Math.max(0, Math.min(1, ((px - x0) * vx + (pz - z0) * vz) / lenSq));
+  return Math.hypot(px - (x0 + vx * t), pz - (z0 + vz * t));
+}
+
+export function buildZoneDiorama(zone, modelBank, state = null) {
   const group = new THREE.Group();
   const colliders = []; // { x, z, r } circular obstacles for smooth 2.5D sliding collision
-  const animated = [];  // (timeSec) => void
-  const labelSprites = []; // hidden cleanly during Arena Battles so HUD stays 100% readable!
+  const animated = []; // (timeSec, dt) => void
+  const labelSprites = [];
   const loadPromises = [];
 
   const { halfW, halfD } = zone.bounds;
+  const coastParams = zone.coastParams || [0.1, 0.08, 0.05, 0.7];
+  const lobeDirs = (zone.gateways || []).map((gw) => Math.atan2(gw.z / halfD, gw.x / halfW));
+
   const rand = seededRand((zone.index || 1) * 98765 + 1337);
   const theme = zone.theme || 'tropical';
   const isSoftwareGl = Boolean(modelBank && modelBank.isSoftwareGl);
@@ -209,54 +279,181 @@ export function buildZoneDiorama(zone, modelBank) {
   const sharedTime = { value: 0 };
   const sharedHeroPos = { value: new THREE.Vector3(0, -99, 0) };
 
-  // Helper to check if a decorative prop would sit on top of a path, plaza, house, trainer, boss, or gateway
-  const isClearSpot = (x, z, minClear = 3.0) => {
-    if (Math.hypot(x, z - 2.0) < 5.8) return false;
+  // Precompute 80-point organic coastline outline (used by HUD Mini-Map & coast helpers!)
+  const coastOutline = [];
+  const outlineSegs = 80;
+  for (let i = 0; i < outlineSegs; i++) {
+    const theta = (i / outlineSegs) * Math.PI * 2;
+    const rNorm = computeCoastRadiusNorm(theta, coastParams, lobeDirs);
+    coastOutline.push({
+      x: Math.cos(theta) * halfW * rNorm,
+      z: Math.sin(theta) * halfD * rNorm,
+    });
+  }
+
+  const piers = zone.piers || [];
+  const isOnPier = (x, z) => {
+    for (const p of piers) {
+      const ca = Math.cos(-(p.yaw || 0));
+      const sa = Math.sin(-(p.yaw || 0));
+      const lx = (x - p.x) * ca - (z - p.z) * sa;
+      const lz = (x - p.x) * sa + (z - p.z) * ca;
+      if (Math.abs(lx) <= (p.width || 3.0) * 0.48 && Math.abs(lz) <= (p.length || 5.8) * 0.52) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const getCoastMaxRadiusFactor = (x, z) => {
+    const theta = Math.atan2(z / halfD, x / halfW);
+    return computeCoastRadiusNorm(theta, coastParams, lobeDirs);
+  };
+
+  const isInsideCoast = (x, z, marginMeters = 1.4) => {
+    if (isOnPier(x, z)) return true;
+    const rMax = getCoastMaxRadiusFactor(x, z);
+    const effW = Math.max(4, halfW * rMax - marginMeters);
+    const effD = Math.max(4, halfD * rMax - marginMeters);
+    const norm = Math.hypot(x / effW, z / effD);
+    return norm <= 1.0;
+  };
+
+  const clampToCoast = (x, z, marginMeters = 1.15) => {
+    if (isOnPier(x, z)) return { x, z };
+    const rMax = getCoastMaxRadiusFactor(x, z);
+    const effW = Math.max(4, halfW * rMax - marginMeters);
+    const effD = Math.max(4, halfD * rMax - marginMeters);
+    const norm = Math.hypot(x / effW, z / effD);
+    if (norm <= 1.0 || norm < 1e-5) return { x, z };
+    return { x: x / norm, z: z / norm };
+  };
+
+  const terraces = zone.terraces || [];
+  const bridges = zone.bridges || [];
+  const waterChannels = zone.waterChannels || [];
+  const roads = zone.roads || [];
+
+  // Smooth elevation sampler for terraces + stair ramps + arched bridges!
+  const getHeightAt = (x, z) => {
+    let hOut = 0;
+    for (const t of terraces) {
+      const dx = x - t.x;
+      const dz = z - t.z;
+      const ellip = Math.hypot(dx / t.rx, dz / t.rz);
+      if (ellip <= 1.0) {
+        hOut = Math.max(hOut, t.h || 0.68);
+        continue;
+      }
+      // South stair ramp
+      const stairX = t.x;
+      const stairZ0 = t.z + t.rz * 0.82;
+      const stairZ1 = t.z + t.rz + 2.3;
+      if (Math.abs(x - stairX) <= 1.85 && z >= stairZ0 && z <= stairZ1) {
+        const u = 1.0 - (z - stairZ0) / Math.max(0.2, stairZ1 - stairZ0);
+        hOut = Math.max(hOut, Math.max(0, Math.min(1, u)) * (t.h || 0.68));
+      }
+    }
+    for (const br of bridges) {
+      const ca = Math.cos(-(br.yaw || 0));
+      const sa = Math.sin(-(br.yaw || 0));
+      const lx = (x - br.x) * ca - (z - br.z) * sa;
+      const lz = (x - br.x) * sa + (z - br.z) * ca;
+      const hw = (br.width || 3.4) * 0.52;
+      const hl = (br.length || 5.2) * 0.52;
+      if (Math.abs(lx) <= hw && Math.abs(lz) <= hl) {
+        const arch = Math.cos((lz / hl) * Math.PI * 0.5) * 0.34;
+        hOut = Math.max(hOut, arch);
+      }
+    }
+    return hOut;
+  };
+
+  const isNearRoadOrRiver = (x, z, pad = 2.0) => {
+    for (const poly of roads) {
+      for (let i = 0; i < poly.length - 1; i++) {
+        if (distToSegment2D(x, z, poly[i][0], poly[i][1], poly[i + 1][0], poly[i + 1][1]) < pad) {
+          return true;
+        }
+      }
+    }
+    for (const ch of waterChannels) {
+      if (distToSegment2D(x, z, ch.x0, ch.z0, ch.x1, ch.z1) < (ch.width || 2.8) * 0.62 + pad * 0.7) {
+        return true;
+      }
+    }
+    for (const br of bridges) {
+      if (Math.hypot(x - br.x, z - br.z) < (br.length || 5.2) * 0.65) return true;
+    }
+    return false;
+  };
+
+  const isClearSpot = (x, z, minClear = 2.8) => {
+    if (!isInsideCoast(x, z, 2.2)) return false;
+    if (isNearRoadOrRiver(x, z, 2.15)) return false;
     if (Math.hypot(x - zone.playerSpawn.x, z - zone.playerSpawn.z) < 3.6) return false;
+    for (const lm of zone.landmarks || []) {
+      if (Math.hypot(x - lm.x, z - lm.z) < (lm.scale || 3.0) * 0.9 + minClear * 0.4) return false;
+    }
     for (const h of zone.houses || []) {
-      if (Math.hypot(x - h.x, z - h.z) < (h.scale || 4.4) * 0.74 + minClear * 0.5) return false;
-      if (Math.hypot(x - h.x, z - (h.z + 2.8)) < 3.4) return false;
+      if (Math.hypot(x - h.x, z - h.z) < (h.scale || 4.4) * 0.78 + minClear * 0.45) return false;
+      if (Math.hypot(x - h.x, z - (h.z + 2.8)) < 3.5) return false;
     }
     for (const gw of zone.gateways || []) {
-      if (Math.hypot(x - gw.x, z - gw.z) < 4.9) return false;
+      if (Math.hypot(x - gw.x, z - gw.z) < 5.0) return false;
     }
     for (const tr of zone.trainers || []) {
       if (Math.hypot(x - tr.x, z - tr.z) < 3.2) return false;
     }
     for (const ap of zone.apexSpawns || []) {
-      if (Math.hypot(x - ap.x, z - ap.z) < 7.2) return false;
+      if (Math.hypot(x - ap.x, z - ap.z) < 6.8) return false;
     }
     for (const sh of zone.shrines || []) {
-      if (Math.hypot(x - sh.x, z - sh.z) < 3.2) return false;
+      if (Math.hypot(x - sh.x, z - sh.z) < 3.0) return false;
     }
     for (const bt of zone.berryTrees || []) {
       if (Math.hypot(x - bt.x, z - bt.z) < 2.8) return false;
     }
+    for (const ch of zone.chests || []) {
+      if (Math.hypot(x - ch.x, z - ch.z) < 2.6) return false;
+    }
+    for (const bp of zone.ballPickups || []) {
+      if (Math.hypot(x - bp.x, z - bp.z) < 2.0) return false;
+    }
+    for (const t of terraces) {
+      // Keep stair approach unobstructed
+      if (Math.abs(x - t.x) < 2.4 && z > t.z + t.rz * 0.65 && z < t.z + t.rz + 3.0) return false;
+      // Keep rim clean so trees don't float half off terrace edge
+      const ellip = Math.hypot((x - t.x) / t.rx, (z - t.z) / t.rz);
+      if (ellip > 0.84 && ellip < 1.2) return false;
+    }
     return true;
   };
 
-  // 1. Custom GLSL Ocean / Caustics / Fresnel / SDF Shoreline Surf Foam & Convective Magma Shader!
-  const waterSegs = isSoftwareGl ? 36 : 84;
-  const waterGeo = new THREE.PlaneGeometry(220, 220, waterSegs, waterSegs);
+  // 1. Custom GLSL Ocean / Caustics / Fresnel / Organic Coastline Surf Foam & Convective Magma Shader!
+  const waterSegs = isSoftwareGl ? 40 : 88;
+  const waterGeo = new THREE.PlaneGeometry(240, 240, waterSegs, waterSegs);
   waterGeo.rotateX(-Math.PI / 2);
   const waterMat = createOceanMagmaShaderMaterial({
     waterColor: zone.waterColor || '#1496c8',
     deepColor: theme === 'harbor' ? '#073b66' : '#0a4f80',
     skyColor: zone.skyColor || '#87dcff',
     fogColor: zone.fogColor || zone.skyColor || '#9be4ff',
-    fogNear: 40,
-    fogFar: 88,
+    fogNear: 44,
+    fogFar: 96,
     islandHalfW: halfW,
     islandHalfD: halfD,
+    coastParams,
+    lobeDirs,
     theme,
   });
   const water = new THREE.Mesh(waterGeo, waterMat);
   water.position.y = -0.82;
   group.add(water);
 
-  // 2. Multi-Tiered Beveled Cliff Strata + Nano Banana PBR Normal-Mapped Island Terrain!
+  // 2. Non-Square Organic Multi-Tiered Island Geometry (`ExtrudeGeometry` + Beaches + Wet Cliffs + Lush Lawn)
   const cliffTexName = theme === 'volcano' ? 'volcano_basalt' : 'cliff_rock';
-  const cliffPair = loadDedicatedPair(cliffTexName, Math.round(halfW * 0.42), 2);
+  const cliffPair = loadDedicatedPair(cliffTexName, 1, 1);
   const cliffTint =
     theme === 'snow'
       ? '#cbd5e1'
@@ -269,17 +466,57 @@ export function buildZoneDiorama(zone, modelBank) {
   const cliffLowerMat = new THREE.MeshStandardMaterial({
     map: cliffPair.map,
     normalMap: cliffPair.normalMap,
-    normalScale: new THREE.Vector2(1.1, 1.1),
-    color: new THREE.Color(cliffTint).multiplyScalar(0.78),
-    roughness: 0.82,
+    normalScale: new THREE.Vector2(1.15, 1.15),
+    color: new THREE.Color(cliffTint).multiplyScalar(0.76),
+    roughness: 0.84,
   });
   attachCliffWetnessShader(cliffLowerMat, { uTime: sharedTime, isVolcano: theme === 'volcano' });
   const cliffLower = new THREE.Mesh(
-    new THREE.BoxGeometry(halfW * 2 + 2.9, 0.95, halfD * 2 + 2.9),
+    buildOrganicIslandGeometry({
+      halfW,
+      halfD,
+      coastParams,
+      lobeDirs,
+      scaleFactor: 1.105,
+      depth: 0.85,
+      bevelThickness: 0.1,
+      bevelSize: 0.22,
+      segments: 84,
+      tileScale: 5.5,
+    }),
     cliffLowerMat,
   );
-  cliffLower.position.y = -0.96;
+  cliffLower.position.y = -1.42;
   group.add(cliffLower);
+
+  // Sloping Golden Sandy Beach / Pebble Shore Shelf around the curved coves & bays!
+  const beachTexName = theme === 'volcano' ? 'volcano_basalt' : theme === 'snow' ? 'snow_alpine' : 'cobble_path';
+  const beachPair = loadDedicatedPair(beachTexName, 1, 1);
+  const shoreMat = new THREE.MeshStandardMaterial({
+    map: beachPair.map,
+    normalMap: beachPair.normalMap,
+    normalScale: new THREE.Vector2(0.45, 0.45),
+    color: theme === 'volcano' ? '#78716c' : theme === 'snow' ? '#e2e8f0' : '#fde68a',
+    roughness: 0.76,
+  });
+  const shoreShelf = new THREE.Mesh(
+    buildOrganicIslandGeometry({
+      halfW,
+      halfD,
+      coastParams,
+      lobeDirs,
+      scaleFactor: 1.068,
+      depth: 0.42,
+      bevelThickness: 0.14,
+      bevelSize: 0.45,
+      segments: 88,
+      tileScale: 4.2,
+    }),
+    shoreMat,
+  );
+  shoreShelf.position.y = -0.92;
+  shoreShelf.receiveShadow = !isSoftwareGl;
+  group.add(shoreShelf);
 
   const cliffBaseMat = new THREE.MeshStandardMaterial({
     map: cliffPair.map,
@@ -290,14 +527,24 @@ export function buildZoneDiorama(zone, modelBank) {
   });
   attachCliffWetnessShader(cliffBaseMat, { uTime: sharedTime, isVolcano: theme === 'volcano' });
   const cliffBase = new THREE.Mesh(
-    new THREE.BoxGeometry(halfW * 2 + 2.0, 1.18, halfD * 2 + 2.0),
+    buildOrganicIslandGeometry({
+      halfW,
+      halfD,
+      coastParams,
+      lobeDirs,
+      scaleFactor: 1.022,
+      depth: 0.68,
+      bevelThickness: 0.09,
+      bevelSize: 0.18,
+      segments: 92,
+      tileScale: 4.8,
+    }),
     cliffBaseMat,
   );
-  cliffBase.position.y = -0.68;
+  cliffBase.position.y = -0.78;
   cliffBase.receiveShadow = !isSoftwareGl;
   group.add(cliffBase);
 
-  // Select Nano Banana PBR Ground Texture Pair per Biome
   const groundTexName =
     theme === 'volcano'
       ? 'volcano_basalt'
@@ -308,10 +555,7 @@ export function buildZoneDiorama(zone, modelBank) {
           : theme === 'forest'
             ? 'grass_grove'
             : 'grass_meadow';
-  const groundRx = Math.max(5, Math.round(halfW * 0.48));
-  const groundRz = Math.max(5, Math.round(halfD * 0.48));
-  const lawnPair = loadDedicatedPair(groundTexName, groundRx, groundRz);
-
+  const lawnPair = loadDedicatedPair(groundTexName, 1, 1);
   const groundTint =
     theme === 'tropical'
       ? '#c8f7b8'
@@ -333,30 +577,255 @@ export function buildZoneDiorama(zone, modelBank) {
     uTime: sharedTime,
     islandHalfW: halfW,
     islandHalfD: halfD,
-    dappleStrength: theme === 'volcano' ? 0.08 : 0.18,
+    dappleStrength: theme === 'volcano' ? 0.08 : 0.2,
   });
 
-  const lawn = new THREE.Mesh(new THREE.BoxGeometry(halfW * 2 + 0.85, 0.44, halfD * 2 + 0.85), lawnMat);
-  lawn.position.y = -0.22;
+  const lawn = new THREE.Mesh(
+    buildOrganicIslandGeometry({
+      halfW,
+      halfD,
+      coastParams,
+      lobeDirs,
+      scaleFactor: 1.0,
+      depth: 0.28,
+      bevelThickness: 0.06,
+      bevelSize: 0.14,
+      segments: 96,
+      tileScale: 4.4,
+    }),
+    lawnMat,
+  );
+  lawn.position.y = -0.28;
   lawn.receiveShadow = !isSoftwareGl;
   group.add(lawn);
 
-  // 3. Nano Banana Cobblestone Avenues with 3D Chiselled Stone Curbs & Central Monkeball Plaza!
+  // 2b. Elevated Walkable Cliff Terraces + 3D Stone Staircases!
+  const cobblePair = loadDedicatedPair('cobble_path', 1, 1);
+  const woodPair = loadDedicatedPair('wood_timber', 1, 1);
+
+  for (const t of terraces) {
+    const tPts = [];
+    const tSegs = 48;
+    for (let i = 0; i < tSegs; i++) {
+      const a = (i / tSegs) * Math.PI * 2;
+      const wob = 1.0 + 0.06 * Math.cos(3 * a + 0.7) + 0.04 * Math.sin(5 * a);
+      tPts.push(new THREE.Vector2(Math.cos(a) * t.rx * wob, -Math.sin(a) * t.rz * wob));
+    }
+    const tShape = new THREE.Shape(tPts);
+    tShape.closePath();
+
+    const rockWallGeo = new THREE.ExtrudeGeometry(tShape, {
+      depth: (t.h || 0.68) - 0.1,
+      bevelEnabled: true,
+      bevelSegments: 2,
+      steps: 1,
+      bevelSize: 0.16,
+      bevelThickness: 0.08,
+    });
+    rockWallGeo.rotateX(-Math.PI / 2);
+    applyWorldPlanarUVs(rockWallGeo, 3.8);
+    const tWall = new THREE.Mesh(rockWallGeo, cliffBaseMat);
+    tWall.position.set(t.x, -0.02, t.z);
+    tWall.castShadow = !isSoftwareGl;
+    tWall.receiveShadow = !isSoftwareGl;
+    tWall.userData.keepInBattle = true;
+    group.add(tWall);
+
+    const capGeo = new THREE.ExtrudeGeometry(tShape, {
+      depth: 0.12,
+      bevelEnabled: true,
+      bevelSegments: 1,
+      steps: 1,
+      bevelSize: 0.08,
+      bevelThickness: 0.04,
+    });
+    capGeo.rotateX(-Math.PI / 2);
+    applyWorldPlanarUVs(capGeo, 4.2);
+    const tCap = new THREE.Mesh(capGeo, lawnMat);
+    tCap.position.set(t.x, (t.h || 0.68) - 0.12, t.z);
+    tCap.receiveShadow = !isSoftwareGl;
+    tCap.userData.keepInBattle = true;
+    group.add(tCap);
+
+    // 4-step walkable 3D Stone Staircase on the south edge of the terrace!
+    const stepsCount = 5;
+    const stairStartZ = t.z + t.rz * 0.84;
+    const stairLen = 2.25;
+    const stepMat = new THREE.MeshStandardMaterial({
+      map: cobblePair.map,
+      normalMap: cobblePair.normalMap,
+      color: '#fef3c7',
+      roughness: 0.66,
+    });
+    for (let s = 0; s < stepsCount; s++) {
+      const frac = (s + 1) / stepsCount;
+      const stepH = (t.h || 0.68) * (1.0 - s / stepsCount);
+      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(3.1, stepH, stairLen / stepsCount + 0.14), stepMat);
+      stepMesh.position.set(t.x, stepH * 0.5, stairStartZ + (s + 0.5) * (stairLen / stepsCount));
+      stepMesh.receiveShadow = !isSoftwareGl;
+      stepMesh.userData.keepInBattle = true;
+      group.add(stepMesh);
+    }
+
+    // Add cliff-edge rim colliders around the terrace EXCEPT at the south staircase opening
+    const rimDots = 22;
+    for (let i = 0; i < rimDots; i++) {
+      const a = (i / rimDots) * Math.PI * 2;
+      const rx = t.x + Math.cos(a) * t.rx * 1.02;
+      const rz = t.z + Math.sin(a) * t.rz * 1.02;
+      if (Math.abs(rx - t.x) < 2.25 && rz > t.z + t.rz * 0.55) continue;
+      colliders.push({ x: rx, z: rz, r: 0.72 });
+    }
+  }
+
+  // 2c. Flowing Island Streams / Harbor Canals / Magma Rifts + Walkable Arched 3D Bridges & Piers!
+  const streamMat = createOceanMagmaShaderMaterial({
+    waterColor: theme === 'volcano' ? '#f97316' : theme === 'snow' ? '#2dd4bf' : '#38bdf8',
+    deepColor: theme === 'volcano' ? '#7c2d12' : '#0284c7',
+    skyColor: zone.skyColor || '#87dcff',
+    fogColor: zone.fogColor || '#9be4ff',
+    fogNear: 50,
+    fogFar: 110,
+    islandHalfW: 80,
+    islandHalfD: 80,
+    theme: theme === 'volcano' ? 'volcano' : 'tropical',
+  });
+  animated.push((t) => {
+    streamMat.uniforms.uTime.value = t * 1.35;
+  });
+
+  for (const ch of waterChannels) {
+    const dx = ch.x1 - ch.x0;
+    const dz = ch.z1 - ch.z0;
+    const len = Math.hypot(dx, dz);
+    const w = ch.width || 2.8;
+    const ang = Math.atan2(dx, dz);
+
+    const chGroup = new THREE.Group();
+    chGroup.position.set((ch.x0 + ch.x1) * 0.5, 0, (ch.z0 + ch.z1) * 0.5);
+    chGroup.rotation.y = ang;
+
+    // Stone/pebble banks flanking the flowing water ribbon
+    const bankGeo = new THREE.BoxGeometry(0.45, 0.14, len);
+    const bankL = new THREE.Mesh(bankGeo, shoreMat);
+    bankL.position.set(-w * 0.5 - 0.15, 0.045, 0);
+    const bankR = new THREE.Mesh(bankGeo, shoreMat);
+    bankR.position.set(w * 0.5 + 0.15, 0.045, 0);
+
+    const ribbonGeo = new THREE.PlaneGeometry(w, len, 8, 36);
+    ribbonGeo.rotateX(-Math.PI / 2);
+    const ribbon = new THREE.Mesh(ribbonGeo, streamMat);
+    ribbon.position.y = 0.056;
+
+    chGroup.add(bankL, bankR, ribbon);
+    chGroup.userData.keepInBattle = true;
+    group.add(chGroup);
+
+    // Block walking straight into deep water/magma EXCEPT across arched bridges!
+    const samples = Math.max(8, Math.floor(len / 1.9));
+    for (let s = 0; s <= samples; s++) {
+      const u = s / samples;
+      const sx = ch.x0 + dx * u;
+      const sz = ch.z0 + dz * u;
+      if (!isInsideCoast(sx, sz, 0.5)) continue;
+      const coveredByBridge = bridges.some((br) => Math.hypot(sx - br.x, sz - br.z) < (br.width || 3.4) * 0.72);
+      if (!coveredByBridge) {
+        colliders.push({ x: sx, z: sz, r: w * 0.44 });
+      }
+    }
+  }
+
+  // Walkable Arched 3D Bridges!
+  const bridgeTimberMat = new THREE.MeshStandardMaterial({
+    map: woodPair.map,
+    normalMap: woodPair.normalMap,
+    color: '#d97706',
+    roughness: 0.55,
+  });
+  const bridgeStoneMat = new THREE.MeshStandardMaterial({
+    map: cobblePair.map,
+    normalMap: cobblePair.normalMap,
+    color: theme === 'volcano' ? '#78716c' : '#e2e8f0',
+    roughness: 0.62,
+  });
+
+  for (const br of bridges) {
+    const bw = br.width || 3.4;
+    const bl = br.length || 5.2;
+    const isStone = br.style === 'stone';
+    const deckMat = isStone ? bridgeStoneMat : bridgeTimberMat;
+    const railMat = isStone ? cliffBaseMat : bridgeTimberMat;
+
+    const bg = new THREE.Group();
+    bg.position.set(br.x, 0, br.z);
+    bg.rotation.y = br.yaw || 0;
+
+    const planks = 9;
+    for (let i = 0; i < planks; i++) {
+      const u = (i + 0.5) / planks - 0.5; // -0.5..0.5
+      const lz = u * bl;
+      const archY = Math.cos(u * Math.PI) * 0.34;
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.14, bl / planks + 0.05), deckMat);
+      plank.position.set(0, archY, lz);
+      plank.rotation.x = Math.sin(u * Math.PI) * 0.16;
+      if (!isSoftwareGl) {
+        plank.castShadow = true;
+        plank.receiveShadow = true;
+      }
+      bg.add(plank);
+    }
+
+    // Side posts & arched handrails
+    for (const side of [-1, 1]) {
+      for (const u of [-0.46, 0, 0.46]) {
+        const archY = Math.cos(u * Math.PI) * 0.34;
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.72, 0.18), railMat);
+        post.position.set(side * (bw * 0.5 - 0.08), archY + 0.36, u * bl);
+        bg.add(post);
+      }
+      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, bl * 0.96), railMat);
+      rail.position.set(side * (bw * 0.5 - 0.08), 0.78, 0);
+      bg.add(rail);
+    }
+    bg.userData.keepInBattle = true;
+    group.add(bg);
+  }
+
+  // Coastal Wooden Boardwalk Piers jutting out into the bay!
+  for (const p of piers) {
+    const pw = p.width || 3.0;
+    const pl = p.length || 6.0;
+    const pg = new THREE.Group();
+    pg.position.set(p.x, 0, p.z);
+    pg.rotation.y = p.yaw || 0;
+
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(pw, 0.16, pl), bridgeTimberMat);
+    deck.position.y = 0.04;
+    deck.receiveShadow = !isSoftwareGl;
+    pg.add(deck);
+
+    for (const side of [-1, 1]) {
+      for (const uz of [-0.42, 0.0, 0.42]) {
+        const piling = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 1.45, 8), bridgeTimberMat);
+        piling.position.set(side * (pw * 0.46), -0.35, uz * pl);
+        pg.add(piling);
+      }
+    }
+    pg.userData.keepInBattle = true;
+    group.add(pg);
+  }
+
+  // 3. Winding Multi-Point Cobblestone Avenues + Town Plaza Mosaic!
   const curbMat = new THREE.MeshStandardMaterial({
     map: cliffPair.map,
     normalMap: cliffPair.normalMap,
     color: theme === 'volcano' ? '#78716c' : '#fde68a',
     roughness: 0.65,
   });
-
   const pathTint =
-    theme === 'volcano'
-      ? '#a8a29e'
-      : theme === 'snow'
-        ? '#e2e8f0'
-        : '#fff7ed';
+    theme === 'volcano' ? '#a8a29e' : theme === 'snow' ? '#e2e8f0' : '#fff7ed';
 
-  const addPathSegment = (x0, z0, x1, z1, width = 2.65) => {
+  const addPathSegment = (x0, z0, x1, z1, width = 2.55) => {
     const dx = x1 - x0;
     const dz = z1 - z0;
     const len = Math.hypot(dx, dz);
@@ -366,7 +835,7 @@ export function buildZoneDiorama(zone, modelBank) {
     const segMat = new THREE.MeshStandardMaterial({
       map: pair.map,
       normalMap: pair.normalMap,
-      normalScale: new THREE.Vector2(1.1, 1.1),
+      normalScale: new THREE.Vector2(1.08, 1.08),
       color: pathTint,
       roughness: 0.72,
     });
@@ -374,71 +843,58 @@ export function buildZoneDiorama(zone, modelBank) {
     segGroup.position.set((x0 + x1) * 0.5, 0, (z0 + z1) * 0.5);
     segGroup.rotation.y = Math.atan2(dx, dz);
 
-    const seg = new THREE.Mesh(new THREE.BoxGeometry(width, 0.065, len + width * 0.42), segMat);
-    seg.position.y = 0.018;
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(width, 0.055, len + width * 0.38), segMat);
+    seg.position.y = 0.016;
     seg.receiveShadow = !isSoftwareGl;
     segGroup.add(seg);
 
-    // Subtle 3D stone curb trim along both edges of the cobblestone road
-    const curbGeo = new THREE.BoxGeometry(0.16, 0.085, len + width * 0.25);
+    const curbGeo = new THREE.BoxGeometry(0.14, 0.075, len + width * 0.22);
     const curbL = new THREE.Mesh(curbGeo, curbMat);
-    curbL.position.set(-width * 0.5 - 0.04, 0.025, 0);
+    curbL.position.set(-width * 0.5 - 0.04, 0.022, 0);
     const curbR = new THREE.Mesh(curbGeo, curbMat);
-    curbR.position.set(width * 0.5 + 0.04, 0.025, 0);
+    curbR.position.set(width * 0.5 + 0.04, 0.022, 0);
     segGroup.add(curbL, curbR);
-
+    segGroup.userData.keepInBattle = true;
     group.add(segGroup);
   };
 
-  // Central town plaza with Nano Banana cobble_path + golden Monkeball mosaic
-  const plazaPair = loadDedicatedPair('cobble_path', 3, 3);
-  const plazaMat = new THREE.MeshStandardMaterial({
-    map: plazaPair.map,
-    normalMap: plazaPair.normalMap,
-    normalScale: new THREE.Vector2(1.05, 1.05),
-    color: pathTint,
-    roughness: 0.68,
-  });
-  const plaza = new THREE.Mesh(new THREE.CylinderGeometry(4.85, 5.1, 0.07, 40), plazaMat);
-  plaza.position.set(0, 0.022, 2.0);
-  plaza.receiveShadow = !isSoftwareGl;
-  group.add(plaza);
-
-  const plazaRim = new THREE.Mesh(
-    new THREE.TorusGeometry(4.82, 0.14, 10, 48),
-    new THREE.MeshStandardMaterial({ color: '#fde68a', roughness: 0.38, metalness: 0.18 }),
-  );
-  plazaRim.rotation.x = Math.PI / 2;
-  plazaRim.position.set(0, 0.06, 2.0);
-  group.add(plazaRim);
-
-  const medallionOuter = new THREE.Mesh(
-    new THREE.CylinderGeometry(1.75, 1.75, 0.08, 28),
-    new THREE.MeshStandardMaterial({ color: '#ef4444', roughness: 0.38, metalness: 0.12 }),
-  );
-  medallionOuter.position.set(0, 0.03, 2.0);
-  const medallionBand = new THREE.Mesh(
-    new THREE.BoxGeometry(3.52, 0.085, 0.26),
-    new THREE.MeshStandardMaterial({ color: '#1e293b', roughness: 0.4 }),
-  );
-  medallionBand.position.set(0, 0.032, 2.0);
-  const medallionCenter = new THREE.Mesh(
-    new THREE.CylinderGeometry(0.64, 0.64, 0.095, 24),
-    new THREE.MeshStandardMaterial({ color: '#fef9c3', roughness: 0.28, metalness: 0.15 }),
-  );
-  medallionCenter.position.set(0, 0.036, 2.0);
-  group.add(medallionOuter, medallionBand, medallionCenter);
-
-  for (const h of zone.houses || []) {
-    addPathSegment(0, 2.0, h.x, h.z + 2.4, 2.6);
-  }
-  for (const gw of zone.gateways || []) {
-    addPathSegment(0, 2.0, gw.x * 0.93, gw.z * 0.93, 2.75);
+  for (const poly of roads) {
+    for (let i = 0; i < poly.length - 1; i++) {
+      addPathSegment(poly[i][0], poly[i][1], poly[i + 1][0], poly[i + 1][1], 2.5);
+    }
   }
 
-  // Warm Toy Streetlamps + Real Dynamic PointLights!
+  // Central Town Plaza Stone Circle
+  const plazaX = (zone.landmarks && zone.landmarks[0]) ? zone.landmarks[0].x : 0;
+  const plazaZ = (zone.landmarks && zone.landmarks[0]) ? zone.landmarks[0].z : 2.0;
+  if (Math.hypot(plazaX, plazaZ) < 12) {
+    const plazaPair = loadDedicatedPair('cobble_path', 3, 3);
+    const plazaMat = new THREE.MeshStandardMaterial({
+      map: plazaPair.map,
+      normalMap: plazaPair.normalMap,
+      normalScale: new THREE.Vector2(1.05, 1.05),
+      color: pathTint,
+      roughness: 0.68,
+    });
+    const plaza = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.85, 0.065, 40), plazaMat);
+    plaza.position.set(plazaX, 0.02, plazaZ);
+    plaza.receiveShadow = !isSoftwareGl;
+    plaza.userData.keepInBattle = true;
+    group.add(plaza);
+
+    const plazaRim = new THREE.Mesh(
+      new THREE.TorusGeometry(4.62, 0.13, 10, 48),
+      new THREE.MeshStandardMaterial({ color: '#fde68a', roughness: 0.38, metalness: 0.18 }),
+    );
+    plazaRim.rotation.x = Math.PI / 2;
+    plazaRim.position.set(plazaX, 0.055, plazaZ);
+    plazaRim.userData.keepInBattle = true;
+    group.add(plazaRim);
+  }
+
+  // Warm Streetlamps + PointLights
   let pointLightBudget = isSoftwareGl ? 0 : 4;
-  const addWarmPointLight = (x, y, z, colorHex, intensity = 2.8, dist = 11.5) => {
+  const addWarmPointLight = (x, y, z, colorHex, intensity = 2.8, dist = 12.0) => {
     if (pointLightBudget <= 0) return;
     pointLightBudget -= 1;
     const pl = new THREE.PointLight(colorHex, intensity, dist, 1.7);
@@ -447,8 +903,9 @@ export function buildZoneDiorama(zone, modelBank) {
   };
 
   const addStreetLamp = (lx, lz) => {
+    const ly = getHeightAt(lx, lz);
     const lg = new THREE.Group();
-    lg.position.set(lx, 0, lz);
+    lg.position.set(lx, ly, lz);
     const poleMat = new THREE.MeshStandardMaterial({
       color: theme === 'snow' || theme === 'harbor' ? '#334155' : '#452711',
       roughness: 0.4,
@@ -466,125 +923,104 @@ export function buildZoneDiorama(zone, modelBank) {
       new THREE.MeshStandardMaterial({
         color: '#fef9c3',
         emissive: '#f59e0b',
-        emissiveIntensity: 1.45, // triggers subtle UnrealBloomPass halo!
+        emissiveIntensity: 1.45,
         roughness: 0.12,
       }),
     );
     bulb.position.y = 2.5;
     lg.add(base, pole, cap, bulb);
     group.add(lg);
-    addWarmPointLight(lx, 2.6, lz, 0xffd166, 2.6, 11.0);
+    addWarmPointLight(lx, ly + 2.6, lz, 0xffd166, 2.6, 11.5);
     colliders.push({ x: lx, z: lz, r: 0.42 });
   };
-  addStreetLamp(-4.9, 4.4);
-  addStreetLamp(4.9, 4.4);
+  addStreetLamp(plazaX - 4.8, plazaZ + 2.4);
+  addStreetLamp(plazaX + 4.8, plazaZ + 2.4);
 
-  // 3b. Handcrafted Timber Perimeter Fences (`wood_timber` Nano Banana PBR!)
-  const woodPair = loadDedicatedPair('wood_timber', 2, 1);
-  const fenceColor =
-    theme === 'volcano'
-      ? '#78716c'
-      : theme === 'harbor'
-        ? '#f8fafc'
-        : theme === 'snow'
-          ? '#e2e8f0'
-          : '#fde68a';
-  const fenceAccent = theme === 'volcano' ? '#f97316' : '#b45309';
-  const fenceMat = new THREE.MeshStandardMaterial({
-    map: woodPair.map,
-    normalMap: woodPair.normalMap,
-    normalScale: new THREE.Vector2(0.75, 0.75),
-    color: fenceColor,
-    roughness: 0.58,
-  });
-  const fenceCapMat = new THREE.MeshStandardMaterial({ color: fenceAccent, roughness: 0.45, metalness: 0.1 });
-
-  const nearAnyGateway = (x, z) =>
-    (zone.gateways || []).some((gw) => Math.hypot(gw.x - x, gw.z - z) < 4.5);
-
-  const addFenceSpan = (x0, z0, x1, z1) => {
-    const mx = (x0 + x1) * 0.5;
-    const mz = (z0 + z1) * 0.5;
-    if (nearAnyGateway(mx, mz) || nearAnyGateway(x0, z0) || nearAnyGateway(x1, z1)) return;
-    const fg = new THREE.Group();
-    const postGeo = new THREE.BoxGeometry(0.22, 0.74, 0.22);
-    const pA = new THREE.Mesh(postGeo, fenceMat);
-    pA.position.set(x0, 0.37, z0);
-    if (!isSoftwareGl) pA.castShadow = true;
-    const capA = new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), fenceCapMat);
-    capA.position.set(x0, 0.78, z0);
-    fg.add(pA, capA);
-
-    const dx = x1 - x0;
-    const dz = z1 - z0;
-    const len = Math.hypot(dx, dz);
-    const ang = Math.atan2(dx, dz);
-    for (const ry of [0.26, 0.53]) {
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.11, len), fenceMat);
-      rail.position.set(mx, ry, mz);
-      rail.rotation.y = ang;
-      fg.add(rail);
+  // 4. TRELLIS.2-4B `.glb` Landmarks (`env_plaza_fountain`, `env_harbor_lighthouse`, `env_onsen_gazebo`, `env_volcano_obelisk`)!
+  for (const lm of zone.landmarks || []) {
+    const ly = getHeightAt(lm.x, lm.z);
+    const actor = modelBank.spawnActor({
+      glbUrl: lm.glb,
+      scale: lm.scale || 3.2,
+      primaryColor: '#38bdf8',
+      secondaryColor: '#fde047',
+      shadowRadius: (lm.scale || 3.2) * 0.38,
+      standInKind: 'prop',
+    });
+    actor.root.position.set(lm.x, ly, lm.z);
+    group.add(actor.root);
+    loadPromises.push(actor.readyPromise);
+    if (lm.colliderR) {
+      colliders.push({ x: lm.x, z: lm.z, r: lm.colliderR });
     }
-    group.add(fg);
-  };
-
-  const fStep = 3.2;
-  const fxEdge = halfW - 0.55;
-  const fzEdge = halfD - 0.55;
-  for (let x = -fxEdge + 1.2; x < fxEdge - 1.2; x += fStep) {
-    const nx = Math.min(fxEdge - 1.2, x + fStep);
-    addFenceSpan(x, -fzEdge, nx, -fzEdge);
-    addFenceSpan(x, fzEdge, nx, fzEdge);
-  }
-  for (let z = -fzEdge + 1.2; z < fzEdge - 1.2; z += fStep) {
-    const nz = Math.min(fzEdge - 1.2, z + fStep);
-    addFenceSpan(-fxEdge, z, -fxEdge, nz);
-    addFenceSpan(fxEdge, z, fxEdge, nz);
   }
 
-  // 4. Custom GLSL Wind-Swaying Multi-Blade 3D Grass Clumps (520 tufts = 2,600 arched blades!)
-  const grassCount = theme === 'harbor' ? 180 : theme === 'volcano' ? 160 : 520;
+  // 5. Dense Wind-Swaying 7-Blade 3D Grass Clumps (`1,180` tufts = `8,260` blades!) + Tall-Grass Wild Meadows!
+  const baseGrassCount = theme === 'harbor' ? 540 : theme === 'volcano' ? 360 : 1180;
+  const grassCount = isSoftwareGl ? Math.round(baseGrassCount * 0.44) : baseGrassCount;
   const clumpGeo = getCurvedGrassClumpGeometry();
   const grassMat = new THREE.MeshStandardMaterial({
-    roughness: 0.46,
+    roughness: 0.44,
     metalness: 0.02,
     side: THREE.DoubleSide,
   });
   attachWindGrassShader(grassMat, {
     uTime: sharedTime,
     uHeroPos: sharedHeroPos,
-    windStrength: theme === 'snow' ? 0.15 : 0.24,
+    windStrength: theme === 'snow' ? 0.16 : 0.26,
   });
 
   const grassInst = new THREE.InstancedMesh(clumpGeo, grassMat, grassCount);
   const grassPalette =
     theme === 'snow'
-      ? ['#bae6fd', '#e0f2fe', '#93c5fd']
+      ? ['#bae6fd', '#e0f2fe', '#7dd3fc', '#a5f3fc']
       : theme === 'volcano'
-        ? ['#fb923c', '#f97316', '#facc15']
+        ? ['#fb923c', '#f97316', '#facc15', '#ea580c']
         : theme === 'forest'
-          ? ['#4ade80', '#22c55e', '#84cc16', '#a3e635']
-          : ['#22c55e', '#4ade80', '#16a34a', '#86efac'];
+          ? ['#22c55e', '#16a34a', '#4ade80', '#84cc16', '#a3e635']
+          : ['#16a34a', '#22c55e', '#4ade80', '#15803d', '#86efac'];
 
   const dummy = new THREE.Object3D();
   const gCol = new THREE.Color();
   let placedGrass = 0;
-  for (let i = 0; i < grassCount * 3 && placedGrass < grassCount; i++) {
-    const gx = (rand() * 2 - 1) * (halfW - 1.6);
-    const gz = (rand() * 2 - 1) * (halfD - 1.6);
-    if (Math.hypot(gx, gz - 2.0) < 5.3) continue;
-    // Keep cobblestones clean
-    let onRoad = false;
-    for (const h of zone.houses || []) {
-      const t = Math.max(0, Math.min(1, ((gx * h.x + (gz - 2) * (h.z + 0.4)) / (h.x * h.x + (h.z + 0.4) * (h.z + 0.4) + 0.01))));
-      if (Math.hypot(gx - h.x * t, gz - (2 + (h.z + 0.4) * t)) < 1.6) onRoad = true;
-    }
-    if (onRoad) continue;
 
-    dummy.position.set(gx, 0, gz);
+  // 5a. First seed dense, waist-high rustling Tall-Grass Habitat Patches (`zone.tallGrassPatches`)!
+  const patches = zone.tallGrassPatches || [];
+  const tallQuota = Math.min(Math.floor(grassCount * 0.48), patches.length * 145);
+  for (let i = 0; i < tallQuota * 3 && placedGrass < tallQuota && patches.length > 0; i++) {
+    const patch = patches[i % patches.length];
+    const r = Math.sqrt(rand());
+    const a = rand() * Math.PI * 2;
+    const gx = patch.x + Math.cos(a) * patch.rx * r;
+    const gz = patch.z + Math.sin(a) * patch.rz * r;
+    if (!isInsideCoast(gx, gz, 1.5)) continue;
+    if (isNearRoadOrRiver(gx, gz, 1.45)) continue;
+
+    const gy = getHeightAt(gx, gz);
+    dummy.position.set(gx, gy, gz);
     dummy.rotation.set(0, rand() * Math.PI * 2, 0);
-    const s = 0.78 + rand() * 0.78;
-    dummy.scale.set(s, s * (0.85 + rand() * 0.4), s);
+    const s = 1.15 + rand() * 0.72;
+    dummy.scale.set(s, s * (1.28 + rand() * 0.48), s);
+    dummy.updateMatrix();
+    grassInst.setMatrixAt(placedGrass, dummy.matrix);
+    gCol.set(grassPalette[placedGrass % grassPalette.length]).multiplyScalar(0.92);
+    grassInst.setColorAt(placedGrass, gCol);
+    placedGrass++;
+  }
+
+  // 5b. Fill all curved meadows, coves & elevated terraces with rich lawn tufts!
+  for (let i = 0; i < grassCount * 4 && placedGrass < grassCount; i++) {
+    const gx = (rand() * 2 - 1) * (halfW - 1.2);
+    const gz = (rand() * 2 - 1) * (halfD - 1.2);
+    if (!isInsideCoast(gx, gz, 1.4)) continue;
+    if (Math.hypot(gx - plazaX, gz - plazaZ) < 5.0) continue;
+    if (isNearRoadOrRiver(gx, gz, 1.55)) continue;
+
+    const gy = getHeightAt(gx, gz);
+    dummy.position.set(gx, gy, gz);
+    dummy.rotation.set(0, rand() * Math.PI * 2, 0);
+    const s = 0.82 + rand() * 0.75;
+    dummy.scale.set(s, s * (0.9 + rand() * 0.42), s);
     dummy.updateMatrix();
     grassInst.setMatrixAt(placedGrass, dummy.matrix);
     gCol.set(grassPalette[placedGrass % grassPalette.length]);
@@ -595,9 +1031,39 @@ export function buildZoneDiorama(zone, modelBank) {
   if (grassInst.instanceColor) grassInst.instanceColor.needsUpdate = true;
   group.add(grassInst);
 
-  // Glossy Wildflower Blossoms / Snow-Crystals / Ember-Gems
-  const flowerCount = 110;
-  const flowerGeo = new THREE.CylinderGeometry(0.21, 0.07, 0.11, 6);
+  // 5c. Woodland Fern Rosettes (`InstancedMesh`) + Wildflower Blossoms!
+  if (theme !== 'volcano') {
+    const fernCount = theme === 'forest' ? 130 : theme === 'tropical' ? 110 : 65;
+    const fernGeo = getFernRosetteGeometry();
+    const fernMat = attachFoliageSubsurfaceShader(
+      new THREE.MeshStandardMaterial({ roughness: 0.42, side: THREE.DoubleSide }),
+      { uTime: sharedTime, windAmp: 0.055, sssColor: '#bef264' },
+    );
+    const fernInst = new THREE.InstancedMesh(fernGeo, fernMat, fernCount);
+    const fernColors = theme === 'snow' ? ['#0f766e', '#14b8a6', '#99f6e4'] : ['#15803d', '#16a34a', '#22c55e', '#4d7c0f'];
+    let placedFerns = 0;
+    for (let i = 0; i < fernCount * 4 && placedFerns < fernCount; i++) {
+      const fx = (rand() * 2 - 1) * (halfW - 1.8);
+      const fz = (rand() * 2 - 1) * (halfD - 1.8);
+      if (!isClearSpot(fx, fz, 1.4)) continue;
+      const fy = getHeightAt(fx, fz);
+      dummy.position.set(fx, fy, fz);
+      dummy.rotation.set(0, rand() * Math.PI * 2, 0);
+      const s = 0.85 + rand() * 0.75;
+      dummy.scale.set(s, s, s);
+      dummy.updateMatrix();
+      fernInst.setMatrixAt(placedFerns, dummy.matrix);
+      gCol.set(fernColors[placedFerns % fernColors.length]);
+      fernInst.setColorAt(placedFerns, gCol);
+      placedFerns++;
+    }
+    fernInst.count = placedFerns;
+    if (fernInst.instanceColor) fernInst.instanceColor.needsUpdate = true;
+    group.add(fernInst);
+  }
+
+  const flowerCount = 185;
+  const flowerGeo = new THREE.CylinderGeometry(0.22, 0.07, 0.12, 6);
   flowerGeo.translate(0, 0.09, 0);
   const flowerMat = new THREE.MeshStandardMaterial({ roughness: 0.28 });
   const flowerInst = new THREE.InstancedMesh(flowerGeo, flowerMat, flowerCount);
@@ -606,16 +1072,17 @@ export function buildZoneDiorama(zone, modelBank) {
       ? ['#fb923c', '#facc15', '#ef4444']
       : theme === 'snow'
         ? ['#e0f2fe', '#7dd3fc', '#c4b5fd']
-        : ['#f472b6', '#facc15', '#38bdf8', '#fb7185', '#ffffff'];
+        : ['#f472b6', '#facc15', '#38bdf8', '#fb7185', '#ffffff', '#c084fc'];
   const fColor = new THREE.Color();
   let placedFlowers = 0;
-  for (let i = 0; i < flowerCount * 3 && placedFlowers < flowerCount; i++) {
-    const fx = (rand() * 2 - 1) * (halfW - 2.0);
-    const fz = (rand() * 2 - 1) * (halfD - 2.0);
-    if (!isClearSpot(fx, fz, 1.8)) continue;
-    dummy.position.set(fx, 0.015, fz);
+  for (let i = 0; i < flowerCount * 4 && placedFlowers < flowerCount; i++) {
+    const fx = (rand() * 2 - 1) * (halfW - 1.8);
+    const fz = (rand() * 2 - 1) * (halfD - 1.8);
+    if (!isClearSpot(fx, fz, 1.5)) continue;
+    const fy = getHeightAt(fx, fz);
+    dummy.position.set(fx, fy + 0.015, fz);
     dummy.rotation.set(0, rand() * Math.PI * 2, 0);
-    const s = 0.8 + rand() * 0.65;
+    const s = 0.82 + rand() * 0.7;
     dummy.scale.set(s, s, s);
     dummy.updateMatrix();
     flowerInst.setMatrixAt(placedFlowers, dummy.matrix);
@@ -627,7 +1094,7 @@ export function buildZoneDiorama(zone, modelBank) {
   if (flowerInst.instanceColor) flowerInst.instanceColor.needsUpdate = true;
   group.add(flowerInst);
 
-  // 4b. Rich Environment Scenery: Mossy 3D Boulders, Flowering Bushes, Wooden Benches & Crates!
+  // 6. Rich TRELLIS.2 3D `.glb` Hero Trees, Tropical Flora Clusters & Normal-Mapped Sculpted Grove Trees!
   const rockMat = new THREE.MeshStandardMaterial({
     map: cliffPair.map,
     normalMap: cliffPair.normalMap,
@@ -636,245 +1103,247 @@ export function buildZoneDiorama(zone, modelBank) {
     roughness: 0.78,
   });
   attachCliffWetnessShader(rockMat, { uTime: sharedTime, isVolcano: theme === 'volcano' });
-  const bushMat = new THREE.MeshStandardMaterial({
-    color: theme === 'snow' ? '#0f766e' : theme === 'forest' ? '#15803d' : '#16a34a',
-    roughness: 0.48,
-  });
-  attachFoliageSubsurfaceShader(bushMat, { uTime: sharedTime, windAmp: 0.045 });
 
-  // Shared wind-swaying + subsurface-translucency canopy foliage materials for island trees
-  const palmFrondMat = attachFoliageSubsurfaceShader(
-    new THREE.MeshStandardMaterial({ color: '#22c55e', roughness: 0.36 }),
-    { uTime: sharedTime, windAmp: 0.085, sssColor: '#bef264' },
-  );
-  const pineBoughMat = attachFoliageSubsurfaceShader(
-    new THREE.MeshStandardMaterial({ color: '#0f766e', roughness: 0.48 }),
-    { uTime: sharedTime, windAmp: 0.04, sssColor: '#7dd3fc' },
-  );
-  const groveGreenMat = attachFoliageSubsurfaceShader(
-    new THREE.MeshStandardMaterial({ color: '#22c55e', roughness: 0.38 }),
+  const foliageNormalPair = loadDedicatedPair('grass_grove', 2, 2);
+  const leafCrownGreenMat = attachFoliageSubsurfaceShader(
+    new THREE.MeshStandardMaterial({
+      normalMap: foliageNormalPair.normalMap,
+      normalScale: new THREE.Vector2(0.85, 0.85),
+      color: '#16a34a',
+      roughness: 0.42,
+    }),
     { uTime: sharedTime, windAmp: 0.065, sssColor: '#bef264' },
   );
-  const groveGoldMat = attachFoliageSubsurfaceShader(
-    new THREE.MeshStandardMaterial({ color: '#f59e0b', roughness: 0.36 }),
-    { uTime: sharedTime, windAmp: 0.065, sssColor: '#fde047' },
+  const leafCrownLushMat = attachFoliageSubsurfaceShader(
+    new THREE.MeshStandardMaterial({
+      normalMap: foliageNormalPair.normalMap,
+      normalScale: new THREE.Vector2(0.85, 0.85),
+      color: theme === 'forest' ? '#eab308' : '#22c55e',
+      roughness: 0.4,
+    }),
+    { uTime: sharedTime, windAmp: 0.075, sssColor: '#fde047' },
+  );
+  const pineBoughMat = attachFoliageSubsurfaceShader(
+    new THREE.MeshStandardMaterial({
+      normalMap: foliageNormalPair.normalMap,
+      normalScale: new THREE.Vector2(0.7, 0.7),
+      color: '#0f766e',
+      roughness: 0.48,
+    }),
+    { uTime: sharedTime, windAmp: 0.045, sssColor: '#7dd3fc' },
   );
 
-  const addBoulderCluster = (bx, bz, scale = 1.0) => {
-    const bg = new THREE.Group();
-    bg.position.set(bx, 0, bz);
-    const mainRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.68 * scale, 1), rockMat);
-    mainRock.scale.set(1.18, 0.76, 0.96);
-    mainRock.position.y = 0.34 * scale;
-    if (!isSoftwareGl) {
-      mainRock.castShadow = true;
-      mainRock.receiveShadow = true;
-    }
-    const subRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.42 * scale, 1), rockMat);
-    subRock.position.set(0.52 * scale, 0.22 * scale, 0.24 * scale);
-    bg.add(mainRock, subRock);
+  // Spawn TRELLIS.2 `.glb` Hero Trees & Botanical Clusters around the island!
+  const treeGlbPool =
+    theme === 'tropical'
+      ? [
+          { glb: 'assets/models/env_palm_tree.glb', scale: 3.85, r: 0.85 },
+          { glb: 'assets/models/env_palm_tree.glb', scale: 3.35, r: 0.8 },
+          { glb: 'assets/models/env_canopy_oak.glb', scale: 3.6, r: 0.95 },
+          { glb: 'assets/models/env_tropical_flora.glb', scale: 1.95, r: 0.65 },
+        ]
+      : theme === 'forest'
+        ? [
+            { glb: 'assets/models/env_canopy_oak.glb', scale: 4.1, r: 1.05 },
+            { glb: 'assets/models/env_canopy_oak.glb', scale: 3.55, r: 0.92 },
+            { glb: 'assets/models/env_tropical_flora.glb', scale: 2.1, r: 0.68 },
+          ]
+        : theme === 'snow'
+          ? [
+              { glb: 'assets/models/env_alpine_pine.glb', scale: 4.0, r: 0.95 },
+              { glb: 'assets/models/env_alpine_pine.glb', scale: 3.4, r: 0.85 },
+            ]
+          : theme === 'harbor'
+            ? [
+                { glb: 'assets/models/env_palm_tree.glb', scale: 3.5, r: 0.8 },
+                { glb: 'assets/models/env_alpine_pine.glb', scale: 3.4, r: 0.85 },
+                { glb: 'assets/models/env_tropical_flora.glb', scale: 1.85, r: 0.6 },
+              ]
+            : [
+                { glb: 'assets/models/env_volcano_obelisk.glb', scale: 2.65, r: 0.85 },
+              ];
 
-    if (theme !== 'volcano') {
-      const shrub = new THREE.Mesh(new THREE.SphereGeometry(0.42 * scale, 12, 10), bushMat);
-      shrub.scale.set(1.2, 0.78, 1.1);
-      shrub.position.set(-0.42 * scale, 0.28 * scale, 0.28 * scale);
-      bg.add(shrub);
+  const placedTreeCoords = [];
+  const canPlaceTree = (tx, tz, minSpacing = 3.6) => {
+    if (!isClearSpot(tx, tz, 2.4)) return false;
+    for (const [ox, oz] of placedTreeCoords) {
+      if (Math.hypot(tx - ox, tz - oz) < minSpacing) return false;
     }
-    bg.rotation.y = rand() * Math.PI * 2;
-    group.add(bg);
-    colliders.push({ x: bx, z: bz, r: 0.75 * scale });
+    return true;
   };
 
-  for (let i = 0; i < 10; i++) {
-    const rx = (rand() * 2 - 1) * (halfW - 2.6);
-    const rz = (rand() * 2 - 1) * (halfD - 2.6);
-    if (isClearSpot(rx, rz, 3.2)) {
-      addBoulderCluster(rx, rz, 0.8 + rand() * 0.45);
-    }
+  const spawnTrellisTree = (tx, tz, spec) => {
+    const ty = getHeightAt(tx, tz);
+    const actor = modelBank.spawnActor({
+      glbUrl: spec.glb,
+      scale: spec.scale * (0.9 + rand() * 0.24),
+      primaryColor: '#22c55e',
+      secondaryColor: '#92400e',
+      shadowRadius: spec.r * 1.15,
+      standInKind: 'prop',
+    });
+    actor.root.position.set(tx, ty, tz);
+    actor.animRoot.rotation.y = rand() * Math.PI * 2;
+    group.add(actor.root);
+    loadPromises.push(actor.readyPromise);
+    colliders.push({ x: tx, z: tz, r: spec.r });
+    placedTreeCoords.push([tx, tz]);
+  };
+
+  // Place 16 TRELLIS.2 3D `.glb` trees & tropical flora clusters along scenic bays, rivers, and groves!
+  const targetGlbCount = theme === 'volcano' ? 7 : 17;
+  for (let attempt = 0; attempt < 160 && placedTreeCoords.length < targetGlbCount; attempt++) {
+    const theta = rand() * Math.PI * 2;
+    const radialBias = 0.45 + 0.5 * Math.sqrt(rand());
+    const rCoast = computeCoastRadiusNorm(theta, coastParams, lobeDirs);
+    const tx = Math.cos(theta) * (halfW - 2.6) * rCoast * radialBias;
+    const tz = Math.sin(theta) * (halfD - 2.6) * rCoast * radialBias;
+    if (!canPlaceTree(tx, tz, 3.7)) continue;
+    const spec = treeGlbPool[placedTreeCoords.length % treeGlbPool.length];
+    spawnTrellisTree(tx, tz, spec);
   }
 
-  // Cozy Wooden Park Benches flanking the Town Plaza (`wood_timber` PBR!)
-  const benchTimberMat = new THREE.MeshStandardMaterial({
-    map: woodPair.map,
-    normalMap: woodPair.normalMap,
-    color: '#d97706',
-    roughness: 0.56,
-  });
-  const addParkBench = (bx, bz, rotY) => {
-    if (!isClearSpot(bx, bz, 1.2) && Math.hypot(bx, bz - 2.0) < 4.5) return;
-    const bg = new THREE.Group();
-    bg.position.set(bx, 0, bz);
-    bg.rotation.y = rotY;
-    const seat = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.1, 0.52), benchTimberMat);
-    seat.position.y = 0.42;
-    const back = new THREE.Mesh(new THREE.BoxGeometry(1.55, 0.42, 0.09), benchTimberMat);
-    back.position.set(0, 0.68, -0.22);
-    back.rotation.x = -0.14;
-    const legGeo = new THREE.BoxGeometry(0.12, 0.42, 0.48);
-    const legMat = new THREE.MeshStandardMaterial({ color: '#334155', roughness: 0.45, metalness: 0.35 });
-    const legL = new THREE.Mesh(legGeo, legMat);
-    legL.position.set(-0.62, 0.21, 0);
-    const legR = new THREE.Mesh(legGeo, legMat);
-    legR.position.set(0.62, 0.21, 0);
-    if (!isSoftwareGl) seat.castShadow = true;
-    bg.add(seat, back, legL, legR);
-    group.add(bg);
-    colliders.push({ x: bx, z: bz, r: 0.65 });
-  };
-  addParkBench(-5.4, 2.0, Math.PI * 0.5);
-  addParkBench(5.4, 2.0, -Math.PI * 0.5);
-
-  // 5. Sculpted Multi-Part Biome Trees & Shoreline Landmarks
-  const addToyTree = (tx, tz) => {
+  // Complementary Multi-Limb Sculpted Botanical Trees (zero plastic spheres — uses faceted normal-mapped boughs & roots!)
+  const addComplexGroveTree = (tx, tz) => {
+    const ty = getHeightAt(tx, tz);
     const tg = new THREE.Group();
-    tg.position.set(tx, 0, tz);
+    tg.position.set(tx, ty, tz);
 
-    if (theme === 'tropical') {
-      const barkMat = new THREE.MeshStandardMaterial({
-        map: woodPair.map,
-        normalMap: woodPair.normalMap,
-        color: '#b45309',
-        roughness: 0.65,
-      });
-      const leanDir = rand() * Math.PI * 2;
-      let px = 0;
-      let pz = 0;
-      for (let seg = 0; seg < 5; seg++) {
-        const segMesh = new THREE.Mesh(
-          new THREE.CylinderGeometry(0.24 - seg * 0.022, 0.28 - seg * 0.02, 0.56, 10),
-          barkMat,
-        );
-        px += Math.cos(leanDir) * 0.09 * (seg + 1) * 0.35;
-        pz += Math.sin(leanDir) * 0.09 * (seg + 1) * 0.35;
-        segMesh.position.set(px, 0.28 + seg * 0.48, pz);
-        segMesh.rotation.z = -Math.cos(leanDir) * 0.08 * seg;
-        segMesh.rotation.x = Math.sin(leanDir) * 0.08 * seg;
-        if (!isSoftwareGl) segMesh.castShadow = true;
-        tg.add(segMesh);
-      }
-      const topY = 2.65;
-      for (let f = 0; f < 5; f++) {
-        const ang = (f / 5) * Math.PI * 2 + leanDir;
-        const frond = new THREE.Mesh(new THREE.SphereGeometry(0.75, 12, 10), palmFrondMat);
-        frond.scale.set(1.55, 0.22, 0.55);
-        frond.position.set(px + Math.cos(ang) * 0.82, topY - 0.08, pz + Math.sin(ang) * 0.82);
-        frond.rotation.y = -ang;
-        frond.rotation.z = -0.38;
-        if (!isSoftwareGl) frond.castShadow = true;
-        tg.add(frond);
-      }
-      const cocoMat = new THREE.MeshStandardMaterial({ color: '#78350f', roughness: 0.45 });
-      for (let cIdx = 0; cIdx < 3; cIdx++) {
-        const ca = (cIdx / 3) * Math.PI * 2;
-        const coco = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), cocoMat);
-        coco.position.set(px + Math.cos(ca) * 0.26, topY - 0.24, pz + Math.sin(ca) * 0.26);
-        tg.add(coco);
-      }
-    } else if (theme === 'snow') {
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.22, 0.34, 1.1, 10),
-        new THREE.MeshStandardMaterial({ map: woodPair.map, color: '#78350f', roughness: 0.65 }),
-      );
-      trunk.position.y = 0.55;
-      tg.add(trunk);
-      const snowCapMat = new THREE.MeshStandardMaterial({ color: '#f8fafc', roughness: 0.32 });
-      const tiers = [
-        { r: 1.25, h: 1.25, y: 1.35 },
-        { r: 0.98, h: 1.1, y: 2.15 },
-        { r: 0.68, h: 0.95, y: 2.85 },
-      ];
-      for (const tier of tiers) {
-        const cone = new THREE.Mesh(new THREE.ConeGeometry(tier.r, tier.h, 12), pineBoughMat);
-        cone.position.y = tier.y;
-        if (!isSoftwareGl) cone.castShadow = true;
-        const cap = new THREE.Mesh(new THREE.ConeGeometry(tier.r * 0.86, tier.h * 0.55, 12), snowCapMat);
-        cap.position.y = tier.y + tier.h * 0.24;
-        tg.add(cone, cap);
-      }
-    } else if (theme === 'volcano') {
-      const base = new THREE.Mesh(new THREE.DodecahedronGeometry(0.82, 0), rockMat);
+    const barkMat = new THREE.MeshStandardMaterial({
+      map: woodPair.map,
+      normalMap: woodPair.normalMap,
+      normalScale: new THREE.Vector2(1.1, 1.1),
+      color: theme === 'snow' ? '#5c4033' : '#78350f',
+      roughness: 0.72,
+    });
+
+    if (theme === 'volcano') {
+      const base = new THREE.Mesh(new THREE.DodecahedronGeometry(0.88, 1), rockMat);
       base.position.y = 0.36;
       const crystalMat = new THREE.MeshStandardMaterial({
         color: '#fb923c',
         emissive: '#ea580c',
-        emissiveIntensity: 0.95,
+        emissiveIntensity: 1.05,
         roughness: 0.16,
       });
-      const mainSpire = new THREE.Mesh(new THREE.OctahedronGeometry(0.85, 0), crystalMat);
-      mainSpire.scale.set(0.75, 2.25, 0.75);
-      mainSpire.position.y = 1.55;
-      const sideSpire = new THREE.Mesh(new THREE.OctahedronGeometry(0.55, 0), crystalMat);
-      sideSpire.scale.set(0.7, 1.75, 0.7);
-      sideSpire.position.set(0.48, 1.05, 0.22);
-      sideSpire.rotation.z = -0.32;
-      tg.add(base, mainSpire, sideSpire);
-    } else if (theme === 'harbor') {
-      const post = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.24, 0.3, 2.0, 12),
-        new THREE.MeshStandardMaterial({ map: woodPair.map, color: '#92400e', roughness: 0.58 }),
-      );
-      post.position.y = 1.0;
-      if (!isSoftwareGl) post.castShadow = true;
-      const buoy = new THREE.Mesh(
-        new THREE.TorusGeometry(0.42, 0.12, 10, 20),
-        new THREE.MeshStandardMaterial({ color: '#ef4444', roughness: 0.35 }),
-      );
-      buoy.position.set(0, 1.15, 0.26);
-      const lantern = new THREE.Mesh(
-        new THREE.SphereGeometry(0.36, 14, 12),
-        new THREE.MeshStandardMaterial({
-          color: '#fef08a',
-          emissive: '#f59e0b',
-          emissiveIntensity: 1.25,
-          roughness: 0.15,
-        }),
-      );
-      lantern.position.y = 2.18;
-      tg.add(post, buoy, lantern);
+      for (const [ox, oy, oz, sx, sy, rz] of [
+        [0, 1.55, 0, 0.72, 2.2, 0.08],
+        [0.48, 1.05, 0.22, 0.52, 1.65, -0.34],
+        [-0.42, 0.95, -0.25, 0.46, 1.45, 0.38],
+      ]) {
+        const sp = new THREE.Mesh(new THREE.OctahedronGeometry(0.8, 0), crystalMat);
+        sp.scale.set(sx, sy, sx);
+        sp.position.set(ox, oy, oz);
+        sp.rotation.z = rz;
+        tg.add(sp);
+      }
+      tg.add(base);
+    } else if (theme === 'snow') {
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.38, 1.35, 10), barkMat);
+      trunk.position.y = 0.65;
+      tg.add(trunk);
+      const snowCapMat = new THREE.MeshStandardMaterial({
+        map: beachPair.map,
+        normalMap: beachPair.normalMap,
+        color: '#f8fafc',
+        roughness: 0.36,
+      });
+      const tiers = [
+        { r: 1.38, h: 1.3, y: 1.42 },
+        { r: 1.08, h: 1.15, y: 2.22 },
+        { r: 0.78, h: 1.0, y: 2.95 },
+        { r: 0.48, h: 0.78, y: 3.55 },
+      ];
+      for (const tier of tiers) {
+        const cone = new THREE.Mesh(new THREE.ConeGeometry(tier.r, tier.h, 9), pineBoughMat);
+        cone.position.y = tier.y;
+        cone.rotation.y = rand() * Math.PI;
+        if (!isSoftwareGl) cone.castShadow = true;
+        const cap = new THREE.Mesh(new THREE.ConeGeometry(tier.r * 0.84, tier.h * 0.52, 9), snowCapMat);
+        cap.position.y = tier.y + tier.h * 0.24;
+        tg.add(cone, cap);
+      }
     } else {
-      const trunk = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.24, 0.38, 1.9, 10),
-        new THREE.MeshStandardMaterial({ map: woodPair.map, color: '#92400e', roughness: 0.62 }),
-      );
-      trunk.position.y = 0.95;
+      // Gnarled multi-root trunk + 3 spreading branches + 6 overlapping faceted foliage boughs!
+      const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.44, 1.85, 9), barkMat);
+      trunk.position.y = 0.92;
+      trunk.rotation.z = (rand() - 0.5) * 0.14;
       if (!isSoftwareGl) trunk.castShadow = true;
-      const crown1 = new THREE.Mesh(new THREE.SphereGeometry(1.22, 16, 14), groveGreenMat);
-      crown1.position.y = 2.25;
-      crown1.scale.set(1.12, 0.88, 1.12);
-      if (!isSoftwareGl) crown1.castShadow = true;
-      const crown2 = new THREE.Mesh(new THREE.SphereGeometry(0.88, 14, 12), groveGoldMat);
-      crown2.position.set(0.38, 2.95, -0.18);
-      const crown3 = new THREE.Mesh(new THREE.SphereGeometry(0.76, 14, 12), groveGreenMat);
-      crown3.position.set(-0.42, 2.72, 0.28);
-      tg.add(trunk, crown1, crown2, crown3);
+      tg.add(trunk);
+
+      for (let rIdx = 0; rIdx < 3; rIdx++) {
+        const ra = (rIdx / 3) * Math.PI * 2 + rand() * 0.5;
+        const root = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.2, 0.65, 7), barkMat);
+        root.position.set(Math.cos(ra) * 0.32, 0.22, Math.sin(ra) * 0.32);
+        root.rotation.z = -Math.cos(ra) * 0.55;
+        root.rotation.x = Math.sin(ra) * 0.55;
+        tg.add(root);
+
+        const limb = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.19, 1.15, 7), barkMat);
+        limb.position.set(Math.cos(ra) * 0.42, 1.95, Math.sin(ra) * 0.42);
+        limb.rotation.z = -Math.cos(ra) * 0.58;
+        limb.rotation.x = Math.sin(ra) * 0.58;
+        tg.add(limb);
+      }
+
+      const boughs = [
+        [0, 2.55, 0, 1.32, 0.92, 1.28, leafCrownGreenMat],
+        [0.72, 2.32, 0.42, 0.96, 0.78, 0.94, leafCrownLushMat],
+        [-0.68, 2.38, 0.38, 0.94, 0.76, 0.92, leafCrownGreenMat],
+        [0.15, 2.42, -0.72, 0.95, 0.75, 0.92, leafCrownLushMat],
+        [-0.22, 3.05, -0.1, 0.98, 0.82, 0.95, leafCrownLushMat],
+        [0.35, 2.92, 0.28, 0.78, 0.7, 0.78, leafCrownGreenMat],
+      ];
+      for (const [bx, by, bz, sx, sy, sz, mat] of boughs) {
+        const tuft = new THREE.Mesh(new THREE.IcosahedronGeometry(0.92, 2), mat);
+        tuft.position.set(bx, by, bz);
+        tuft.scale.set(sx, sy, sz);
+        tuft.rotation.set(rand() * 0.5, rand() * Math.PI, rand() * 0.5);
+        if (!isSoftwareGl) tuft.castShadow = true;
+        tg.add(tuft);
+      }
     }
 
     group.add(tg);
-    colliders.push({ x: tx, z: tz, r: 0.95 });
+    colliders.push({ x: tx, z: tz, r: 0.92 });
+    placedTreeCoords.push([tx, tz]);
   };
 
-  const borderTrees = [
-    [-halfW + 2.5, -halfD + 2.9],
-    [halfW - 2.5, -halfD + 2.9],
-    [-halfW + 2.5, halfD - 2.9],
-    [halfW - 2.5, halfD - 2.9],
-    [-halfW + 2.7, -6.5],
-    [-halfW + 2.7, 8.5],
-    [halfW - 2.7, -7.5],
-    [halfW - 2.7, 9.5],
-    [-9.5, -halfD + 2.9],
-    [10.5, -halfD + 2.9],
-  ];
-  for (const [bx, bz] of borderTrees) {
-    if (!nearAnyGateway(bx, bz) && isClearSpot(bx, bz, 1.8)) addToyTree(bx, bz);
+  for (let attempt = 0; attempt < 90 && placedTreeCoords.length < targetGlbCount + 9; attempt++) {
+    const theta = rand() * Math.PI * 2;
+    const rCoast = computeCoastRadiusNorm(theta, coastParams, lobeDirs);
+    const rad = 0.74 + rand() * 0.2;
+    const bx = Math.cos(theta) * (halfW - 2.2) * rCoast * rad;
+    const bz = Math.sin(theta) * (halfD - 2.2) * rCoast * rad;
+    if (canPlaceTree(bx, bz, 3.6)) addComplexGroveTree(bx, bz);
   }
 
-  // 5b. Scenic Outer-Sea Rock Islets & Cliffside Waterfall!
+  // Mossy Boulders along coves & trails
+  for (let i = 0; i < 12; i++) {
+    const rx = (rand() * 2 - 1) * (halfW - 3.0);
+    const rz = (rand() * 2 - 1) * (halfD - 3.0);
+    if (!canPlaceTree(rx, rz, 3.2)) continue;
+    const ry = getHeightAt(rx, rz);
+    const sc = 0.75 + rand() * 0.45;
+    const bg = new THREE.Group();
+    bg.position.set(rx, ry, rz);
+    const mainRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.68 * sc, 1), rockMat);
+    mainRock.scale.set(1.2, 0.76, 0.96);
+    mainRock.position.y = 0.34 * sc;
+    if (!isSoftwareGl) mainRock.castShadow = true;
+    const subRock = new THREE.Mesh(new THREE.DodecahedronGeometry(0.42 * sc, 1), rockMat);
+    subRock.position.set(0.52 * sc, 0.22 * sc, 0.24 * sc);
+    bg.add(mainRock, subRock);
+    group.add(bg);
+    colliders.push({ x: rx, z: rz, r: 0.72 * sc });
+  }
+
+  // Scenic Outer-Sea Rock Islets & Bobbing Buoys
   const outerIslets = [
-    [-halfW - 8.5, -halfD + 4.0, 2.1],
-    [halfW + 9.2, -halfD + 6.5, 1.8],
-    [-halfW - 9.0, halfD - 3.5, 1.7],
-    [halfW + 8.6, halfD - 4.5, 2.2],
+    [-halfW - 8.5, -halfD + 4.0, 2.2],
+    [halfW + 9.2, -halfD + 6.5, 1.9],
+    [-halfW - 9.0, halfD - 3.5, 1.8],
+    [halfW + 8.6, halfD - 4.5, 2.3],
   ];
   for (const [ix, iz, sc] of outerIslets) {
     const islet = new THREE.Group();
@@ -882,107 +1351,13 @@ export function buildZoneDiorama(zone, modelBank) {
     const mound = new THREE.Mesh(new THREE.DodecahedronGeometry(sc, 1), rockMat);
     mound.scale.set(1.35, 0.72, 1.15);
     mound.position.y = sc * 0.22;
-    const topPatch = new THREE.Mesh(
-      new THREE.CylinderGeometry(sc * 0.78, sc * 0.95, 0.25, 12),
-      lawnMat,
-    );
+    const topPatch = new THREE.Mesh(new THREE.CylinderGeometry(sc * 0.78, sc * 0.95, 0.25, 12), lawnMat);
     topPatch.position.y = sc * 0.62;
     islet.add(mound, topPatch);
     group.add(islet);
   }
 
-  // Animated Cliffside Waterfall Cascade on Tropical / Forest / Snow Islands
-  if (theme === 'tropical' || theme === 'forest' || theme === 'snow') {
-    const wfX = -halfW - 0.95;
-    const wfZ = 2.2;
-    if (!nearAnyGateway(wfX, wfZ)) {
-      const wfGroup = new THREE.Group();
-      wfGroup.position.set(wfX, -0.42, wfZ);
-      const streamMat = new THREE.MeshBasicMaterial({
-        color: '#e0f2fe',
-        transparent: true,
-        opacity: 0.82,
-      });
-      const chute = new THREE.Mesh(new THREE.BoxGeometry(0.42, 1.05, 2.4), streamMat);
-      chute.rotation.z = 0.22;
-      const splashRing = new THREE.Mesh(
-        new THREE.TorusGeometry(0.95, 0.18, 8, 24),
-        new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.72 }),
-      );
-      splashRing.rotation.x = Math.PI / 2;
-      splashRing.position.set(-0.35, -0.36, 0);
-      wfGroup.add(chute, splashRing);
-      group.add(wfGroup);
-      animated.push((t) => {
-        splashRing.scale.setScalar(0.92 + Math.sin(t * 6.5) * 0.14);
-        chute.material.opacity = 0.76 + Math.sin(t * 9.0) * 0.1;
-      });
-    }
-  }
-
-  // Biome Water/Shore Vignettes (Bobbing Buoys & Volcano Braziers placed cleanly outside Boss #20's arena!)
-  if (theme === 'harbor' || theme === 'tropical') {
-    const buoySpots = [
-      [-halfW - 4.4, 6.5],
-      [halfW + 4.6, -7.0],
-      [-11.0, halfD + 4.4],
-      [12.5, -halfD - 4.4],
-    ];
-    buoySpots.forEach(([wx, wz], idx) => {
-      const duck = new THREE.Group();
-      duck.position.set(wx, -0.76, wz);
-      const yellowMat = new THREE.MeshStandardMaterial({ color: '#facc15', roughness: 0.24 });
-      const beakMat = new THREE.MeshStandardMaterial({ color: '#f97316', roughness: 0.3 });
-      const body = new THREE.Mesh(new THREE.SphereGeometry(0.65, 14, 12), yellowMat);
-      body.scale.set(1.2, 0.82, 0.95);
-      const head = new THREE.Mesh(new THREE.SphereGeometry(0.42, 12, 10), yellowMat);
-      head.position.set(0.42, 0.52, 0);
-      const beak = new THREE.Mesh(new THREE.ConeGeometry(0.18, 0.36, 8), beakMat);
-      beak.rotation.z = -Math.PI / 2;
-      beak.position.set(0.84, 0.5, 0);
-      duck.add(body, head, beak);
-      duck.rotation.y = idx * 1.3;
-      group.add(duck);
-      animated.push((t) => {
-        duck.position.y = -0.72 + Math.sin(t * 2.3 + idx * 1.7) * 0.1;
-        duck.rotation.z = Math.sin(t * 1.9 + idx) * 0.08;
-      });
-    });
-  } else if (theme === 'volcano') {
-    // Champion Sanctum Flame Braziers framing Boss #20 King Monkezilla (`(8, -6)`) outside `ARENA_RADIUS`!
-    for (const [bx, bz] of [
-      [0.4, -13.8],
-      [15.8, -13.8],
-      [0.4, 1.4],
-      [15.8, 1.4],
-    ]) {
-      const br = new THREE.Group();
-      br.position.set(bx, 0, bz);
-      const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.52, 1.55, 10), rockMat);
-      pillar.position.y = 0.77;
-      const flame = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.46, 0),
-        new THREE.MeshStandardMaterial({
-          color: '#fde047',
-          emissive: '#f97316',
-          emissiveIntensity: 1.55,
-          roughness: 0.12,
-        }),
-      );
-      flame.scale.set(0.85, 1.6, 0.85);
-      flame.position.y = 1.88;
-      br.add(pillar, flame);
-      group.add(br);
-      addWarmPointLight(bx, 2.2, bz, 0xf97316, 2.8, 12.0);
-      colliders.push({ x: bx, z: bz, r: 0.55 });
-      animated.push((t) => {
-        flame.scale.y = 1.45 + Math.sin(t * 7.5 + bx) * 0.25;
-        flame.rotation.y = t * 1.8;
-      });
-    }
-  }
-
-  // 5c. Volumetric Golden Sunbeam Shafts (`createSunbeamShaderMaterial`)!
+  // Volumetric Sunbeam Shafts + Ambient Biome Particles
   const sunbeamMat = createSunbeamShaderMaterial({
     color: theme === 'volcano' ? '#fdba74' : theme === 'snow' ? '#e0f2fe' : '#fff3b0',
     opacity: theme === 'volcano' ? 0.09 : 0.11,
@@ -995,13 +1370,12 @@ export function buildZoneDiorama(zone, modelBank) {
     beam.rotation.x = -0.28;
     group.add(beam);
   };
-  addSunbeam(0, 2.0, 2.3, 12.5);
+  addSunbeam(plazaX, plazaZ, 2.3, 12.5);
   for (const sh of zone.shrines || []) {
     addSunbeam(sh.x, sh.z, 1.6, 10.5);
   }
 
-  // 5d. Ambient Drifting 3D Biome Particles (`THREE.Points`)
-  const pCount = 92;
+  const pCount = 96;
   const pPositions = new Float32Array(pCount * 3);
   const pSeeds = new Float32Array(pCount);
   for (let i = 0; i < pCount; i++) {
@@ -1030,24 +1404,23 @@ export function buildZoneDiorama(zone, modelBank) {
     opacity: theme === 'snow' ? 0.88 : 0.74,
     depthWrite: false,
   });
-  const ambientParticles = new THREE.Points(pGeo, pMat);
-  group.add(ambientParticles);
-
+  group.add(new THREE.Points(pGeo, pMat));
   const risesUp = theme === 'volcano' || theme === 'harbor';
   animated.push((t) => {
     const arr = pGeo.attributes.position.array;
     for (let i = 0; i < pCount; i++) {
       const seed = pSeeds[i];
-      const baseY = ((seed * 3.1 + t * (risesUp ? 0.65 : -0.55)) % 6.0 + 6.0) % 6.0;
+      const baseY = (((seed * 3.1 + t * (risesUp ? 0.65 : -0.55)) % 6.0) + 6.0) % 6.0;
       arr[i * 3 + 1] = 0.35 + baseY;
       arr[i * 3] += Math.sin(t * 1.2 + seed) * 0.008;
     }
     pGeo.attributes.position.needsUpdate = true;
   });
 
-  // 6. All Spec Houses (`alex_house.glb`, `peanut_butter_house.glb`, `fish_house.glb`, `pork_house.glb`, `beef_house.glb`)
+  // 7. All Enterable Houses (`alex_house`, `peanut_butter_house`, `fish_house`, `pork_house`, `beef_house`, Sanctuaries)
   const houseInteractables = [];
   for (const h of zone.houses || []) {
+    const hy = getHeightAt(h.x, h.z);
     const actor = modelBank.spawnActor({
       glbUrl: h.glb,
       scale: h.scale || 4.4,
@@ -1055,61 +1428,49 @@ export function buildZoneDiorama(zone, modelBank) {
       secondaryColor: '#fef3c7',
       shadowRadius: (h.scale || 4.4) * 0.42,
     });
-    actor.root.position.set(h.x, 0, h.z);
+    actor.root.position.set(h.x, hy, h.z);
     group.add(actor.root);
     loadPromises.push(actor.readyPromise);
 
-    // Welcoming golden doorstep mat + cozy wooden supply crate beside House!
     const doorZ = h.z + (h.scale || 4.4) * 0.48;
+    const doorY = getHeightAt(h.x, doorZ);
     const matRing = new THREE.Mesh(
-      new THREE.CylinderGeometry(1.15, 1.25, 0.06, 24),
+      new THREE.CylinderGeometry(1.2, 1.32, 0.06, 24),
       new THREE.MeshStandardMaterial({
         color: '#fde047',
         emissive: '#f59e0b',
-        emissiveIntensity: 0.45,
-        roughness: 0.3,
+        emissiveIntensity: 0.55,
+        roughness: 0.28,
       }),
     );
-    matRing.position.set(h.x, 0.03, doorZ);
+    matRing.position.set(h.x, doorY + 0.035, doorZ);
     group.add(matRing);
-
-    const crate = new THREE.Mesh(
-      new THREE.BoxGeometry(0.68, 0.68, 0.68),
-      new THREE.MeshStandardMaterial({
-        map: woodPair.map,
-        normalMap: woodPair.normalMap,
-        color: '#f59e0b',
-        roughness: 0.62,
-      }),
-    );
-    crate.position.set(h.x + (h.scale || 4.4) * 0.46, 0.34, h.z + 1.15);
-    crate.rotation.y = 0.28;
-    if (!isSoftwareGl) crate.castShadow = true;
-    group.add(crate);
 
     const sign = makeLabelSprite({
       title: h.label,
-      subtitle: h.sublabel || '',
-      badgeText: '🏠 HOUSE',
+      subtitle: h.sublabel || 'Walk onto gold mat or press [A] to Enter!',
+      badgeText: '🚪 ENTER',
       badgeColor: '#fbbf24',
-      widthWorld: 3.8,
+      widthWorld: 3.9,
     });
-    sign.position.set(h.x, (h.scale || 4.4) * 0.68 + 0.62, h.z);
+    sign.position.set(h.x, hy + (h.scale || 4.4) * 0.68 + 0.65, h.z);
     group.add(sign);
     labelSprites.push(sign);
 
-    colliders.push({ x: h.x, z: h.z, r: (h.scale || 4.4) * 0.36 });
+    colliders.push({ x: h.x, z: h.z, r: (h.scale || 4.4) * 0.35 });
     houseInteractables.push({
       ...h,
       doorX: h.x,
       doorZ,
+      doorY,
       actor,
     });
   }
 
-  // 7. Golden Banana Shrines (`banana_shrine.glb`)
+  // 8. Golden Banana Shrines (`banana_shrine.glb`)
   const shrineInteractables = [];
   for (const sh of zone.shrines || []) {
+    const sy = getHeightAt(sh.x, sh.z);
     const actor = modelBank.spawnActor({
       glbUrl: 'assets/models/banana_shrine.glb',
       scale: 2.7,
@@ -1117,90 +1478,204 @@ export function buildZoneDiorama(zone, modelBank) {
       secondaryColor: '#fef08a',
       shadowRadius: 1.1,
     });
-    actor.root.position.set(sh.x, 0, sh.z);
+    actor.root.position.set(sh.x, sy, sh.z);
     group.add(actor.root);
     loadPromises.push(actor.readyPromise);
 
     const halo = new THREE.Mesh(
       new THREE.RingGeometry(1.15, 1.38, 28),
-      new THREE.MeshBasicMaterial({ color: '#fde047', side: THREE.DoubleSide, transparent: true, opacity: 0.65 }),
+      new THREE.MeshBasicMaterial({ color: '#fde047', side: THREE.DoubleSide, transparent: true, opacity: 0.68 }),
     );
     halo.rotation.x = -Math.PI / 2;
-    halo.position.set(sh.x, 0.04, sh.z);
+    halo.position.set(sh.x, sy + 0.04, sh.z);
     group.add(halo);
-    addWarmPointLight(sh.x, 2.2, sh.z, 0xfde047, 2.4, 9.5);
+    addWarmPointLight(sh.x, sy + 2.2, sh.z, 0xfde047, 2.4, 9.5);
 
     const lbl = makeLabelSprite({
       title: 'BANANA SHRINE',
-      subtitle: '[A] Blessing (+ATK / Heal)',
+      subtitle: '[A] Blessing (Full Heal + Berries)',
       badgeText: '✨',
       badgeColor: '#facc15',
       widthWorld: 3.4,
     });
-    lbl.position.set(sh.x, 3.25, sh.z);
+    lbl.position.set(sh.x, sy + 3.25, sh.z);
     group.add(lbl);
     labelSprites.push(lbl);
     colliders.push({ x: sh.x, z: sh.z, r: 1.0 });
-    shrineInteractables.push({ x: sh.x, z: sh.z, actor });
+    shrineInteractables.push({ x: sh.x, z: sh.z, y: sy, actor });
   }
 
-  // 8. Shakeable Peanut-Butter Berry Trees
+  // 9. Shakeable TRELLIS.2 Berry Bushes (`env_berry_bush.glb`)
   const berryInteractables = [];
   for (const bt of zone.berryTrees || []) {
+    const by = getHeightAt(bt.x, bt.z);
     const tg = new THREE.Group();
-    tg.position.set(bt.x, 0, bt.z);
-    const trunk = new THREE.Mesh(
-      new THREE.CylinderGeometry(0.2, 0.32, 1.5, 10),
-      new THREE.MeshStandardMaterial({ map: woodPair.map, color: '#92400e', roughness: 0.6 }),
-    );
-    trunk.position.y = 0.75;
-    if (!isSoftwareGl) trunk.castShadow = true;
-    const foliage = new THREE.Mesh(
-      new THREE.SphereGeometry(1.08, 16, 14),
-      new THREE.MeshStandardMaterial({ color: '#16a34a', roughness: 0.36 }),
-    );
-    foliage.position.y = 1.92;
-    if (!isSoftwareGl) foliage.castShadow = true;
-    tg.add(trunk, foliage);
+    tg.position.set(bt.x, by, bt.z);
+
+    const bushActor = modelBank.spawnActor({
+      glbUrl: 'assets/models/env_berry_bush.glb',
+      scale: 2.35,
+      primaryColor: '#16a34a',
+      secondaryColor: '#fbbf24',
+      shadowRadius: 0.95,
+      standInKind: 'prop',
+    });
+    tg.add(bushActor.root);
+    loadPromises.push(bushActor.readyPromise);
 
     const berriesGroup = new THREE.Group();
     const berryMat = new THREE.MeshStandardMaterial({
       color: '#fbbf24',
       emissive: '#d97706',
-      emissiveIntensity: 0.55,
+      emissiveIntensity: 0.65,
       roughness: 0.18,
     });
-    for (const [bx, by, bz] of [
-      [-0.45, 1.65, 0.72],
-      [0.42, 1.85, 0.68],
-      [0.0, 2.25, 0.76],
+    for (const [ox, oy, oz] of [
+      [-0.48, 1.35, 0.55],
+      [0.45, 1.5, 0.52],
+      [0.0, 1.85, 0.62],
     ]) {
-      const b = new THREE.Mesh(new THREE.SphereGeometry(0.2, 12, 10), berryMat);
-      b.position.set(bx, by, bz);
+      const b = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), berryMat);
+      b.position.set(ox, oy, oz);
       berriesGroup.add(b);
     }
     tg.add(berriesGroup);
     group.add(tg);
-    colliders.push({ x: bt.x, z: bt.z, r: 0.8 });
+    colliders.push({ x: bt.x, z: bt.z, r: 0.82 });
     berryInteractables.push({
       x: bt.x,
       z: bt.z,
+      y: by,
       group: tg,
       berriesGroup,
       cooldown: 0,
     });
   }
 
-  // 9. Glowing Inter-Zone Gateways with Stone/Wood Arch Pillars
-  for (const gw of zone.gateways || []) {
-    const portal = new THREE.Group();
-    portal.position.set(gw.x, 0, gw.z);
+  // 10. Monkeball & Super Ball Supply Chests (`env_treasure_chest.glb`)!
+  const chestInteractables = [];
+  const openedSet = new Set((state && state.openedChests) || []);
+  for (const ch of zone.chests || []) {
+    const cy = getHeightAt(ch.x, ch.z);
+    const isOpened = openedSet.has(ch.id);
+    const actor = modelBank.spawnActor({
+      glbUrl: 'assets/models/env_treasure_chest.glb',
+      scale: 1.55,
+      primaryColor: '#f59e0b',
+      secondaryColor: '#dc2626',
+      shadowRadius: 0.78,
+      standInKind: 'prop',
+    });
+    actor.root.position.set(ch.x, cy, ch.z);
+    group.add(actor.root);
+    loadPromises.push(actor.readyPromise);
+
+    const glowRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.85, 1.08, 24),
+      new THREE.MeshBasicMaterial({
+        color: isOpened ? '#64748b' : '#fde047',
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: isOpened ? 0.25 : 0.85,
+      }),
+    );
+    glowRing.rotation.x = -Math.PI / 2;
+    glowRing.position.set(ch.x, cy + 0.04, ch.z);
+    group.add(glowRing);
+
+    const sign = makeLabelSprite({
+      title: isOpened ? 'OPENED CHEST' : ch.label || 'SUPPLY CHEST',
+      subtitle: isOpened ? '✓ Collected' : `[A] +${ch.balls || 5} Balls · +${ch.superBalls || 1} Super`,
+      badgeText: isOpened ? '✓' : '🎁 CHEST',
+      badgeColor: isOpened ? '#94a3b8' : '#facc15',
+      widthWorld: 3.3,
+    });
+    sign.position.set(ch.x, cy + 1.95, ch.z);
+    group.add(sign);
+    labelSprites.push(sign);
+
+    colliders.push({ x: ch.x, z: ch.z, r: 0.68 });
+    chestInteractables.push({
+      ...ch,
+      y: cy,
+      opened: isOpened,
+      actor,
+      glowRing,
+      sign,
+    });
+  }
+
+  // 11. Visible Glowing 3D Monkeball & Super Ball Overworld Pickups (`monkeball.glb`)!
+  const ballPickupInteractables = [];
+  const pickedSet = new Set((state && state.pickedUpBalls) || []);
+  for (const bp of zone.ballPickups || []) {
+    if (pickedSet.has(bp.id)) continue;
+    const py = getHeightAt(bp.x, bp.z);
+    const isSuper = bp.kind === 'superball';
+    const holder = new THREE.Group();
+    holder.position.set(bp.x, py, bp.z);
+
+    const ballActor = modelBank.spawnActor({
+      glbUrl: 'assets/models/monkeball.glb',
+      scale: 0.72,
+      primaryColor: isSuper ? '#facc15' : '#ef4444',
+      secondaryColor: '#fef9c3',
+      shadowRadius: 0.42,
+      standInKind: 'prop',
+    });
+    holder.add(ballActor.root);
+
     const ring = new THREE.Mesh(
-      new THREE.TorusGeometry(1.5, 0.15, 12, 32),
+      new THREE.RingGeometry(0.5, 0.68, 22),
+      new THREE.MeshBasicMaterial({
+        color: isSuper ? '#fde047' : '#fb7185',
+        side: THREE.DoubleSide,
+        transparent: true,
+        opacity: 0.85,
+      }),
+    );
+    ring.rotation.x = -Math.PI / 2;
+    ring.position.y = 0.03;
+    holder.add(ring);
+
+    const lbl = makeLabelSprite({
+      title: isSuper ? `Super Ball ×${bp.count || 1}` : `Monkeballs ×${bp.count || 3}`,
+      subtitle: 'Walk over to collect!',
+      badgeText: isSuper ? '🌟 SUPER' : '🐵 BALLS',
+      badgeColor: isSuper ? '#facc15' : '#f87171',
+      widthWorld: 2.65,
+    });
+    lbl.position.y = 1.42;
+    holder.add(lbl);
+    labelSprites.push(lbl);
+
+    group.add(holder);
+    const itemObj = {
+      ...bp,
+      y: py,
+      collected: false,
+      holder,
+      ballActor,
+    };
+    ballPickupInteractables.push(itemObj);
+    animated.push((t) => {
+      if (itemObj.collected) return;
+      ballActor.animRoot.position.y = 0.24 + Math.sin(t * 3.4 + bp.x) * 0.1;
+      ballActor.animRoot.rotation.y = t * 1.8;
+    });
+  }
+
+  // 12. Glowing Inter-Zone Peninsula Gateways
+  for (const gw of zone.gateways || []) {
+    const gy = getHeightAt(gw.x, gw.z);
+    const portal = new THREE.Group();
+    portal.position.set(gw.x, gy, gw.z);
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(1.55, 0.15, 12, 32),
       new THREE.MeshStandardMaterial({
         color: '#38bdf8',
         emissive: '#0ea5e9',
-        emissiveIntensity: 1.15,
+        emissiveIntensity: 1.2,
         roughness: 0.16,
       }),
     );
@@ -1209,8 +1684,8 @@ export function buildZoneDiorama(zone, modelBank) {
     portal.add(ring);
 
     const innerPad = new THREE.Mesh(
-      new THREE.CircleGeometry(1.38, 28),
-      new THREE.MeshBasicMaterial({ color: '#7dd3fc', transparent: true, opacity: 0.3, depthWrite: false }),
+      new THREE.CircleGeometry(1.42, 28),
+      new THREE.MeshBasicMaterial({ color: '#7dd3fc', transparent: true, opacity: 0.34, depthWrite: false }),
     );
     innerPad.rotation.x = -Math.PI / 2;
     innerPad.position.y = 0.05;
@@ -1218,11 +1693,11 @@ export function buildZoneDiorama(zone, modelBank) {
 
     const sign = makeLabelSprite({
       title: gw.label,
-      badgeText: 'ZONE',
+      badgeText: '⛴️ ROUTE',
       badgeColor: '#38bdf8',
-      widthWorld: 3.6,
+      widthWorld: 3.7,
     });
-    sign.position.set(0, 2.25, 0);
+    sign.position.set(0, 2.3, 0);
     portal.add(sign);
     labelSprites.push(sign);
     group.add(portal);
@@ -1232,27 +1707,73 @@ export function buildZoneDiorama(zone, modelBank) {
     });
   }
 
+  const terrainProtected = new Set([water, cliffLower, shoreShelf, cliffBase, lawn, grassInst]);
+  const hiddenByBattle = [];
+  let _lastT = 0;
   return {
+    isInterior: false,
     group,
     colliders,
+    coastOutline,
+    terraces,
+    waterChannels,
+    bridges,
+    piers,
+    roads,
+    tallGrassPatches: patches,
     houseInteractables,
     shrineInteractables,
     berryInteractables,
+    chestInteractables,
+    ballPickupInteractables,
     loadPromises,
+    getHeightAt,
+    isInsideCoast,
+    clampToCoast,
     setLabelsVisible(visible) {
       for (const s of labelSprites) s.visible = Boolean(visible);
     },
+    setBattleClearance(cx, cz, clearRadius = 10.6) {
+      while (hiddenByBattle.length > 0) {
+        const obj = hiddenByBattle.pop();
+        obj.visible = true;
+      }
+      for (const child of group.children) {
+        if (
+          terrainProtected.has(child) ||
+          child.isInstancedMesh ||
+          child.isLight ||
+          child.isPoints ||
+          (child.userData && child.userData.keepInBattle)
+        ) {
+          continue;
+        }
+        const dist = Math.hypot(child.position.x - cx, child.position.z - cz);
+        if (dist < clearRadius && child.visible) {
+          child.visible = false;
+          hiddenByBattle.push(child);
+        }
+      }
+    },
+    clearBattleClearance() {
+      while (hiddenByBattle.length > 0) {
+        const obj = hiddenByBattle.pop();
+        obj.visible = true;
+      }
+    },
     setHeroPosition(x, z) {
-      sharedHeroPos.value.set(x, 0, z);
+      sharedHeroPos.value.set(x, getHeightAt(x, z), z);
     },
     update(timeSec, dt) {
+      const stepDt = dt || Math.max(0.001, timeSec - _lastT);
+      _lastT = timeSec;
       sharedTime.value = timeSec;
       waterMat.uniforms.uTime.value = timeSec;
       sunbeamMat.uniforms.uTime.value = timeSec;
-      for (const fn of animated) fn(timeSec);
+      for (const fn of animated) fn(timeSec, stepDt);
       for (const b of berryInteractables) {
         if (b.cooldown > 0) {
-          b.cooldown = Math.max(0, b.cooldown - dt);
+          b.cooldown = Math.max(0, b.cooldown - stepDt);
           b.berriesGroup.visible = b.cooldown <= 0;
         }
       }
@@ -1261,54 +1782,178 @@ export function buildZoneDiorama(zone, modelBank) {
 }
 
 /**
- * Builds the glowing 2.5D Real-Time Tactical Holo-Arena Ring centered at `(cx, cz)`
- * powered by `createHoloArenaShaderMaterial`.
+ * Builds the Multi-Layered Reactive GLSL 3D Battle Stadium centered at `(cx, cz, baseY)`:
+ *  1. Split Elemental Nebula + Hexagonal Lattice + Sacred Glyph + Reactive Shockwave Floor (`createHoloArenaShaderMaterial`)
+ *  2. 3D Fresnel Hexagonal Stadium Forcefield Cylinder (`createBattleBarrierDomeShaderMaterial`)
+ *  3. Dual Spinning Elemental Summon Pedestal Halos (`createCombatantPadShaderMaterial`) beneath both combatants
+ *  4. 6 Orbiting Arcane/Holo Crystal Pylons around the arena perimeter
  */
-export function buildBattleArenaGroup(cx, cz, radius = 6.6) {
+export function buildBattleArenaGroup(
+  cx,
+  cz,
+  radius = 6.6,
+  { playerColor = '#f59e0b', enemyColor = '#ef4444', baseY = 0, isBoss = false } = {},
+) {
   const g = new THREE.Group();
-  g.position.set(cx, 0.04, cz);
+  g.position.set(cx, baseY, cz);
+
+  // Elevated Dark Obsidian-Starlight 3D Stadium Dais (`height 0.44m`) so grass never pokes through
+  // and the multi-layered GLSL arena shaders shine with rich jewel-toned contrast!
+  const dais = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 1.02, radius * 1.09, 0.44, 64),
+    new THREE.MeshStandardMaterial({
+      color: 0x071121,
+      roughness: 0.32,
+      metalness: 0.42,
+    }),
+  );
+  dais.position.y = -0.23;
+  g.add(dais);
+
+  const daisBaseRing = new THREE.Mesh(
+    new THREE.TorusGeometry(radius * 1.06, 0.08, 10, 64),
+    new THREE.MeshStandardMaterial({
+      color: isBoss ? 0xf97316 : 0x38bdf8,
+      emissive: isBoss ? 0xea580c : 0x0284c7,
+      emissiveIntensity: 0.85,
+      roughness: 0.25,
+    }),
+  );
+  daisBaseRing.rotation.x = Math.PI / 2;
+  daisBaseRing.position.y = -0.38;
+  g.add(daisBaseRing);
 
   const floorMat = createHoloArenaShaderMaterial({
     primaryColor: '#38bdf8',
-    accentColor: '#fde047',
+    accentColor: isBoss ? '#fb923c' : '#fde047',
+    playerColor,
+    enemyColor,
+    intensity: isBoss ? 1.45 : 1.15,
   });
-  const floor = new THREE.Mesh(new THREE.CircleGeometry(radius, 56), floorMat);
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(radius, 64), floorMat);
   floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0.01;
   g.add(floor);
 
+  // 3D Fresnel Hexagonal Forcefield Dome Wall
+  const domeMat = createBattleBarrierDomeShaderMaterial({
+    playerColor,
+    enemyColor,
+    accentColor: isBoss ? '#fb923c' : '#fde047',
+  });
+  const domeWall = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius * 1.01, radius * 1.01, isBoss ? 4.2 : 3.2, 48, 1, true),
+    domeMat,
+  );
+  domeWall.position.y = (isBoss ? 4.2 : 3.2) * 0.5;
+  g.add(domeWall);
+
+  // Glowing containment rim torus
   const rim = new THREE.Mesh(
-    new THREE.TorusGeometry(radius, 0.13, 12, 64),
-    new THREE.MeshBasicMaterial({ color: 0x38bdf8 }),
+    new THREE.TorusGeometry(radius, 0.12, 12, 64),
+    new THREE.MeshBasicMaterial({ color: isBoss ? 0xfb923c : 0xfde047 }),
   );
   rim.rotation.x = Math.PI / 2;
   g.add(rim);
 
-  // Center line
-  const centerLine = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.12, radius * 1.92),
-    new THREE.MeshBasicMaterial({ color: 0xbae6fd, transparent: true, opacity: 0.45, depthWrite: false }),
-  );
-  centerLine.rotation.x = -Math.PI / 2;
-  centerLine.position.y = 0.01;
-  g.add(centerLine);
+  // Player & Enemy Spinning Summon Pedestals (matching BattleController slot offsets `(-3.2, 0.85)` & `(3.1, -0.85)`)
+  const playerPadMat = createCombatantPadShaderMaterial({ color: playerColor });
+  const playerPad = new THREE.Mesh(new THREE.PlaneGeometry(3.4, 3.4), playerPadMat);
+  playerPad.rotation.x = -Math.PI / 2;
+  playerPad.position.set(-3.15, 0.02, 0.85);
+  g.add(playerPad);
 
-  // 4 corner holo-pylons around the arena perimeter
-  const pylonGeo = new THREE.CylinderGeometry(0.12, 0.18, 0.62, 10);
+  const enemyPadMat = createCombatantPadShaderMaterial({ color: enemyColor });
+  const enemyPad = new THREE.Mesh(new THREE.PlaneGeometry(isBoss ? 4.2 : 3.4, isBoss ? 4.2 : 3.4), enemyPadMat);
+  enemyPad.rotation.x = -Math.PI / 2;
+  enemyPad.position.set(3.15, 0.02, -0.85);
+  g.add(enemyPad);
+
+  // 6 Floating Rotating Holo-Crystals around the perimeter!
+  const crystalPylons = [];
+  const pylonGeo = new THREE.OctahedronGeometry(0.28, 0);
   const pylonMat = new THREE.MeshStandardMaterial({
-    color: 0x38bdf8,
-    emissive: 0x0ea5e9,
-    emissiveIntensity: 1.2,
-    roughness: 0.2,
+    color: 0xfef08a,
+    emissive: isBoss ? 0xf97316 : 0x38bdf8,
+    emissiveIntensity: 1.4,
+    roughness: 0.15,
   });
-  for (let i = 0; i < 4; i++) {
-    const a = (i / 4) * Math.PI * 2 + Math.PI * 0.25;
+  for (let i = 0; i < 6; i++) {
+    const a = (i / 6) * Math.PI * 2 + 0.25;
     const pylon = new THREE.Mesh(pylonGeo, pylonMat);
-    pylon.position.set(Math.cos(a) * radius, 0.31, Math.sin(a) * radius);
+    pylon.scale.set(0.75, 1.65, 0.75);
+    pylon.position.set(Math.cos(a) * radius, 0.72, Math.sin(a) * radius);
     g.add(pylon);
+    crystalPylons.push({ mesh: pylon, baseAngle: a });
   }
 
+  let shockTimer = -1;
+  let playerFlare = 0;
+  let enemyFlare = 0;
+  let domePulse = 0;
+
+  g.userData.setElementColors = (pHex, eHex) => {
+    if (pHex) {
+      floorMat.uniforms.uPlayerColor.value.set(pHex);
+      domeMat.uniforms.uPlayerColor.value.set(pHex);
+      playerPadMat.uniforms.uColor.value.set(pHex);
+    }
+    if (eHex) {
+      floorMat.uniforms.uEnemyColor.value.set(eHex);
+      domeMat.uniforms.uEnemyColor.value.set(eHex);
+      enemyPadMat.uniforms.uColor.value.set(eHex);
+    }
+  };
+
+  g.userData.flareCombatant = (side, amount = 1.0) => {
+    if (side === 'player') playerFlare = Math.max(playerFlare, amount);
+    else enemyFlare = Math.max(enemyFlare, amount);
+    domePulse = Math.max(domePulse, amount * 0.7);
+  };
+
+  g.userData.triggerShockwave = (localX = 0, localZ = 0, colorHex = '#fde047') => {
+    // Map local `(x, z)` into disk `vUv` (`-1..1`; note `CircleGeometry` rotated `-PI/2` around X has `uv.y` inverted along `-Z`)
+    floorMat.uniforms.uShockOrigin.value.set(
+      Math.max(-0.95, Math.min(0.95, localX / radius)),
+      Math.max(-0.95, Math.min(0.95, -localZ / radius)),
+    );
+    floorMat.uniforms.uShockColor.value.set(colorHex);
+    shockTimer = 0.0;
+    domePulse = 1.0;
+  };
+
+  let lastTime = 0;
   g.userData.update = (timeSec) => {
+    const dt = lastTime > 0 ? Math.min(0.05, Math.max(0.001, timeSec - lastTime)) : 0.016;
+    lastTime = timeSec;
+
     floorMat.uniforms.uTime.value = timeSec;
+    domeMat.uniforms.uTime.value = timeSec;
+    playerPadMat.uniforms.uTime.value = timeSec;
+    enemyPadMat.uniforms.uTime.value = timeSec;
+
+    if (shockTimer >= 0) {
+      shockTimer += dt * 1.45;
+      if (shockTimer > 1.0) {
+        shockTimer = -1;
+        floorMat.uniforms.uShockProgress.value = -1.0;
+      } else {
+        floorMat.uniforms.uShockProgress.value = shockTimer;
+      }
+    }
+
+    playerFlare = Math.max(0, playerFlare - dt * 1.8);
+    enemyFlare = Math.max(0, enemyFlare - dt * 1.8);
+    domePulse = Math.max(0, domePulse - dt * 1.6);
+    playerPadMat.uniforms.uFlare.value = playerFlare;
+    enemyPadMat.uniforms.uFlare.value = enemyFlare;
+    domeMat.uniforms.uPulse.value = domePulse;
+
+    for (let i = 0; i < crystalPylons.length; i++) {
+      const cp = crystalPylons[i];
+      cp.mesh.position.y = 0.68 + Math.sin(timeSec * 2.8 + i * 1.05) * 0.14;
+      cp.mesh.rotation.y = timeSec * 1.9 + i;
+    }
   };
 
   return g;

@@ -52,6 +52,8 @@ export function createInitialGameState(playerName = 'ALEX', starterId = 'mugchim
     coins: 280,
     badges: [],
     defeatedTrainers: [],
+    openedChests: [],
+    pickedUpBalls: [],
     seenDex: [starterId],
     caughtDex: [starterId],
     starterChosen: false,
@@ -105,6 +107,58 @@ export function swapPartyWithStorage(state, partyIdx, storageIdx) {
   state.party[partyIdx] = sMon;
   state.storage[storageIdx] = pMon;
   return true;
+}
+
+export function useBerryOnPartyMon(state, partyIdx) {
+  if (!state || !Array.isArray(state.party)) return { ok: false, message: 'No squad found.' };
+  const mon = state.party[partyIdx];
+  if (!mon) return { ok: false, message: 'Choose a Monkemon first.' };
+  if ((state.berries || 0) <= 0) {
+    return { ok: false, message: 'No Berries left! Shake a Berry Bush or open Supply Chests!' };
+  }
+  refreshMonStats(mon);
+  if (mon.hp >= mon.maxHp) {
+    return { ok: false, message: `${mon.nickname} already has full HP (${mon.hp}/${mon.maxHp})!` };
+  }
+  state.berries -= 1;
+  const healAmt = Math.max(12, Math.round(mon.maxHp * 0.4));
+  mon.hp = Math.min(mon.maxHp, Math.max(0, mon.hp) + healAmt);
+  return {
+    ok: true,
+    healed: healAmt,
+    message: `🍌 Fed ${mon.nickname} a Sweet Berry (+${healAmt} HP → ${mon.hp}/${mon.maxHp})!`,
+  };
+}
+
+export function claimChestReward(state, chestDef) {
+  if (!state || !chestDef || !chestDef.id) return { ok: false, alreadyOpened: false, summary: '' };
+  if (!Array.isArray(state.openedChests)) state.openedChests = [];
+  if (state.openedChests.includes(chestDef.id)) {
+    return { ok: false, alreadyOpened: true, summary: 'Already opened this Supply Chest!' };
+  }
+  state.openedChests.push(chestDef.id);
+  const parts = [];
+  if (chestDef.balls) {
+    state.monkeballs = (state.monkeballs || 0) + chestDef.balls;
+    parts.push(`+${chestDef.balls} Monkeballs`);
+  }
+  if (chestDef.superBalls) {
+    state.superBalls = (state.superBalls || 0) + chestDef.superBalls;
+    parts.push(`+${chestDef.superBalls} Super Balls`);
+  }
+  if (chestDef.berries) {
+    state.berries = (state.berries || 0) + chestDef.berries;
+    parts.push(`+${chestDef.berries} Berries`);
+  }
+  if (chestDef.coins) {
+    state.coins = (state.coins || 0) + chestDef.coins;
+    parts.push(`+${chestDef.coins} Coins`);
+  }
+  return {
+    ok: true,
+    alreadyOpened: false,
+    summary: parts.join(' · '),
+  };
 }
 
 export function buyShopItem(state, itemId) {
@@ -171,6 +225,8 @@ export function loadGameFromStorage(storage = globalThis.localStorage) {
     parsed.coins = typeof parsed.coins === 'number' ? parsed.coins : 250;
     parsed.badges = Array.isArray(parsed.badges) ? parsed.badges : [];
     parsed.defeatedTrainers = Array.isArray(parsed.defeatedTrainers) ? parsed.defeatedTrainers : [];
+    parsed.openedChests = Array.isArray(parsed.openedChests) ? parsed.openedChests : [];
+    parsed.pickedUpBalls = Array.isArray(parsed.pickedUpBalls) ? parsed.pickedUpBalls : [];
     parsed.seenDex = Array.isArray(parsed.seenDex) ? parsed.seenDex : CORE_SPECIES.slice(0, 1).map((s) => s.id);
     parsed.caughtDex = Array.isArray(parsed.caughtDex) ? parsed.caughtDex : [parsed.party[0].speciesId];
     return parsed;

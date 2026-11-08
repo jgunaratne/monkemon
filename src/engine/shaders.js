@@ -11,6 +11,27 @@
 
 import * as THREE from 'three';
 
+/**
+ * Shared JS + GLSL Organic Island Coastline Radius (normalized around `(halfW, halfD)` ellipse).
+ * Produces natural bays, coves, headlands, and gateway peninsulas instead of rectangular boxes!
+ */
+export function computeCoastRadiusNorm(theta, coastParams = [0.1, 0.08, 0.05, 0.7], lobeDirs = []) {
+  const [a2 = 0.1, a3 = 0.08, a5 = 0.05, phase = 0.7] = coastParams;
+  let r =
+    0.96 +
+    a2 * Math.cos(2.0 * theta + phase) +
+    a3 * Math.sin(3.0 * theta - phase * 1.35) +
+    a5 * Math.cos(5.0 * theta + phase * 2.1);
+
+  for (const lAngle of lobeDirs) {
+    let d = theta - lAngle;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    r = Math.max(r, 1.03 * Math.exp(-(d * d) / 0.11));
+  }
+  return Math.max(0.72, Math.min(1.16, r));
+}
+
 export function createOceanMagmaShaderMaterial({
   waterColor = '#1496c8',
   deepColor = '#0a4a78',
@@ -21,6 +42,8 @@ export function createOceanMagmaShaderMaterial({
   sunDir = new THREE.Vector3(0.45, 0.78, 0.42).normalize(),
   islandHalfW = 24,
   islandHalfD = 20,
+  coastParams = [0.1, 0.08, 0.05, 0.7],
+  lobeDirs = [],
   theme = 'tropical',
 }) {
   const isVolcano = theme === 'volcano';
@@ -32,6 +55,8 @@ export function createOceanMagmaShaderMaterial({
   );
   const sky = new THREE.Color(skyColor);
   const fogC = new THREE.Color(fogColor);
+  const lobesPadded = [-99, -99, -99, -99];
+  for (let i = 0; i < Math.min(4, lobeDirs.length); i++) lobesPadded[i] = lobeDirs[i];
 
   return new THREE.ShaderMaterial({
     uniforms: {
@@ -43,7 +68,18 @@ export function createOceanMagmaShaderMaterial({
       uFogNear: { value: fogNear },
       uFogFar: { value: fogFar },
       uSunDir: { value: sunDir.clone().normalize() },
-      uIslandHalf: { value: new THREE.Vector2(islandHalfW + 1.15, islandHalfD + 1.15) },
+      uIslandHalf: { value: new THREE.Vector2(islandHalfW + 0.9, islandHalfD + 0.9) },
+      uCoastParams: {
+        value: new THREE.Vector4(
+          coastParams[0] ?? 0.1,
+          coastParams[1] ?? 0.08,
+          coastParams[2] ?? 0.05,
+          coastParams[3] ?? 0.7,
+        ),
+      },
+      uLobeDirs: {
+        value: new THREE.Vector4(lobesPadded[0], lobesPadded[1], lobesPadded[2], lobesPadded[3]),
+      },
       uIsVolcano: { value: isVolcano ? 1.0 : 0.0 },
     },
     vertexShader: /* glsl */ `
@@ -83,6 +119,8 @@ export function createOceanMagmaShaderMaterial({
       uniform float uFogFar;
       uniform vec3 uSunDir;
       uniform vec2 uIslandHalf;
+      uniform vec4 uCoastParams;
+      uniform vec4 uLobeDirs;
       uniform float uIsVolcano;
 
       varying vec3 vWorldPos;
@@ -112,14 +150,43 @@ export function createOceanMagmaShaderMaterial({
         return minDist;
       }
 
-      float sdRoundBox2D(vec2 p, vec2 b, float r) {
-        vec2 q = abs(p) - b + vec2(r);
-        return length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - r;
+      float wrapAngleDiff(float a, float b) {
+        float d = mod(a - b + 3.14159265, 6.2831853) - 3.14159265;
+        return d;
+      }
+
+      float organicCoastShoreDist(vec2 xz) {
+        vec2 normP = xz / max(vec2(1.0), uIslandHalf);
+        float theta = atan(normP.y, normP.x);
+        float rNorm = 0.96
+          + uCoastParams.x * cos(2.0 * theta + uCoastParams.w)
+          + uCoastParams.y * sin(3.0 * theta - uCoastParams.w * 1.35)
+          + uCoastParams.z * cos(5.0 * theta + uCoastParams.w * 2.1);
+
+        if (uLobeDirs.x > -50.0) {
+          float d0 = wrapAngleDiff(theta, uLobeDirs.x);
+          rNorm = max(rNorm, 1.03 * exp(-(d0 * d0) / 0.11));
+        }
+        if (uLobeDirs.y > -50.0) {
+          float d1 = wrapAngleDiff(theta, uLobeDirs.y);
+          rNorm = max(rNorm, 1.03 * exp(-(d1 * d1) / 0.11));
+        }
+        if (uLobeDirs.z > -50.0) {
+          float d2 = wrapAngleDiff(theta, uLobeDirs.z);
+          rNorm = max(rNorm, 1.03 * exp(-(d2 * d2) / 0.11));
+        }
+        if (uLobeDirs.w > -50.0) {
+          float d3 = wrapAngleDiff(theta, uLobeDirs.w);
+          rNorm = max(rNorm, 1.03 * exp(-(d3 * d3) / 0.11));
+        }
+        rNorm = clamp(rNorm, 0.72, 1.16);
+        float avgScale = 0.5 * (uIslandHalf.x + uIslandHalf.y);
+        return (length(normP) - rNorm) * avgScale;
       }
 
       void main() {
         vec2 xz = vWorldPos.xz;
-        float shoreDist = sdRoundBox2D(xz, uIslandHalf, 2.2);
+        float shoreDist = organicCoastShoreDist(xz);
 
         if (uIsVolcano > 0.5) {
           // Convective glowing magma & dark cooling obsidian crust plates
@@ -543,6 +610,9 @@ export function createSunbeamShaderMaterial({ color = '#fff3b0', opacity = 0.13 
 export function createHoloArenaShaderMaterial({
   primaryColor = '#38bdf8',
   accentColor = '#fde047',
+  playerColor = '#f59e0b',
+  enemyColor = '#ef4444',
+  intensity = 1.0,
 } = {}) {
   return new THREE.ShaderMaterial({
     transparent: true,
@@ -551,38 +621,391 @@ export function createHoloArenaShaderMaterial({
       uTime: { value: 0 },
       uPrimary: { value: new THREE.Color(primaryColor) },
       uAccent: { value: new THREE.Color(accentColor) },
+      uPlayerColor: { value: new THREE.Color(playerColor) },
+      uEnemyColor: { value: new THREE.Color(enemyColor) },
+      uIntensity: { value: intensity },
+      uShockOrigin: { value: new THREE.Vector2(0, 0) },
+      uShockProgress: { value: -1.0 },
+      uShockColor: { value: new THREE.Color('#fde047') },
     },
     vertexShader: /* glsl */ `
       varying vec2 vUv;
+      varying vec3 vWorldPos;
       void main() {
-        vUv = uv * 2.0 - 1.0; // -1..1 across disk
-        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        vUv = uv * 2.0 - 1.0; // -1..1 across arena disk
+        vec4 wp = modelMatrix * vec4(position, 1.0);
+        vWorldPos = wp.xyz;
+        gl_Position = projectionMatrix * viewMatrix * wp;
       }
     `,
     fragmentShader: /* glsl */ `
       uniform float uTime;
       uniform vec3 uPrimary;
       uniform vec3 uAccent;
+      uniform vec3 uPlayerColor;
+      uniform vec3 uEnemyColor;
+      uniform float uIntensity;
+      uniform vec2 uShockOrigin;
+      uniform float uShockProgress;
+      uniform vec3 uShockColor;
+
       varying vec2 vUv;
+      varying vec3 vWorldPos;
+
+      float hash21(vec2 p) {
+        p = fract(p * vec2(234.34, 435.345));
+        p += dot(p, p + 34.23);
+        return fract(p.x * p.y);
+      }
+
+      float noise2D(vec2 p) {
+        vec2 i = floor(p);
+        vec2 f = fract(p);
+        f = f * f * (3.0 - 2.0 * f);
+        float a = hash21(i);
+        float b = hash21(i + vec2(1.0, 0.0));
+        float c = hash21(i + vec2(0.0, 1.0));
+        float d = hash21(i + vec2(1.0, 1.0));
+        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+      }
+
+      float fbm(vec2 p) {
+        float v = 0.0;
+        float amp = 0.5;
+        mat2 rot = mat2(0.8, -0.6, 0.6, 0.8);
+        for (int i = 0; i < 4; i++) {
+          v += amp * noise2D(p);
+          p = rot * p * 2.04 + vec2(1.7, 9.2);
+          amp *= 0.5;
+        }
+        return v;
+      }
+
+      // Distance to nearest hexagon edge for holographic honeycomb lattice
+      float hexEdgeDist(vec2 p) {
+        const vec2 s = vec2(1.0, 1.7320508);
+        vec2 a = mod(p, s) - 0.5 * s;
+        vec2 b = mod(p - 0.5 * s, s) - 0.5 * s;
+        vec2 gv = dot(a, a) < dot(b, b) ? a : b;
+        vec2 ab = abs(gv);
+        float hexR = max(ab.x, dot(ab, normalize(vec2(1.0, 1.7320508))));
+        return abs(0.5 - hexR);
+      }
 
       void main() {
         float r = length(vUv);
         if (r > 1.0) discard;
 
-        // Subtle tactical grid + concentric radar pulse rings
-        vec2 grid = abs(fract(vUv * 5.0) - 0.5);
-        float gridLine = smoothstep(0.47, 0.5, max(grid.x, grid.y)) * 0.22;
+        float theta = atan(vUv.y, vUv.x);
 
-        float pulseR = fract(r * 2.5 - uTime * 0.45);
-        float pulseRing = smoothstep(0.08, 0.0, abs(pulseR - 0.5)) * 0.25;
+        // 1. Split Elemental Territory Nebula (Player Left vs Foe Right + clashing plasma fault line!)
+        float warp = (fbm(vUv * 3.4 + vec2(0.0, uTime * 0.55)) - 0.5) * 0.22;
+        float sideBlend = smoothstep(-0.18, 0.18, vUv.x + warp);
+        vec3 sideColor = mix(uPlayerColor, uEnemyColor, sideBlend);
 
-        float outerGlow = smoothstep(0.76, 0.99, r);
-        float innerRing = smoothstep(0.025, 0.0, abs(r - 0.42));
+        float nebulaA = fbm(vUv * 2.8 + vec2(uTime * 0.22, -uTime * 0.18));
+        float nebulaB = fbm(vUv * 5.4 - vec2(uTime * 0.31, uTime * 0.27));
+        float plasma = smoothstep(0.28, 0.86, nebulaA * 0.62 + nebulaB * 0.48);
 
-        vec3 col = mix(vec3(0.04, 0.09, 0.17), uPrimary, gridLine + pulseRing + outerGlow * 0.72);
-        col = mix(col, uAccent, innerRing * 0.75);
-        float alpha = 0.26 + outerGlow * 0.46 + innerRing * 0.35 + pulseRing * 0.2;
-        gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.85));
+        // Crackling lightning seam along center duel line
+        float centerFault = exp(-abs(vUv.x + warp * 0.65) * 26.0) * (0.55 + 0.45 * sin(vUv.y * 18.0 - uTime * 7.0));
+
+        // 2. Holographic Hexagonal Energy Lattice
+        float hexD = hexEdgeDist(vUv * 6.5);
+        float hexWave = 0.5 + 0.5 * sin(r * 10.0 - uTime * 2.4 + nebulaA * 3.0);
+        float hexLine = smoothstep(0.055, 0.008, hexD) * (0.16 + 0.26 * hexWave);
+
+        // 3. Counter-Rotating Sacred Glyph / Telemetry Rings
+        float outerGlyphBand = smoothstep(0.045, 0.006, abs(r - 0.90));
+        float outerTicks = smoothstep(0.35, 0.85, sin(theta * 24.0 + uTime * 1.35)) * smoothstep(0.07, 0.01, abs(r - 0.855));
+
+        float midGlyphBand = smoothstep(0.022, 0.003, abs(r - 0.62));
+        float midRunes = step(0.35, sin(theta * 16.0 - uTime * 1.9)) * smoothstep(0.04, 0.008, abs(r - 0.62));
+
+        float innerCoreRing = smoothstep(0.024, 0.003, abs(r - 0.26));
+        float starSpokes = smoothstep(0.965, 0.998, cos(theta * 8.0 + uTime * 0.45)) * smoothstep(0.24, 0.88, r) * 0.28;
+
+        // Traveling harmonic radar pulse
+        float radarPhase = fract(r * 1.8 - uTime * 0.38);
+        float radarRing = smoothstep(0.09, 0.0, abs(radarPhase - 0.5)) * (1.0 - r * 0.45) * 0.32;
+
+        // Outer rim containment glow
+        float rimGlow = smoothstep(0.80, 0.995, r);
+
+        // 4. Live Reactive Attack / Catch Shockwave (uShockProgress in 0..1)
+        float shockGlow = 0.0;
+        if (uShockProgress >= 0.0 && uShockProgress <= 1.0) {
+          float distShock = length(vUv - uShockOrigin);
+          float shockRadius = uShockProgress * 1.45;
+          float fade = 1.0 - smoothstep(0.55, 1.0, uShockProgress);
+          float ringMain = smoothstep(0.11, 0.0, abs(distShock - shockRadius));
+          float ringEcho = smoothstep(0.06, 0.0, abs(distShock - max(0.0, shockRadius - 0.16))) * 0.55;
+          shockGlow = (ringMain + ringEcho) * fade;
+        }
+
+        // Compose rich high-contrast layered shader color over the dark obsidian stadium dais
+        vec3 baseDark = vec3(0.03, 0.06, 0.14);
+        vec3 col = mix(baseDark, sideColor * 0.92, 0.28 + plasma * 0.62);
+        col += sideColor * (hexLine * 1.15 + radarRing * 1.05);
+        col += uPrimary * (midGlyphBand * 0.95 + starSpokes * 1.25);
+        col += uAccent * (outerGlyphBand * 1.15 + outerTicks * 1.0 + midRunes * 0.9 + innerCoreRing * 1.05 + centerFault * 1.45);
+        col += mix(sideColor, uAccent, 0.48) * rimGlow * 1.1;
+        col += uShockColor * shockGlow * 2.1;
+        col *= (0.98 + 0.18 * uIntensity);
+
+        float alpha = 0.82
+          + plasma * 0.10
+          + hexLine * 0.12
+          + (outerGlyphBand + centerFault + rimGlow + shockGlow) * 0.15;
+
+        gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.97));
+      }
+    `,
+  });
+}
+
+/**
+ * Translucent 3D Fresnel Hexagonal Stadium Forcefield Cylinder around the Battle Ring.
+ * Clear in the center sightline, shimmering with elemental plasma & hex cells around the edges!
+ */
+export function createBattleBarrierDomeShaderMaterial({
+  playerColor = '#f59e0b',
+  enemyColor = '#38bdf8',
+  accentColor = '#fde047',
+} = {}) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uTime: { value: 0 },
+      uPlayerColor: { value: new THREE.Color(playerColor) },
+      uEnemyColor: { value: new THREE.Color(enemyColor) },
+      uAccent: { value: new THREE.Color(accentColor) },
+      uPulse: { value: 0.0 },
+    },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      varying vec3 vNormalV;
+      varying vec3 vViewDir;
+      varying vec3 vLocalPos;
+      void main() {
+        vUv = uv;
+        vLocalPos = position;
+        vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+        vNormalV = normalize(normalMatrix * normal);
+        vViewDir = normalize(-mvPos.xyz);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uTime;
+      uniform vec3 uPlayerColor;
+      uniform vec3 uEnemyColor;
+      uniform vec3 uAccent;
+      uniform float uPulse;
+
+      varying vec2 vUv;
+      varying vec3 vNormalV;
+      varying vec3 vViewDir;
+      varying vec3 vLocalPos;
+
+      float hexWall(vec2 p) {
+        const vec2 s = vec2(1.0, 1.7320508);
+        vec2 a = mod(p, s) - 0.5 * s;
+        vec2 b = mod(p - 0.5 * s, s) - 0.5 * s;
+        vec2 gv = dot(a, a) < dot(b, b) ? a : b;
+        vec2 ab = abs(gv);
+        float r = max(ab.x, dot(ab, normalize(vec2(1.0, 1.7320508))));
+        return smoothstep(0.07, 0.012, abs(0.5 - r));
+      }
+
+      void main() {
+        // Strong bottom anchor fading smoothly upward so sky & creatures remain crisp
+        float hFade = smoothstep(0.0, 0.14, vUv.y) * pow(1.0 - clamp(vUv.y, 0.0, 1.0), 1.85);
+        // Grazing-angle Fresnel glow on left/right curvature of cylinder
+        float ndotv = abs(dot(normalize(vNormalV), normalize(vViewDir)));
+        float fresnel = mix(0.22, 1.0, pow(1.0 - ndotv, 2.1));
+
+        float side = smoothstep(-2.0, 2.0, vLocalPos.x);
+        vec3 sideCol = mix(uPlayerColor, uEnemyColor, side);
+
+        float hex = hexWall(vec2(vUv.x * 28.0, vUv.y * 5.2 - uTime * 0.35));
+        float scan = smoothstep(0.18, 0.0, abs(fract(vUv.y * 2.5 - uTime * 0.55) - 0.5));
+        float baseBand = smoothstep(0.12, 0.0, vUv.y);
+
+        vec3 col = sideCol * (0.55 + hex * 1.15 + scan * 0.85) + uAccent * (baseBand * 1.05 + uPulse * 0.85);
+        float alpha = hFade * fresnel * (0.22 + hex * 0.34 + scan * 0.22 + baseBand * 0.38 + uPulse * 0.28);
+        gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.68));
+      }
+    `,
+  });
+}
+
+/**
+ * Spinning Elemental Summon Pedestal Halo placed directly beneath each Combatant in Battle!
+ */
+export function createCombatantPadShaderMaterial({ color = '#38bdf8' } = {}) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uTime: { value: 0 },
+      uColor: { value: new THREE.Color(color) },
+      uFlare: { value: 0.0 },
+    },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv * 2.0 - 1.0;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uTime;
+      uniform vec3 uColor;
+      uniform float uFlare;
+      varying vec2 vUv;
+
+      void main() {
+        float r = length(vUv);
+        if (r > 1.0) discard;
+        float a = atan(vUv.y, vUv.x);
+
+        float outerRing = smoothstep(0.045, 0.008, abs(r - 0.88));
+        float runeArcs = step(0.15, sin(a * 10.0 + uTime * 2.6)) * smoothstep(0.06, 0.012, abs(r - 0.74));
+        float innerSpin = step(0.0, cos(a * 6.0 - uTime * 3.4)) * smoothstep(0.05, 0.01, abs(r - 0.48));
+        float coreGlow = smoothstep(0.65, 0.0, r) * (0.32 + 0.12 * sin(uTime * 4.2));
+        float flareWave = uFlare * smoothstep(0.16, 0.0, abs(r - fract(uTime * 2.2)));
+
+        float intensity = outerRing * 1.1 + runeArcs * 0.85 + innerSpin * 0.7 + coreGlow + flareWave * 1.4;
+        vec3 col = mix(uColor, vec3(1.0, 0.98, 0.88), clamp(outerRing * 0.55 + uFlare * 0.5, 0.0, 1.0));
+        gl_FragColor = vec4(col * (1.0 + uFlare * 0.8), clamp(intensity * 0.72, 0.0, 0.92));
+      }
+    `,
+  });
+}
+
+/**
+ * Twisted 3D Volumetric Elemental Beam / Vortex Shader for Signature Attacks & Healing Pillars!
+ */
+export function createElementalBeamShaderMaterial({
+  coreColor = '#ffffff',
+  glowColor = '#38bdf8',
+  twist = 5.5,
+} = {}) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uTime: { value: 0 },
+      uProgress: { value: 0.5 },
+      uCoreColor: { value: new THREE.Color(coreColor) },
+      uGlowColor: { value: new THREE.Color(glowColor) },
+      uTwist: { value: twist },
+    },
+    vertexShader: /* glsl */ `
+      uniform float uTime;
+      uniform float uProgress;
+      uniform float uTwist;
+      varying vec2 vUv;
+      varying vec3 vNormalV;
+      varying vec3 vViewDir;
+
+      void main() {
+        vUv = uv;
+        vec3 p = position;
+        float pulse = 1.0 + 0.22 * sin(uv.y * 16.0 - uTime * 22.0);
+        float angle = uv.y * uTwist - uTime * 10.0;
+        p.x *= pulse;
+        p.z *= pulse;
+        // Subtle helical spiral displacement
+        p.x += cos(angle) * 0.08 * sin(uv.y * 3.14159);
+        p.z += sin(angle) * 0.08 * sin(uv.y * 3.14159);
+
+        vec4 mvPos = modelViewMatrix * vec4(p, 1.0);
+        vNormalV = normalize(normalMatrix * normal);
+        vViewDir = normalize(-mvPos.xyz);
+        gl_Position = projectionMatrix * mvPos;
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uTime;
+      uniform float uProgress;
+      uniform vec3 uCoreColor;
+      uniform vec3 uGlowColor;
+      varying vec2 vUv;
+      varying vec3 vNormalV;
+      varying vec3 vViewDir;
+
+      void main() {
+        // Head-to-tail beam reveal & fade based on uProgress (0..1)
+        float front = smoothstep(uProgress + 0.12, max(0.0, uProgress - 0.25), vUv.y);
+        float endCaps = smoothstep(0.0, 0.1, vUv.y) * smoothstep(1.0, 0.88, vUv.y);
+        float lifeFade = 1.0 - smoothstep(0.72, 1.0, uProgress);
+
+        float centerAxis = pow(abs(dot(normalize(vNormalV), normalize(vViewDir))), 1.35);
+        float spiralA = 0.5 + 0.5 * sin(vUv.x * 18.849 + vUv.y * 20.0 - uTime * 26.0);
+        float spiralB = 0.5 + 0.5 * cos(vUv.x * 12.566 - vUv.y * 14.0 - uTime * 18.0);
+        float energy = 0.45 + 0.55 * spiralA * spiralB;
+
+        vec3 col = mix(uGlowColor, uCoreColor, smoothstep(0.35, 0.92, centerAxis * energy));
+        float alpha = front * endCaps * lifeFade * (0.35 + centerAxis * 0.75) * energy;
+        gl_FragColor = vec4(col * 1.45, clamp(alpha, 0.0, 0.96));
+      }
+    `,
+  });
+}
+
+/**
+ * Expanding Supersonic Elemental Impact Shockwave Ring Shader on Hit / Super-Effective Strike / Catch!
+ */
+export function createBattleImpactWaveShaderMaterial({
+  color = '#fde047',
+  accentColor = '#ffffff',
+} = {}) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uProgress: { value: 0.0 },
+      uColor: { value: new THREE.Color(color) },
+      uAccent: { value: new THREE.Color(accentColor) },
+    },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv * 2.0 - 1.0;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uProgress;
+      uniform vec3 uColor;
+      uniform vec3 uAccent;
+      varying vec2 vUv;
+
+      void main() {
+        float r = length(vUv);
+        if (r > 1.0) discard;
+        float theta = atan(vUv.y, vUv.x);
+
+        float waveR = 0.15 + uProgress * 0.82;
+        float mainRing = smoothstep(0.13, 0.0, abs(r - waveR));
+        float innerEcho = smoothstep(0.08, 0.0, abs(r - max(0.05, waveR - 0.22))) * 0.65;
+        float starburst = pow(max(0.0, cos(theta * 12.0 + uProgress * 8.0)), 6.0) * smoothstep(waveR + 0.08, 0.0, r) * 0.7;
+        float fade = 1.0 - smoothstep(0.35, 1.0, uProgress);
+
+        vec3 col = mix(uColor, uAccent, clamp(mainRing * 0.7 + starburst, 0.0, 1.0));
+        float alpha = (mainRing * 1.15 + innerEcho + starburst) * fade;
+        gl_FragColor = vec4(col * 1.5, clamp(alpha, 0.0, 0.95));
       }
     `,
   });

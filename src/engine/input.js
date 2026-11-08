@@ -1,7 +1,12 @@
-// Unified Keyboard + Steam Deck Gamepad + Mobile Virtual Touch Input Engine for Monkemon.
-// Maps cleanly to both Overworld Exploration and the Sticky-Note Real-Time Arena Moves:
-//   [A] Monk Run  ·  [B] Fake Out  ·  [X] Eat  ·  [Y] Jump  ·  [RB] Type Special
-//   [LB] Throw Monkeball  ·  [LT] Switch Monkemon  ·  [View] Map  ·  [Menu] 20-Board / Dex
+// Unified Keyboard + Steam Deck Gamepad + Virtual Touch Input Engine for Monkemon.
+// Supports seamless dual controls across Overworld, Turn-Based Battles, and the Tamer Menu Hub:
+//   - Keyboard: WASD / Arrow Keys (move & menu cursor), Enter / Space (Confirm / Interact),
+//     1–4 (quick menu slot), Esc / Backspace (Back / Cancel), Shift (Sprint),
+//     Tab / I (Main Menu), B (MonkeDex), V (My Monkemon), M (World Map),
+//     F (Throw Monkeball), E (Toss Berry), Q (Cycle Partner).
+//   - Steam Deck / Gamepad: Left Stick / D-Pad (move & menu cursor), (A) Confirm / Interact,
+//     (B) Cancel / Back (or hold to Sprint in Overworld), (Y) Throw Monkeball, (X) Toss Berry,
+//     Menu / Start (Main Menu Hub), View / Select (World Map), LB / RB (Switch Menu Tabs).
 
 const KEYMAP = {
   ArrowLeft: 'left',
@@ -13,45 +18,54 @@ const KEYMAP = {
   ArrowDown: 'down',
   KeyS: 'down',
 
-  // [A] Confirm / Interact / Battle Move A (Monk Run)
+  // [A] Confirm / Interact / Enter House / Talk / Battle Select
   Space: 'btnA',
-  Digit1: 'btnA',
   Enter: 'btnA',
+  NumpadEnter: 'btnA',
 
-  // [B] Sprint / Cancel / Battle Move B (Fake Out)
+  // [B] Sprint in Overworld / Cancel in Menus
   ShiftLeft: 'btnB',
   ShiftRight: 'btnB',
-  Digit2: 'btnB',
-  KeyK: 'btnB',
 
-  // [X] Toss Berry / Battle Move X (Eat)
+  // [X] Toss Sweet Berry (Overworld)
   KeyE: 'btnX',
-  Digit3: 'btnX',
 
-  // [Y] Aim & Throw Monkeball (Overworld) / Battle Move Y (Jump)
-  KeyJ: 'btnY',
+  // [Y] Aim & Throw Monkeball (Overworld)
   KeyF: 'btnY',
-  Digit4: 'btnY',
+  KeyJ: 'btnY',
 
-  // [RB] Engage Partner Battle (Overworld) / Type Special (Battle)
-  KeyL: 'btnRB',
-  Digit5: 'btnRB',
+  // [RB] Engage Wild Battle (Overworld) / Next Tab in Menu
+  KeyR: 'btnRB',
+  BracketRight: 'tabNext',
 
-  // [LB] Quick Monkeball Throw (Overworld & Battle)
+  // [LB] Quick Monkeball Throw (Overworld) / Prev Tab in Menu
   KeyC: 'btnLB',
+  BracketLeft: 'tabPrev',
 
-  // [LT] Cycle Active Party Monkemon
+  // [LT] Cycle Active Lead Partner
   KeyQ: 'btnLT',
-  KeyR: 'btnLT',
 
-  // Meta screens & toggles
+  // Direct 1–4 Menu / Move / Party Slot Shortcuts on Keyboard
+  Digit1: 'slot1',
+  Numpad1: 'slot1',
+  Digit2: 'slot2',
+  Numpad2: 'slot2',
+  Digit3: 'slot3',
+  Numpad3: 'slot3',
+  Digit4: 'slot4',
+  Numpad4: 'slot4',
+
+  // Tamer Menu Hub & Direct Tabs
+  Tab: 'menu',
+  KeyI: 'menu',
+  KeyV: 'party',
   KeyB: 'dex',
-  Tab: 'dex',
   KeyM: 'map',
   KeyP: 'forge',
   KeyG: 'tilt',
   KeyN: 'mute',
   Escape: 'back',
+  Backspace: 'back',
 };
 
 export const ACTIONS = [
@@ -66,6 +80,14 @@ export const ACTIONS = [
   'btnRB',
   'btnLB',
   'btnLT',
+  'slot1',
+  'slot2',
+  'slot3',
+  'slot4',
+  'tabPrev',
+  'tabNext',
+  'menu',
+  'party',
   'dex',
   'map',
   'forge',
@@ -79,6 +101,10 @@ export class Input {
     this.down = Object.fromEntries(ACTIONS.map((a) => [a, false]));
     this.pressed = Object.fromEntries(ACTIONS.map((a) => [a, false]));
     this.released = Object.fromEntries(ACTIONS.map((a) => [a, false]));
+    this.menuNav = { left: false, right: false, up: false, down: false };
+    this._navHold = { left: 0, right: 0, up: 0, down: 0 };
+    this._lastUpdateTs = typeof performance !== 'undefined' ? performance.now() : 0;
+
     this.keyState = {};
     this.padState = {};
     this.touchState = {};
@@ -135,7 +161,7 @@ export class Input {
       targetEl.addEventListener('pointerdown', (e) => {
         markGesture();
         if (e.button === 2) {
-          this.pulse('btnLB');
+          this.pulse('btnY');
         }
       });
       targetEl.addEventListener('contextmenu', (e) => e.preventDefault());
@@ -180,22 +206,24 @@ export class Input {
         this._padZ = ay;
       }
       const b = (i) => Boolean(gp.buttons[i] && gp.buttons[i].pressed);
-      s.left = ax < -0.45 || b(14);
-      s.right = ax > 0.45 || b(15);
-      s.up = ay < -0.45 || b(12);
-      s.down = ay > 0.45 || b(13);
+      s.left = ax < -0.46 || b(14);
+      s.right = ax > 0.46 || b(15);
+      s.up = ay < -0.46 || b(12);
+      s.down = ay > 0.46 || b(13);
 
       // Standard Xbox / Steam Deck ABXY layout:
-      // 0 = A (Bottom), 1 = B (Right), 2 = X (Left), 3 = Y (Top)
+      // 0 = A (Bottom Confirm), 1 = B (Right Cancel/Sprint), 2 = X (Left Berry), 3 = Y (Top Monkeball)
       s.btnA = b(0);
       s.btnB = b(1);
       s.btnX = b(2);
       s.btnY = b(3);
       s.btnLB = b(4);
       s.btnRB = b(5) || b(7);
+      s.tabPrev = b(4);
+      s.tabNext = b(5);
       s.btnLT = b(6);
-      s.map = b(8);  // View / Select -> Archipelago Map
-      s.dex = b(9);  // Menu / Start -> 20-Monkemon Board & Party
+      s.map = b(8);   // View / Select -> Archipelago World Map
+      s.menu = b(9);  // Menu / Start -> Tamer Main Menu Hub (Squad, MonkeDex, Bag, Map)
       s.tilt = b(10); // L3 -> Toggle Tilt-Shift Miniature Lens
       s.mute = b(11); // R3 -> Toggle Audio Mute
 
@@ -211,6 +239,10 @@ export class Input {
   }
 
   update() {
+    const nowTs = typeof performance !== 'undefined' ? performance.now() : this._lastUpdateTs + 16;
+    const dt = Math.min(0.1, Math.max(0.004, (nowTs - this._lastUpdateTs) / 1000));
+    this._lastUpdateTs = nowTs;
+
     this.pollGamepad();
     for (const a of ACTIONS) {
       let now = Boolean(this.keyState[a] || this.padState[a] || this.touchState[a]);
@@ -227,6 +259,29 @@ export class Input {
       this.pressed[a] = now && !this.down[a];
       this.released[a] = !now && this.down[a];
       this.down[a] = now;
+    }
+
+    // Crisp tactile edge + auto-repeat navigation pulses for 2D menus & lists (Keyboard + Steam Deck)
+    for (const dir of ['left', 'right', 'up', 'down']) {
+      const isDown = this.down[dir] || (dir === 'left' && this.touchStickX < -0.5) ||
+        (dir === 'right' && this.touchStickX > 0.5) ||
+        (dir === 'up' && this.touchStickZ < -0.5) ||
+        (dir === 'down' && this.touchStickZ > 0.5);
+      if (this.pressed[dir]) {
+        this.menuNav[dir] = true;
+        this._navHold[dir] = 0.34;
+      } else if (isDown) {
+        this._navHold[dir] -= dt;
+        if (this._navHold[dir] <= 0) {
+          this.menuNav[dir] = true;
+          this._navHold[dir] = 0.16;
+        } else {
+          this.menuNav[dir] = false;
+        }
+      } else {
+        this.menuNav[dir] = false;
+        this._navHold[dir] = 0;
+      }
     }
 
     // Compute smooth 2D movement vector in XZ world plane

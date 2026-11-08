@@ -1,14 +1,22 @@
-// Real-Time Tactical 2.5D Holo-Arena Battle Engine for Monkemon!
-// Implements the Concept Spec Battle Layout:
-//   - Left Rim: Hero ALEX cheering on `Monk 1` (animated limb & cheer rig)
-//   - Right Rim: Rival Trainer / House Leader commanding `Monk 2` (or Wild / Alpha Boss #19 & #20)
-//   - Split Battle Deck (`Fight` / `Monkeball` / `Switch` / `Run`) + Live Gamepad Action Diamond:
-//       [A] Monk Run  ·  [B] Fake Out  ·  [X] Eat  ·  [Y] Jump  ·  [RB] Type Special
-//   - Lockup-proof frame-synchronized `pendingEnd` transition state (never mutates/nulls scene groups mid-frame!).
+// Classic Turn-Based 2.5D Command-Menu Battle Engine for Monkemon!
+// - Calm, unhurried handheld RPG pacing: zero enemy attacks while reading or picking menus!
+// - Root Menu (`2×2`): `1: ⚔️ FIGHT`, `2: 🐵 CATCH / BAG`, `3: 🐾 MONKEMON`, `4: 🏃 RUN`
+// - Sub-Menus (`fight`, `bag`, `party`) navigable via Keyboard (`WASD / Arrows / 1-4 / Enter / Esc`),
+//   Steam Deck Controller (`D-Pad / Stick / (A) / (B)`), or Mouse / Touch!
+// - Powered by the Multi-Layered Reactive GLSL Battle Shader Suite:
+//     • Split-Elemental Nebula + Hex Lattice + Sacred Glyph + Shockwave Arena Floor
+//     • 3D Fresnel Hexagonal Forcefield Stadium Cylinder
+//     • Spinning Elemental Summon Pedestals under both combatants
+//     • Twisted 3D Helical Plasma Beams, Rising Aura Pillars & Supersonic Impact Wave Shaders!
 
 import * as THREE from 'three';
 import { ELEMENTS, MOVES } from '../data/moves.js';
 import { getSpecies } from '../data/species.js';
+import { buildBattleArenaGroup } from '../engine/diorama_builder.js';
+import {
+  createBattleImpactWaveShaderMaterial,
+  createElementalBeamShaderMaterial,
+} from '../engine/shaders.js';
 import {
   calculateHitDamage,
   computeCatchProbability,
@@ -17,12 +25,40 @@ import {
   grantExpToMon,
   resolveMoveElement,
 } from './combat_math.js';
-import { addCaughtMonToState, markDexSeen } from './save_store.js';
-import { buildBattleArenaGroup } from '../engine/diorama_builder.js';
+import { addCaughtMonToState, markDexSeen, useBerryOnPartyMon } from './save_store.js';
 
-const ARENA_RADIUS = 6.5;
+const ARENA_RADIUS = 6.6;
+const PLAYER_SLOT = { x: -3.15, z: 0.85 };
+const ENEMY_SLOT = { x: 3.15, z: -0.85 };
+
 const SHARED_SPARK_GEO = new THREE.SphereGeometry(1, 8, 8);
 const SHARED_STAR_GEO = new THREE.OctahedronGeometry(1, 0);
+const SHARED_WAVE_GEO = new THREE.PlaneGeometry(1, 1);
+const SHARED_BEAM_GEO = new THREE.CylinderGeometry(0.32, 0.42, 1.0, 20, 16, true);
+SHARED_BEAM_GEO.translate(0, 0.5, 0); // origin at start `(0,0,0)` extending `+Y` to `1.0`
+
+/**
+ * Returns the 4 curated Turn-Based Battle Moves for `mon`:
+ * `[Signature Type Special, Monk Run, Sky Jump, Eat Snack]` (or species specials).
+ */
+export function getBattleMoves(mon, species) {
+  const sp = species || getSpecies(mon ? mon.speciesId : 'mugchimp');
+  const rawIds = [
+    ...(Array.isArray(mon && mon.moves) ? mon.moves : []),
+    ...(Array.isArray(sp && sp.moves) ? sp.moves : []),
+  ];
+  const specialId =
+    rawIds.find((id) => MOVES[id] && !['monk_run', 'fake_out', 'eat_snack', 'sky_jump'].includes(id)) ||
+    'espresso_geyser';
+
+  const ordered = [specialId, 'monk_run', 'sky_jump', 'eat_snack', 'fake_out'];
+  const unique = [];
+  for (const id of ordered) {
+    if (MOVES[id] && !unique.includes(id)) unique.push(id);
+    if (unique.length === 4) break;
+  }
+  return unique.map((id) => MOVES[id]);
+}
 
 export class BattleController {
   constructor({ sceneRoot, modelBank, renderer, audio, state, onToast, onFloatText, onBattleEnd }) {
@@ -36,9 +72,9 @@ export class BattleController {
     this.onBattleEnd = onBattleEnd;
 
     this.active = false;
-    this.pendingEnd = null; // { timer, result } — frame-safe battle completion!
+    this.pendingEnd = null; // { timer, result }
     this.mode = 'wild'; // 'wild' | 'trainer'
-    this.center = { x: 0, z: 0 };
+    this.center = { x: 0, y: 0, z: 0 };
     this.arenaGroup = null;
     this.fxGroup = null;
 
@@ -53,21 +89,31 @@ export class BattleController {
     this.enemyIndex = 0;
     this.trainerDef = null;
     this.wildRef = null;
+    this.wildBerryFed = false;
 
-    this.projectiles = [];
-    this.telegraphs = [];
-    this.shockwaves = [];
+    // Turn-Based Menu & Step Choreography State
+    this.menuState = 'root'; // 'intro' | 'root' | 'fight' | 'bag' | 'party' | 'animating'
+    this.rootCursor = 0;
+    this.subCursor = 0;
+    this.stepQueue = [];
+    this.activeStep = null;
+    this.bannerText = '';
+    this.narrationSub = '';
+
+    // Active 3D Shader VFX Lists
+    this.shaderBeams = [];
+    this.shaderWaves = [];
+    this.shaderPillars = [];
     this.particles = [];
     this.catchAnim = null;
-    this.bannerText = '';
+
     this.playerCombo = 0;
-    this.comboDecayTimer = 0;
     this.heroCheerTimer = 0;
     this.rivalCheerTimer = 0;
     this.time = 0;
   }
 
-  startWildBattle(wildEntity, centerPos) {
+  startWildBattle(wildEntity, centerPos = { x: 0, y: 0, z: 0 }) {
     const mon = createMonkemonInstance(wildEntity.speciesId, wildEntity.level, {
       isAlpha: Boolean(wildEntity.isAlpha),
       caughtZone: this.state.zoneId,
@@ -76,32 +122,40 @@ export class BattleController {
       mon.hp = Math.max(1, Math.round(mon.maxHp * wildEntity.hpFrac));
     }
     this.wildRef = wildEntity;
+    this.wildBerryFed = Boolean(wildEntity.berryFed);
     this.trainerDef = null;
     this.mode = 'wild';
+
+    const headline = wildEntity.isFinalBoss
+      ? `👑 BOSS #20 — KING MONKEZILLA Lv.${mon.level} appeared!`
+      : wildEntity.isAlpha
+        ? `⚡ GUARDIAN #19 — ${mon.nickname} Lv.${mon.level} challenges you!`
+        : `🌿 A wild ${mon.nickname} (Lv.${mon.level}) leaped out!`;
+
     this._setupEncounter({
       centerPos,
       enemyTeam: [mon],
       music: wildEntity.music || (wildEntity.isAlpha ? 'warden' : 'battle'),
-      headline: wildEntity.isFinalBoss
-        ? 'APEX BOSS #20 — KING MONKEZILLA APPEARED!'
-        : wildEntity.isAlpha
-          ? `GUARDIAN #19 — ${mon.nickname.toUpperCase()} CHALLENGES YOU!`
-          : `Wild ${mon.nickname} (Lv.${mon.level}) leaped into the ring!`,
+      headline,
+      isBoss: Boolean(wildEntity.isAlpha || wildEntity.isFinalBoss),
     });
   }
 
-  startTrainerBattle(trainerDef, centerPos) {
+  startTrainerBattle(trainerDef, centerPos = { x: 0, y: 0, z: 0 }) {
     const team = (trainerDef.team || []).map((entry) =>
       createMonkemonInstance(entry.speciesId, entry.level, { caughtZone: this.state.zoneId }),
     );
     this.wildRef = null;
+    this.wildBerryFed = false;
     this.trainerDef = trainerDef;
     this.mode = 'trainer';
+
     this._setupEncounter({
       centerPos,
       enemyTeam: team,
       music: trainerDef.isWarden ? 'warden' : 'battle',
-      headline: `${trainerDef.name} (${trainerDef.role}) wants to battle!`,
+      headline: `⚔️ ${trainerDef.name} (${trainerDef.role}) sent out ${team[0].nickname}!`,
+      isBoss: Boolean(trainerDef.isWarden),
     });
   }
 
@@ -118,1113 +172,1093 @@ export class BattleController {
     return 0;
   }
 
-  _setupEncounter({ centerPos, enemyTeam, music, headline }) {
-    this.cleanupMeshes();
+  _setupEncounter({ centerPos, enemyTeam, music, headline, isBoss = false }) {
+    this.cleanupSceneObjects();
+
     this.active = true;
     this.pendingEnd = null;
-    this.time = 0;
-    this.center = { x: centerPos.x, z: centerPos.z };
+    this.center = {
+      x: centerPos?.x || 0,
+      y: (centerPos?.y || 0) + 0.44,
+      z: centerPos?.z || 0,
+    };
     this.enemyTeam = enemyTeam;
     this.enemyIndex = 0;
-    this.projectiles = [];
-    this.telegraphs = [];
-    this.shockwaves = [];
-    this.particles = [];
-    this.catchAnim = null;
     this.playerCombo = 0;
-    this.comboDecayTimer = 0;
-    this.heroCheerTimer = 0.55;
-    this.rivalCheerTimer = 0.55;
-    this.bannerText = headline;
+    this.time = 0;
+    this.rootCursor = 0;
+    this.subCursor = 0;
+    this.stepQueue = [];
+    this.activeStep = null;
+    this.catchAnim = null;
 
-    this.arenaGroup = buildBattleArenaGroup(this.center.x, this.center.z, ARENA_RADIUS);
+    const pIdx = this._pickHealthyPartyIndex();
+    const pMon = this.state.party[pIdx];
+    const pSp = getSpecies(pMon.speciesId);
+    const eMon = this.enemyTeam[0];
+    const eSp = getSpecies(eMon.speciesId);
+    markDexSeen(this.state, eMon.speciesId);
+
+    const pElemColor = (ELEMENTS[pSp.element] || ELEMENTS.mug).color;
+    const eElemColor = (ELEMENTS[eSp.element] || ELEMENTS.monster).color;
+
+    this.arenaGroup = buildBattleArenaGroup(this.center.x, this.center.z, ARENA_RADIUS, {
+      playerColor: pElemColor,
+      enemyColor: eElemColor,
+      baseY: this.center.y,
+      isBoss,
+    });
+    this.sceneRoot.add(this.arenaGroup);
+
     this.fxGroup = new THREE.Group();
-    this.sceneRoot.add(this.arenaGroup, this.fxGroup);
+    this.fxGroup.position.set(this.center.x, this.center.y, this.center.z);
+    this.sceneRoot.add(this.fxGroup);
 
-    // Hero Trainer ALEX cheering on the left rim (animated character rig!)
+    // Spawn Hero Coach ALEX on Left Rim + Rival Coach on Right Rim
     this.heroCoachActor = this.modelBank.spawnActor({
       glbUrl: 'assets/models/hero_tamer.glb',
-      scale: 1.65,
+      scale: 1.55,
       primaryColor: '#38bdf8',
       secondaryColor: '#fef08a',
+      shadowRadius: 0.55,
       animateRig: true,
     });
-    this.heroCoachActor.root.position.set(this.center.x - ARENA_RADIUS - 1.05, 0, this.center.z + 0.6);
+    this.heroCoachActor.root.position.set(
+      this.center.x - ARENA_RADIUS - 0.8,
+      this.center.y,
+      this.center.z + 1.35,
+    );
     this.sceneRoot.add(this.heroCoachActor.root);
 
-    // Rival Trainer / House Master on the right rim (animated character rig!)
     if (this.mode === 'trainer' && this.trainerDef) {
-      const coachGlb =
+      const glb =
         this.trainerDef.modelId === 'trainer_warden'
           ? 'assets/models/trainer_warden.glb'
           : 'assets/models/trainer_scout.glb';
       this.rivalCoachActor = this.modelBank.spawnActor({
-        glbUrl: coachGlb,
-        scale: this.trainerDef.isWarden ? 1.85 : 1.65,
-        primaryColor: '#ef4444',
-        secondaryColor: '#fde68a',
+        glbUrl: glb,
+        scale: this.trainerDef.isWarden ? 1.8 : 1.58,
+        primaryColor: this.trainerDef.isWarden ? '#f59e0b' : '#fb7185',
+        secondaryColor: '#fef3c7',
+        shadowRadius: 0.6,
         animateRig: true,
       });
-      this.rivalCoachActor.root.position.set(this.center.x + ARENA_RADIUS + 1.05, 0, this.center.z - 0.5);
+      this.rivalCoachActor.root.position.set(
+        this.center.x + ARENA_RADIUS + 0.8,
+        this.center.y,
+        this.center.z - 1.35,
+      );
       this.sceneRoot.add(this.rivalCoachActor.root);
     }
 
-    const pIdx = this._pickHealthyPartyIndex();
-    this._spawnPlayerUnit(this.state.party[pIdx], this.center.x - 3.1, this.center.z + 0.4);
-    this._spawnEnemyUnit(this.enemyTeam[0], this.center.x + 3.1, this.center.z - 0.4);
-    this._spawnBurst({
-      x: this.center.x - 3.1,
-      y: 0.6,
-      z: this.center.z + 0.4,
-      color: '#38bdf8',
-      count: 14,
-      speed: 3.8,
-      star: true,
-    });
-    this._spawnBurst({
-      x: this.center.x + 3.1,
-      y: 0.6,
-      z: this.center.z - 0.4,
-      color: '#fbbf24',
-      count: 14,
-      speed: 3.8,
-      star: true,
-    });
+    this._spawnPlayerUnit(pMon);
+    this._spawnEnemyUnit(eMon);
 
-    this.renderer.setCameraFraming(this.center.x, 0.75, this.center.z + 0.5, 'battle', false);
-    this.audio.playMusic(music, true);
+    this.renderer.setCameraFraming(this.center.x, this.center.y + 0.85, this.center.z + 0.4, 'battle', true);
+    this.audio.playMusic(music || 'battle', true);
+
+    // Brief dramatic intro beat (`0.85s`) with shader summon flare, then open Root Command Menu!
+    this.bannerText = headline;
+    this.narrationSub =
+      this.mode === 'wild'
+        ? 'Weaken HP with ⚔️ FIGHT or throw a 🐵 MONKEBALL to catch it!'
+        : `Defeat all ${this.enemyTeam.length} of ${this.trainerDef.name}’s Monkemon!`;
+
+    if (this.arenaGroup.userData.flareCombatant) {
+      this.arenaGroup.userData.flareCombatant('player', 1.2);
+      this.arenaGroup.userData.flareCombatant('enemy', 1.2);
+    }
+    this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, pElemColor, 0.75);
+    this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, eElemColor, 0.75);
+
+    this.menuState = 'animating';
+    this.stepQueue.push({
+      duration: 0.85,
+      text: headline,
+      sub: this.narrationSub,
+      onDone: () => {
+        this._enterRootMenu();
+      },
+    });
   }
 
-  _createCombatUnitState(side, mon, sp, actor, x, z, yaw) {
-    return {
-      side,
-      mon,
-      species: sp,
-      actor,
-      x,
-      z,
-      y: 0,
-      yaw,
-      cooldowns: {},
-      invuln: 0.35,
-      stun: 0,
-      atkBuff: 0,
-      dashTimer: 0,
-      dashVx: 0,
-      dashVz: 0,
-      jumpTimer: 0,
-      jumpDur: 0.52,
-      jumpMove: null,
-      spinTimer: 0,
-      spinDur: 0.32,
-      chompTimer: 0,
-      chompDur: 0.46,
-      specialTimer: 0,
-      specialDur: 0.44,
-      recoilTimer: 0,
-      hitFlash: 0,
-      hitFlashHex: 0xffffff,
-      kbVx: 0,
-      kbVz: 0,
-      trailTimer: 0,
-      aiThink: 0.75,
-      strafeDir: 1,
-      _faintedHandled: false,
-    };
-  }
-
-  _spawnPlayerUnit(mon, x, z) {
+  _spawnPlayerUnit(mon) {
     if (this.playerActor) this.sceneRoot.remove(this.playerActor.root);
     const sp = getSpecies(mon.speciesId);
     this.playerActor = this.modelBank.spawnActor({
       glbUrl: sp.glb,
-      scale: (sp.scale || 1.08) * (mon.isAlpha ? 1.25 : 1.08),
+      scale: (sp.scale || 1.08) * 1.15,
       primaryColor: sp.palette.primary,
       secondaryColor: sp.palette.secondary,
-      shadowRadius: 0.65,
+      shadowRadius: 0.68,
       animateRig: true,
     });
-    this.playerActor.root.position.set(x, 0, z);
+    const wx = this.center.x + PLAYER_SLOT.x;
+    const wz = this.center.z + PLAYER_SLOT.z;
+    this.playerActor.root.position.set(wx, this.center.y, wz);
     this.sceneRoot.add(this.playerActor.root);
-    this.playerUnit = this._createCombatUnitState('player', mon, sp, this.playerActor, x, z, Math.PI * 0.5);
+
+    this.playerUnit = {
+      side: 'player',
+      mon,
+      species: sp,
+      actor: this.playerActor,
+      homeX: PLAYER_SLOT.x,
+      homeZ: PLAYER_SLOT.z,
+      offsetX: 0,
+      offsetY: 0,
+      offsetZ: 0,
+      yaw: Math.atan2(ENEMY_SLOT.x - PLAYER_SLOT.x, ENEMY_SLOT.z - PLAYER_SLOT.z),
+      displayHp: mon.hp,
+      atkBuffTurns: 0,
+      hitFlash: 0,
+    };
+    this._syncArenaColors();
   }
 
-  _spawnEnemyUnit(mon, x, z) {
+  _spawnEnemyUnit(mon) {
     if (this.enemyActor) this.sceneRoot.remove(this.enemyActor.root);
-    markDexSeen(this.state, mon.speciesId);
     const sp = getSpecies(mon.speciesId);
+    markDexSeen(this.state, mon.speciesId);
+    const isBoss = Boolean(mon.isAlpha || (this.wildRef && this.wildRef.isFinalBoss));
     this.enemyActor = this.modelBank.spawnActor({
       glbUrl: sp.glb,
-      scale: (sp.scale || 1.08) * (mon.isAlpha ? 1.32 : 1.08),
+      scale: (sp.scale || 1.08) * (isBoss ? 1.48 : 1.16),
       primaryColor: sp.palette.primary,
       secondaryColor: sp.palette.secondary,
-      shadowRadius: mon.isAlpha ? 1.05 : 0.65,
+      shadowRadius: isBoss ? 1.15 : 0.68,
       animateRig: true,
     });
-    this.enemyActor.root.position.set(x, 0, z);
+    const wx = this.center.x + ENEMY_SLOT.x;
+    const wz = this.center.z + ENEMY_SLOT.z;
+    this.enemyActor.root.position.set(wx, this.center.y, wz);
     this.sceneRoot.add(this.enemyActor.root);
-    this.enemyUnit = this._createCombatUnitState('enemy', mon, sp, this.enemyActor, x, z, -Math.PI * 0.5);
-  }
 
-  cleanupMeshes() {
-    for (const pt of this.particles) {
-      if (pt.mesh && pt.mesh.material) {
-        try { pt.mesh.material.dispose(); } catch {}
-      }
-    }
-    for (const obj of [
-      this.arenaGroup,
-      this.fxGroup,
-      this.heroCoachActor && this.heroCoachActor.root,
-      this.rivalCoachActor && this.rivalCoachActor.root,
-      this.playerActor && this.playerActor.root,
-      this.enemyActor && this.enemyActor.root,
-    ]) {
-      if (obj) this.sceneRoot.remove(obj);
-    }
-    this.arenaGroup = null;
-    this.fxGroup = null;
-    this.heroCoachActor = null;
-    this.rivalCoachActor = null;
-    this.playerActor = null;
-    this.enemyActor = null;
-    this.projectiles = [];
-    this.telegraphs = [];
-    this.shockwaves = [];
-    this.particles = [];
-    this.catchAnim = null;
-  }
-
-  _queueBattleEnd(result, delaySec = 0.05) {
-    if (this.pendingEnd) return;
-    this.pendingEnd = {
-      timer: Math.max(0.01, delaySec),
-      result,
+    this.enemyUnit = {
+      side: 'enemy',
+      mon,
+      species: sp,
+      actor: this.enemyActor,
+      homeX: ENEMY_SLOT.x,
+      homeZ: ENEMY_SLOT.z,
+      offsetX: 0,
+      offsetY: 0,
+      offsetZ: 0,
+      yaw: Math.atan2(PLAYER_SLOT.x - ENEMY_SLOT.x, PLAYER_SLOT.z - ENEMY_SLOT.z),
+      displayHp: mon.hp,
+      atkBuffTurns: 0,
+      hitFlash: 0,
     };
+    this._syncArenaColors();
   }
 
-  getComboMultiplier() {
-    return computeComboMultiplier(this.playerCombo);
+  _syncArenaColors() {
+    if (!this.arenaGroup || !this.arenaGroup.userData.setElementColors) return;
+    const pCol = this.playerUnit
+      ? (ELEMENTS[this.playerUnit.species.element] || ELEMENTS.mug).color
+      : '#f59e0b';
+    const eCol = this.enemyUnit
+      ? (ELEMENTS[this.enemyUnit.species.element] || ELEMENTS.monster).color
+      : '#ef4444';
+    this.arenaGroup.userData.setElementColors(pCol, eCol);
   }
 
-  _bumpPlayerCombo(delta = 1) {
-    this.playerCombo = Math.min(12, this.playerCombo + delta);
-    this.comboDecayTimer = 6.5;
+  _enterRootMenu() {
+    if (!this.active || this.pendingEnd) return;
+    this.menuState = 'root';
+    const pName = this.playerUnit ? this.playerUnit.mon.nickname : 'Partner';
+    this.bannerText = `What will ${pName} do?`;
+    this.narrationSub =
+      this.mode === 'wild'
+        ? `Choose an action — take all the time you need! (🐵 ${this.state.monkeballs} Balls · 🌟 ${this.state.superBalls} Super)`
+        : `Choose your command carefully — turn-based duel vs ${this.trainerDef.name}!`;
   }
 
-  _spawnBurst({
-    x,
-    y = 0.65,
-    z,
-    color = '#fbbf24',
-    count = 14,
-    speed = 4.4,
-    up = 3.2,
-    gravity = 9.2,
-    size = 0.16,
-    life = 0.52,
-    star = false,
-  }) {
-    if (!this.fxGroup) return;
-    const geo = star ? SHARED_STAR_GEO : SHARED_SPARK_GEO;
-    for (let i = 0; i < count; i++) {
-      if (this.particles.length >= 160) break;
-      const ang = (i / count) * Math.PI * 2 + Math.random() * 0.5;
-      const spd = speed * (0.45 + Math.random() * 0.75);
-      const mat = new THREE.MeshBasicMaterial({
-        color,
-        transparent: true,
-        opacity: 0.95,
-      });
-      const mesh = new THREE.Mesh(geo, mat);
-      const s = size * (0.7 + Math.random() * 0.65);
-      mesh.scale.setScalar(s);
-      mesh.position.set(x, y + Math.random() * 0.25, z);
-      this.fxGroup.add(mesh);
-      this.particles.push({
-        mesh,
-        x: mesh.position.x,
-        y: mesh.position.y,
-        z: mesh.position.z,
-        vx: Math.cos(ang) * spd,
-        vy: up * (0.55 + Math.random() * 0.7),
-        vz: Math.sin(ang) * spd,
-        gravity,
-        baseScale: s,
-        t: 0,
-        life: life * (0.8 + Math.random() * 0.35),
-      });
+  // =========================================================================
+  // PUBLIC MENU & ACTION API (Keyboard + Steam Deck + Mouse/Touch + URL Hooks)
+  // =========================================================================
+
+  getPlayerMoves() {
+    if (!this.playerUnit) return [];
+    return getBattleMoves(this.playerUnit.mon, this.playerUnit.species);
+  }
+
+  getLiveCatchPercent(isSuper = false) {
+    if (!this.enemyUnit || this.mode !== 'wild') return 0;
+    const prob = computeCatchProbability({
+      species: this.enemyUnit.species,
+      currentHp: this.enemyUnit.mon.hp,
+      maxHp: this.enemyUnit.mon.maxHp,
+      ringMult: isSuper ? 1.85 : 1.15,
+      berryFed: this.wildBerryFed,
+      badgesCount: this.state.badges.length,
+    });
+    return Math.round(prob * 100);
+  }
+
+  selectRootOption(idx) {
+    if (!this.active || this.menuState !== 'root') return;
+    this.rootCursor = idx;
+    this.audio.playSfx('confirm');
+    if (idx === 0) {
+      this.menuState = 'fight';
+      this.subCursor = 0;
+    } else if (idx === 1) {
+      this.menuState = 'bag';
+      this.subCursor = 0;
+    } else if (idx === 2) {
+      this.menuState = 'party';
+      this.subCursor = this.state.activeIndex || 0;
+    } else if (idx === 3) {
+      this.tryRunAway();
     }
   }
 
-  triggerPlayerMoveSlot(slotIndex) {
-    if (!this.active || this.pendingEnd || !this.playerUnit || !this.enemyUnit || this.catchAnim) return;
-    const moveId = this.playerUnit.mon.moves[slotIndex];
-    if (!moveId) return;
-    this._castMove(this.playerUnit, this.enemyUnit, moveId);
+  cancelSubMenu() {
+    if (!this.active) return;
+    if (this.menuState === 'fight' || this.menuState === 'bag' || this.menuState === 'party') {
+      this.audio.playSfx('cancel');
+      this._enterRootMenu();
+    }
+  }
+
+  selectFightMove(slotIdx) {
+    if (!this.active || (this.menuState !== 'fight' && this.menuState !== 'root')) return;
+    const moves = this.getPlayerMoves();
+    const move = moves[slotIdx] || moves[0];
+    if (!move) return;
+    this.audio.playSfx('confirm');
+    this._executePlayerMoveTurn(move);
+  }
+
+  selectBagItem(slotIdx) {
+    if (!this.active || (this.menuState !== 'bag' && this.menuState !== 'root')) return;
+    if (slotIdx === 3) {
+      this.cancelSubMenu();
+      return;
+    }
+    if (slotIdx === 0) {
+      this._executeThrowBallTurn(false);
+    } else if (slotIdx === 1) {
+      this._executeThrowBallTurn(true);
+    } else if (slotIdx === 2) {
+      this._executeUseBerryTurn();
+    }
+  }
+
+  selectPartySlot(partyIdx) {
+    if (!this.active || (this.menuState !== 'party' && this.menuState !== 'root')) return;
+    const targetMon = this.state.party[partyIdx];
+    if (!targetMon) return;
+    if (partyIdx === this.state.activeIndex) {
+      this.onToast(`${targetMon.nickname} is already battling in the ring!`);
+      return;
+    }
+    if (targetMon.hp <= 0) {
+      this.audio.playSfx('cancel');
+      this.onToast(`${targetMon.nickname} has 0 HP! Heal at a House or feed a Berry!`);
+      return;
+    }
+    this.audio.playSfx('confirm');
+    this._executeSwitchPartyTurn(partyIdx);
+  }
+
+  // Backwards-compatible helpers for URL test hooks (`?screen=battle&action=cast`) & direct triggers
+  triggerPlayerMoveSlot(slotIdx = 0) {
+    if (!this.active) return;
+    // Complete any intro step immediately if called programmatically on frame 1
+    if (this.menuState === 'animating' && this.stepQueue.length === 0 && this.activeStep) {
+      this.activeStep = null;
+      this.menuState = 'root';
+    }
+    const moves = this.getPlayerMoves();
+    const picked = moves[Math.min(moves.length - 1, Math.max(0, slotIdx === 4 ? 0 : slotIdx))];
+    if (picked) this._executePlayerMoveTurn(picked);
+  }
+
+  tryThrowBattleMonkeball(useSuper = false) {
+    if (!this.active) return;
+    this._executeThrowBallTurn(useSuper);
   }
 
   cyclePartySwitch() {
-    if (!this.active || this.pendingEnd || this.catchAnim) return;
-    const len = this.state.party.length;
-    if (len <= 1) {
-      this.onToast('Catch more Monkemon with Monkeballs to build a 6-party squad!');
+    if (!this.active) return;
+    if (this.state.party.length <= 1) {
+      this.onToast('Catch more wild Monkemon first to switch squad members!');
       return;
     }
-    for (let step = 1; step < len; step++) {
-      const idx = (this.state.activeIndex + step) % len;
+    for (let offset = 1; offset < this.state.party.length; offset++) {
+      const idx = (this.state.activeIndex + offset) % this.state.party.length;
       if (this.state.party[idx].hp > 0) {
-        this.state.activeIndex = idx;
-        const px = this.playerUnit ? this.playerUnit.x : this.center.x - 2.8;
-        const pz = this.playerUnit ? this.playerUnit.z : this.center.z;
-        this._spawnPlayerUnit(this.state.party[idx], px, pz);
-        this.audio.playSfx('confirm');
-        this._spawnShockwave(px, pz, 1.8, '#38bdf8');
-        this.bannerText = `Go, ${this.state.party[idx].nickname}! Show your Monk Run!`;
+        this._executeSwitchPartyTurn(idx);
         return;
       }
     }
-    this.onToast('No other healthy Monkemon ready to switch!');
+    this.onToast('No other healthy Monkemon available in your squad!');
   }
 
-  tryThrowBattleMonkeball(useSuperBall = false) {
-    if (!this.active || this.pendingEnd || this.catchAnim || !this.enemyUnit || !this.fxGroup) return;
+  tryRunAway() {
+    if (!this.active || this.pendingEnd) return;
     if (this.mode === 'trainer') {
-      this.audio.playSfx('break_free');
-      this.bannerText = 'Haha! You cannot Monkeball another Trainer’s Monkemon!';
+      this.audio.playSfx('cancel');
+      this.onToast('Cannot run away from an official Tamer or House Leader match!');
       return;
     }
-    const superReady = useSuperBall && (this.state.superBalls || 0) > 0;
-    if (!superReady && this.state.monkeballs <= 0 && (this.state.superBalls || 0) <= 0) {
-      this.onToast('Out of Monkeballs! Restock at any House or Toy Shop!');
-      return;
-    }
+    this.audio.playSfx('monk_run');
+    this.menuState = 'animating';
+    this.stepQueue = [
+      {
+        duration: 0.75,
+        text: `💨 Got away safely from wild ${this.enemyUnit.mon.nickname}!`,
+        sub: '',
+        onDone: () => {
+          this.pendingEnd = { timer: 0.05, result: { outcome: 'ran', wildRef: this.wildRef } };
+        },
+      },
+    ];
+    this.activeStep = null;
+  }
 
-    let ballBonus = 1.28;
-    if (superReady || (this.state.monkeballs <= 0 && (this.state.superBalls || 0) > 0)) {
-      this.state.superBalls -= 1;
-      ballBonus = 1.85;
+  _bumpPlayerCombo(delta = 1) {
+    this.playerCombo = Math.min(12, (this.playerCombo || 0) + delta);
+  }
+
+  getComboMultiplier() {
+    return computeComboMultiplier(this.playerCombo || 0);
+  }
+
+  // =========================================================================
+  // TURN RESOLUTION & STEP CHOREOGRAPHY
+  // =========================================================================
+
+  _pickEnemyMove() {
+    const moves = getBattleMoves(this.enemyUnit.mon, this.enemyUnit.species);
+    const hpRatio = this.enemyUnit.mon.hp / Math.max(1, this.enemyUnit.mon.maxHp);
+    if (hpRatio < 0.38 && Math.random() < 0.32) {
+      const healM = moves.find((m) => m.healPct);
+      if (healM) return healM;
+    }
+    // Prefer signature special ~42% of the time, otherwise core moves
+    if (Math.random() < 0.42) return moves[0];
+    return moves[Math.floor(Math.random() * moves.length)];
+  }
+
+  _executePlayerMoveTurn(playerMove) {
+    if (!this.playerUnit || !this.enemyUnit) return;
+    this.menuState = 'animating';
+    this.stepQueue = [];
+    this.activeStep = null;
+
+    const enemyMove = this._pickEnemyMove();
+    const playerFirst = (this.playerUnit.mon.spd || 10) >= (this.enemyUnit.mon.spd || 10);
+
+    if (playerFirst) {
+      this._enqueueAttackStep('player', playerMove);
+      this.stepQueue.push({
+        duration: 0.01,
+        instantCheck: true,
+        onStart: () => {
+          if (this.enemyUnit.mon.hp > 0 && !this.pendingEnd) {
+            this._enqueueAttackStep('enemy', enemyMove);
+            this._enqueueReturnToMenu();
+          }
+        },
+      });
     } else {
-      this.state.monkeballs -= 1;
+      this._enqueueAttackStep('enemy', enemyMove);
+      this.stepQueue.push({
+        duration: 0.01,
+        instantCheck: true,
+        onStart: () => {
+          if (this.playerUnit.mon.hp > 0 && !this.pendingEnd) {
+            this._enqueueAttackStep('player', playerMove);
+            this._enqueueReturnToMenu();
+          }
+        },
+      });
     }
-    this.audio.playSfx('throw_ball');
+  }
 
-    const ballActor = this.modelBank.spawnActor({
-      glbUrl: 'assets/models/monkeball.glb',
-      scale: 0.72,
-      primaryColor: ballBonus > 1.5 ? '#facc15' : '#ef4444',
-      secondaryColor: '#fef3c7',
-      shadowRadius: 0.35,
+  _enqueueReturnToMenu() {
+    this.stepQueue.push({
+      duration: 0.02,
+      instantCheck: true,
+      onDone: () => {
+        if (!this.pendingEnd && this.active && this.enemyUnit.mon.hp > 0 && this.playerUnit.mon.hp > 0) {
+          this._enterRootMenu();
+        }
+      },
     });
-    const startX = this.heroCoachActor ? this.heroCoachActor.root.position.x : this.center.x - 6;
-    const startZ = this.heroCoachActor ? this.heroCoachActor.root.position.z : this.center.z;
-    ballActor.root.position.set(startX, 1.2, startZ);
-    this.fxGroup.add(ballActor.root);
+  }
+
+  _enqueueAttackStep(attackerSide, move) {
+    this.stepQueue.push({
+      duration: 1.28,
+      attackerSide,
+      move,
+      elapsed: 0,
+      impactApplied: false,
+      onStart: (step) => {
+        const atkUnit = attackerSide === 'player' ? this.playerUnit : this.enemyUnit;
+        const defUnit = attackerSide === 'player' ? this.enemyUnit : this.playerUnit;
+        const prefix = attackerSide === 'player' ? '★ ' : this.mode === 'trainer' ? '⚔️ Foe ' : '🌿 Wild ';
+        this.bannerText = `${prefix}${atkUnit.mon.nickname} used ${move.name}!`;
+        this.narrationSub = move.desc || '';
+
+        const moveElem = resolveMoveElement(move, atkUnit.species);
+        const elemColor = (ELEMENTS[moveElem] || ELEMENTS.mug).color;
+
+        if (attackerSide === 'player') this.heroCheerTimer = 1.0;
+        else this.rivalCheerTimer = 1.0;
+
+        if (this.arenaGroup && this.arenaGroup.userData.flareCombatant) {
+          this.arenaGroup.userData.flareCombatant(attackerSide, 1.35);
+        }
+
+        // Launch complex 3D GLSL shader attack beam / pillar!
+        if (move.healPct) {
+          this.audio.playSfx('eat_snack');
+          this._spawnAuraPillar(atkUnit.homeX, atkUnit.homeZ, '#4ade80', 1.05);
+        } else if (move.id === 'monk_run') {
+          this.audio.playSfx('monk_run');
+        } else if (move.id === 'sky_jump') {
+          this.audio.playSfx('sky_jump');
+        } else if (move.id === 'fake_out') {
+          this.audio.playSfx('fake_out');
+          this._spawnShaderBeam(atkUnit.homeX, atkUnit.homeZ, defUnit.homeX, defUnit.homeZ, '#e9d5ff', '#a855f7');
+        } else {
+          this.audio.playSfx('special');
+          this._spawnShaderBeam(atkUnit.homeX, atkUnit.homeZ, defUnit.homeX, defUnit.homeZ, '#ffffff', elemColor);
+          this._spawnAuraPillar(atkUnit.homeX, atkUnit.homeZ, elemColor, 0.72);
+        }
+
+        step._elemColor = elemColor;
+      },
+      onUpdate: (step, dt) => {
+        const atkUnit = attackerSide === 'player' ? this.playerUnit : this.enemyUnit;
+        const defUnit = attackerSide === 'player' ? this.enemyUnit : this.playerUnit;
+        const u = Math.min(1, step.elapsed / step.duration);
+
+        // Animate 3D Lunge / Sky Jump Arc on Attacker!
+        if (u < 0.55) {
+          const swing = Math.sin((u / 0.55) * Math.PI);
+          const dx = (defUnit.homeX - atkUnit.homeX) * 0.52;
+          const dz = (defUnit.homeZ - atkUnit.homeZ) * 0.52;
+          if (move.pattern === 'dash_strike' || move.pattern === 'chomp_heal') {
+            atkUnit.offsetX = dx * swing;
+            atkUnit.offsetZ = dz * swing;
+          } else if (move.pattern === 'jump_slam') {
+            atkUnit.offsetX = dx * swing * 0.85;
+            atkUnit.offsetZ = dz * swing * 0.85;
+            atkUnit.offsetY = Math.sin((u / 0.55) * Math.PI) * 2.55;
+          } else {
+            atkUnit.offsetX = dx * swing * 0.22;
+            atkUnit.offsetZ = dz * swing * 0.22;
+          }
+        } else {
+          atkUnit.offsetX *= Math.max(0, 1 - dt * 12);
+          atkUnit.offsetY *= Math.max(0, 1 - dt * 12);
+          atkUnit.offsetZ *= Math.max(0, 1 - dt * 12);
+        }
+
+        // Apply Damage & Impact Shader Wave at `u >= 0.42`!
+        if (!step.impactApplied && u >= 0.42) {
+          step.impactApplied = true;
+          this._applyMoveImpact(atkUnit, defUnit, move, step._elemColor);
+        }
+      },
+      onDone: () => {
+        const atkUnit = attackerSide === 'player' ? this.playerUnit : this.enemyUnit;
+        if (atkUnit) {
+          atkUnit.offsetX = 0;
+          atkUnit.offsetY = 0;
+          atkUnit.offsetZ = 0;
+        }
+      },
+    });
+  }
+
+  _applyMoveImpact(atkUnit, defUnit, move, elemColor) {
+    // 1. Self-heal + ATK Up if `move.healPct` (`Eat`)
+    if (move.healPct) {
+      const healAmt = Math.max(8, Math.round(atkUnit.mon.maxHp * move.healPct));
+      atkUnit.mon.hp = Math.min(atkUnit.mon.maxHp, atkUnit.mon.hp + healAmt);
+      atkUnit.atkBuffTurns = 2;
+      const pHeal = this.renderer.projectToScreen(
+        new THREE.Vector3(this.center.x + atkUnit.homeX, this.center.y + 1.8, this.center.z + atkUnit.homeZ),
+      );
+      if (pHeal.visible && this.onFloatText) {
+        this.onFloatText(pHeal.x, pHeal.y, `+${healAmt} HP · ATK UP!`, '#4ade80');
+      }
+    }
+
+    // 2. Calculate & apply hit damage
+    if (atkUnit.side === 'player') this._bumpPlayerCombo(1);
+    const comboMult = atkUnit.side === 'player' ? Math.min(1.25, this.getComboMultiplier()) : 1.0;
+    const hit = calculateHitDamage({
+      attacker: atkUnit.mon,
+      attackerSpecies: atkUnit.species,
+      defender: defUnit.mon,
+      defenderSpecies: defUnit.species,
+      move,
+      comboMult,
+      atkBuffed: atkUnit.atkBuffTurns > 0,
+    });
+    if (atkUnit.atkBuffTurns > 0) atkUnit.atkBuffTurns -= 1;
+
+    // Gentle safety cushion on early-island wild encounters so fights feel fair & tactical
+    const dmg = defUnit.side === 'player' ? Math.max(2, Math.round(hit.damage * 0.85)) : hit.damage;
+    defUnit.mon.hp = Math.max(0, defUnit.mon.hp - dmg);
+    defUnit.hitFlash = 0.35;
+
+    if (defUnit.side === 'enemy' && this.wildRef) {
+      this.wildRef.hpFrac = Math.max(0.05, defUnit.mon.hp / Math.max(1, defUnit.mon.maxHp));
+    }
+
+    // 3. Trigger Supersonic Shader Impact Wave + Arena Floor Shockwave + Sparks!
+    this._spawnImpactWave(
+      defUnit.homeX,
+      defUnit.homeZ,
+      elemColor,
+      hit.effectiveness === 'super' ? '#fde047' : '#ffffff',
+      hit.effectiveness === 'super' ? 4.4 : 3.2,
+    );
+    if (this.arenaGroup && this.arenaGroup.userData.triggerShockwave) {
+      this.arenaGroup.userData.triggerShockwave(defUnit.homeX, defUnit.homeZ, elemColor);
+    }
+    if (hit.effectiveness === 'super') {
+      this._spawnAuraPillar(defUnit.homeX, defUnit.homeZ, '#fde047', 0.85);
+      this.audio.playSfx('super_hit');
+      this.renderer.triggerCameraShake(0.26);
+      this.narrationSub = `★ IT'S SUPER EFFECTIVE! (-${dmg} HP)`;
+    } else if (hit.effectiveness === 'resist') {
+      this.audio.playSfx('hit');
+      this.renderer.triggerCameraShake(0.11);
+      this.narrationSub = `Not very effective... (-${dmg} HP)`;
+    } else {
+      this.audio.playSfx('hit');
+      this.renderer.triggerCameraShake(0.16);
+      this.narrationSub = `Dealt ${dmg} damage!`;
+    }
+
+    this._spawnBurstParticles(defUnit.homeX, 0.9, defUnit.homeZ, elemColor, hit.effectiveness === 'super' ? 18 : 11);
+
+    const pDef = this.renderer.projectToScreen(
+      new THREE.Vector3(this.center.x + defUnit.homeX, this.center.y + 1.9, this.center.z + defUnit.homeZ),
+    );
+    if (pDef.visible && this.onFloatText) {
+      const label =
+        hit.effectiveness === 'super'
+          ? `★ SUPER! -${dmg}`
+          : hit.isCrit
+            ? `CRIT! -${dmg}`
+            : `-${dmg}`;
+      const col = hit.effectiveness === 'super' ? '#fde047' : hit.effectiveness === 'resist' ? '#94a3b8' : '#ffffff';
+      this.onFloatText(pDef.x, pDef.y, label, col);
+    }
+
+    // 4. Check Fainting!
+    if (defUnit.mon.hp <= 0) {
+      if (defUnit.side === 'enemy') {
+        this._handleEnemyFainted();
+      } else {
+        this._handlePlayerFainted();
+      }
+    }
+  }
+
+  _executeThrowBallTurn(useSuper = false) {
+    if (this.mode !== 'wild') {
+      this.audio.playSfx('cancel');
+      this.onToast('You can only catch Wild Monkemon — Trainer Monkemon already have a partner!');
+      return;
+    }
+    const count = useSuper ? this.state.superBalls || 0 : this.state.monkeballs || 0;
+    if (count <= 0) {
+      this.audio.playSfx('cancel');
+      this.onToast(
+        useSuper
+          ? 'No Golden Super Balls left! Open Island Supply Chests or visit Monkeball Mart!'
+          : 'No Monkeballs left! Collect glowing Monkeballs, open Chests, or visit any House!',
+      );
+      return;
+    }
+
+    if (useSuper) this.state.superBalls -= 1;
+    else this.state.monkeballs -= 1;
 
     const prob = computeCatchProbability({
       species: this.enemyUnit.species,
       currentHp: this.enemyUnit.mon.hp,
       maxHp: this.enemyUnit.mon.maxHp,
-      ringMult: ballBonus,
-      berryFed: Boolean(this.wildRef && this.wildRef.berryFed),
+      ringMult: useSuper ? 1.85 : 1.18,
+      berryFed: this.wildBerryFed,
       badgesCount: this.state.badges.length,
     });
     const caught = Math.random() < prob;
-    const wiggles = caught ? 3 : 1 + Math.floor(Math.random() * 2);
+
+    this.menuState = 'animating';
+    this.stepQueue = [];
+    this.activeStep = null;
+
+    const ballActor = this.modelBank.spawnActor({
+      glbUrl: 'assets/models/monkeball.glb',
+      scale: 0.78,
+      primaryColor: useSuper ? '#facc15' : '#ef4444',
+      secondaryColor: '#fef9c3',
+      shadowRadius: 0.36,
+    });
+    ballActor.root.position.set(this.center.x + PLAYER_SLOT.x - 1.5, this.center.y, this.center.z + PLAYER_SLOT.z);
+    this.sceneRoot.add(ballActor.root);
+
+    this.audio.playSfx('throw_ball');
+    this.heroCheerTimer = 1.2;
 
     this.catchAnim = {
       ballActor,
-      startX,
-      startZ,
-      targetX: this.enemyUnit.x,
-      targetZ: this.enemyUnit.z,
+      useSuper,
+      prob,
+      caught,
       phase: 'fly',
       t: 0,
       wigglesDone: 0,
-      wigglesTotal: wiggles,
-      caught,
-      prob,
+      wigglesTotal: caught ? 3 : 1 + Math.floor(Math.random() * 2),
     };
-    this.heroCheerTimer = 0.55;
-    this.bannerText = `${this.state.playerName} hurled a ${ballBonus > 1.5 ? 'GOLDEN SUPER ' : ''}MONKEBALL! (${Math.round(prob * 100)}% lock-on)`;
+    this.bannerText = `${this.state.playerName || 'ALEX'} threw a ${useSuper ? '🌟 Golden Super Ball' : '🐵 Smiling Monkeball'}!`;
+    this.narrationSub = `Lock-On Catch Chance: ${Math.round(prob * 100)}%`;
   }
 
-  tryRunAway() {
-    if (!this.active || this.pendingEnd || this.catchAnim) return;
-    if (this.mode === 'trainer') {
-      this.onToast('Can’t run from an official Trainer challenge!');
+  _executeUseBerryTurn() {
+    if ((this.state.berries || 0) <= 0) {
+      this.audio.playSfx('cancel');
+      this.onToast('Out of Berries! Shake Berry Bushes outdoors or buy at Monkeball Mart!');
       return;
     }
-    this.audio.playSfx('menu');
-    // Queue clean end-of-tick exit so `battle.update()` never hits `null` meshes!
-    this._queueBattleEnd({ outcome: 'ran' }, 0.02);
-  }
+    this.state.berries -= 1;
+    this.audio.playSfx('berry');
 
-  _castMove(caster, target, moveId) {
-    if (!caster || !target || this.pendingEnd) return false;
-    const move = MOVES[moveId];
-    if (!move || caster.stun > 0 || caster.jumpTimer > 0) return false;
-    if ((caster.cooldowns[moveId] || 0) > 0) return false;
+    const mon = this.playerUnit.mon;
+    const healAmt = Math.max(12, Math.round(mon.maxHp * 0.4));
+    mon.hp = Math.min(mon.maxHp, mon.hp + healAmt);
+    if (this.mode === 'wild') this.wildBerryFed = true;
 
-    caster.cooldowns[moveId] = move.cooldown || 2.5;
-    const dx = target.x - caster.x;
-    const dz = target.z - caster.z;
-    const dist = Math.max(0.01, Math.hypot(dx, dz));
-    const nx = dx / dist;
-    const nz = dz / dist;
-    caster.yaw = Math.atan2(nx, nz);
-
-    const elem = resolveMoveElement(move, caster.species);
-    const elemColor = (ELEMENTS[elem] && ELEMENTS[elem].color) || move.color || '#fbbf24';
-    if (caster.side === 'player') this.heroCheerTimer = 0.5;
-    else this.rivalCheerTimer = 0.5;
-
-    if (this.renderer && this.renderer.flashLight) {
-      this.renderer.flashLight(caster.x, 1.6, caster.z, elemColor, 3.8, 0.22);
+    this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, '#4ade80', 1.0);
+    if (this.mode === 'wild') {
+      this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047', 0.85);
     }
 
-    if (move.pattern === 'dash_strike') {
-      this.audio.playSfx('monk_run');
-      caster.invuln = Math.max(caster.invuln, move.invulnSec || 0.35);
-      caster.dashTimer = 0.24;
-      caster.dashVx = nx * ((move.dashDist || 5.5) / 0.24);
-      caster.dashVz = nz * ((move.dashDist || 5.5) / 0.24);
-      caster.dashHitDone = false;
-      caster.dashMove = move;
-      this._spawnShockwave(caster.x, caster.z, 1.2, elemColor);
-      this._spawnBurst({ x: caster.x, y: 0.4, z: caster.z, color: elemColor, count: 12, speed: 3.6 });
-      if (caster.side === 'player') {
-        this.bannerText = `${caster.mon.nickname} zoomed in with MONK RUN!`;
-      }
-      return true;
-    }
-
-    if (move.pattern === 'feint_stun') {
-      this.audio.playSfx('fake_out');
-      caster.spinDur = 0.34;
-      caster.spinTimer = 0.34;
-      this._spawnBurst({
-        x: caster.x + nx * 0.6,
-        y: 0.75,
-        z: caster.z + nz * 0.6,
-        color: '#c084fc',
-        count: 14,
-        speed: 4.2,
-        star: true,
-      });
-      this._spawnProjectile({
-        owner: caster,
-        target,
-        x: caster.x + nx * 0.7,
-        z: caster.z + nz * 0.7,
-        vx: nx * (move.speed || 17.5),
-        vz: nz * (move.speed || 17.5),
-        radius: move.radius || 1.1,
-        maxLife: (move.range || 7.5) / (move.speed || 17.5),
-        move,
-        color: '#a78bfa',
-        stunSec: move.stunSec || 1.2,
-      });
-      if (caster.side === 'player') {
-        this.bannerText = `${caster.mon.nickname} clapped a cheeky FAKE OUT!`;
-      }
-      return true;
-    }
-
-    if (move.pattern === 'chomp_heal') {
-      this.audio.playSfx('eat_snack');
-      caster.chompDur = 0.48;
-      caster.chompTimer = 0.48;
-      const healAmt = Math.max(4, Math.round(caster.mon.maxHp * (move.healPct || 0.26)));
-      caster.mon.hp = Math.min(caster.mon.maxHp, caster.mon.hp + healAmt);
-      caster.atkBuff = move.atkBuffSec || 6.0;
-      this._spawnShockwave(caster.x, caster.z, move.radius || 2.3, '#4ade80');
-      this._spawnBurst({
-        x: caster.x,
-        y: 0.5,
-        z: caster.z,
-        color: '#4ade80',
-        count: 18,
-        speed: 2.6,
-        up: 3.8,
-        gravity: 2.2,
-        star: true,
-      });
-      this._emitUnitPopup(caster, `+${healAmt} HP 🍌`, '#4ade80');
-      if (dist <= (move.radius || 2.3) + 0.7) {
-        this._applyHit(caster, target, move);
-      }
-      if (caster.side === 'player') {
-        this.bannerText = `${caster.mon.nickname} chomped a snack (+${healAmt} HP & ATK UP)!`;
-      }
-      return true;
-    }
-
-    if (move.pattern === 'jump_slam') {
-      this.audio.playSfx('sky_jump');
-      caster.invuln = Math.max(caster.invuln, move.invulnSec || 0.52);
-      caster.jumpDur = 0.5;
-      caster.jumpTimer = 0.5;
-      caster.jumpMove = move;
-      const leap = Math.min(dist * 0.88, move.leapDist || 4.8);
-      caster.jumpVx = (nx * leap) / 0.5;
-      caster.jumpVz = (nz * leap) / 0.5;
-      this._spawnBurst({ x: caster.x, y: 0.2, z: caster.z, color: '#e2e8f0', count: 10, speed: 3.0, up: 2.0 });
-      if (caster.side === 'player') {
-        this.bannerText = `${caster.mon.nickname} vaulted sky-high with JUMP!`;
-      }
-      return true;
-    }
-
-    caster.specialDur = 0.45;
-    caster.specialTimer = 0.45;
-
-    if (move.pattern === 'aoe_self') {
-      this.audio.playSfx('special');
-      this._spawnShockwave(caster.x, caster.z, move.radius || 3.2, elemColor);
-      this._spawnBurst({
-        x: caster.x,
-        y: 0.6,
-        z: caster.z,
-        color: elemColor,
-        count: 22,
-        speed: 5.5,
-        up: 3.6,
-        star: true,
-      });
-      if (dist <= (move.radius || 3.2) + 0.6) {
-        this._applyHit(caster, target, move);
-      }
-      this.bannerText = `${caster.mon.nickname} unleashed ${move.name}!`;
-      return true;
-    }
-
-    if (move.pattern === 'aoe_target') {
-      this.audio.playSfx('special');
-      this._spawnTelegraph({
-        owner: caster,
-        target,
-        x: target.x,
-        z: target.z,
-        radius: move.radius || 2.4,
-        delay: move.telegraphSec || 0.6,
-        move,
-        color: elemColor,
-      });
-      this.bannerText = `${caster.mon.nickname} called down ${move.name}!`;
-      return true;
-    }
-
-    if (move.pattern === 'triple_fan' || move.pattern === 'projectile') {
-      this.audio.playSfx('special');
-      const angles = move.pattern === 'triple_fan' ? [-0.26, 0, 0.26] : [0];
-      const baseAngle = Math.atan2(nx, nz);
-      const spd = move.speed || 14.5;
-      for (const off of angles) {
-        const a = baseAngle + off;
-        this._spawnProjectile({
-          owner: caster,
-          target,
-          x: caster.x + Math.sin(a) * 0.75,
-          z: caster.z + Math.cos(a) * 0.75,
-          vx: Math.sin(a) * spd,
-          vz: Math.cos(a) * spd,
-          radius: move.radius || 0.9,
-          maxLife: (move.range || 9.5) / spd,
-          move,
-          color: elemColor,
-        });
-      }
-      this.bannerText = `${caster.mon.nickname} fired ${move.name}!`;
-      return true;
-    }
-
-    return false;
-  }
-
-  _spawnProjectile({ owner, target, x, z, vx, vz, radius, maxLife, move, color, stunSec = 0 }) {
-    if (!this.fxGroup) return;
-    const mesh = new THREE.Mesh(
-      new THREE.SphereGeometry(radius * 0.48, 14, 12),
-      new THREE.MeshStandardMaterial({
-        color,
-        emissive: color,
-        emissiveIntensity: 1.35,
-        roughness: 0.14,
-      }),
-    );
-    mesh.position.set(x, 0.65, z);
-    this.fxGroup.add(mesh);
-    this.projectiles.push({ owner, target, x, z, vx, vz, radius, life: maxLife, move, stunSec, mesh });
-  }
-
-  _spawnTelegraph({ owner, target, x, z, radius, delay, move, color }) {
-    if (!this.fxGroup) return;
-    const ring = new THREE.Mesh(
-      new THREE.RingGeometry(radius * 0.84, radius, 36),
-      new THREE.MeshBasicMaterial({
-        color: owner.side === 'enemy' ? '#ef4444' : color,
-        side: THREE.DoubleSide,
-        transparent: true,
-        opacity: 0.85,
-      }),
-    );
-    ring.rotation.x = -Math.PI / 2;
-    ring.position.set(x, 0.06, z);
-
-    const fill = new THREE.Mesh(
-      new THREE.CircleGeometry(radius * 0.1, 32),
-      new THREE.MeshBasicMaterial({
-        color: owner.side === 'enemy' ? '#ef4444' : color,
-        transparent: true,
-        opacity: 0.32,
-      }),
-    );
-    fill.rotation.x = -Math.PI / 2;
-    fill.position.set(x, 0.05, z);
-    this.fxGroup.add(ring, fill);
-
-    this.telegraphs.push({
-      owner,
-      target,
-      x,
-      z,
-      radius,
-      elapsed: 0,
-      delay,
-      move,
-      color,
-      ring,
-      fill,
-    });
-  }
-
-  _spawnShockwave(x, z, maxRadius, color = '#fbbf24') {
-    if (!this.fxGroup) return;
-    const mesh = new THREE.Mesh(
-      new THREE.TorusGeometry(0.4, 0.09, 10, 36),
-      new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.92 }),
-    );
-    mesh.rotation.x = Math.PI / 2;
-    mesh.position.set(x, 0.14, z);
-    this.fxGroup.add(mesh);
-    this.shockwaves.push({ mesh, t: 0, dur: 0.34, maxRadius });
-  }
-
-  _emitUnitPopup(unit, text, color = '#ffffff') {
-    if (!this.onFloatText || !unit) return;
-    const p = this.renderer.projectToScreen(new THREE.Vector3(unit.x, 1.7, unit.z));
-    if (p.visible) {
-      this.onFloatText(p.x, p.y, text, color);
-    }
-  }
-
-  _applyHit(attacker, defender, move, extraStun = 0) {
-    if (!this.active || this.pendingEnd || !attacker || !defender || defender.mon.hp <= 0) return;
-    if (defender.invuln > 0) {
-      if (defender.side === 'player' && (defender.dashTimer > 0 || defender.jumpTimer > 0)) {
-        this._bumpPlayerCombo(2);
-        this._spawnBurst({ x: defender.x, y: 0.7, z: defender.z, color: '#38bdf8', count: 12, star: true });
-        this._emitUnitPopup(defender, `PERFECT DODGE! ×${this.playerCombo} ✨`, '#38bdf8');
-      } else {
-        this._emitUnitPopup(defender, 'DODGED! ✨', '#38bdf8');
-      }
-      return;
-    }
-
-    const res = calculateHitDamage(attacker.mon, defender.mon, move, {
-      attackerBuffed: attacker.atkBuff > 0,
-      comboCount: attacker.side === 'player' ? this.playerCombo : 0,
-    });
-    defender.mon.hp = Math.max(0, defender.mon.hp - res.damage);
-    defender.invuln = 0.18;
-    defender.recoilTimer = 0.24;
-
-    defender.hitFlash = 0.2;
-    defender.hitFlashHex = res.effectiveness >= 1.35 ? 0xfde047 : 0xffffff;
-    const kdx = defender.x - attacker.x;
-    const kdz = defender.z - attacker.z;
-    const kd = Math.max(0.01, Math.hypot(kdx, kdz));
-    const kbPower = res.effectiveness >= 1.35 ? 6.5 : 4.2;
-    defender.kbVx = (kdx / kd) * kbPower;
-    defender.kbVz = (kdz / kd) * kbPower;
-
-    if (this.renderer && this.renderer.flashLight) {
-      this.renderer.flashLight(
-        defender.x,
-        1.5,
-        defender.z,
-        res.elementColor || '#fbbf24',
-        res.effectiveness >= 1.35 ? 6.2 : 4.2,
-        0.24,
-      );
-    }
-
-    this._spawnBurst({
-      x: defender.x,
-      y: 0.75,
-      z: defender.z,
-      color: res.elementColor || '#fbbf24',
-      count: res.effectiveness >= 1.35 ? 20 : 12,
-      speed: res.effectiveness >= 1.35 ? 5.6 : 4.0,
-      star: res.effectiveness >= 1.35 || extraStun > 0,
-    });
-
-    if (attacker.side === 'player') {
-      this._bumpPlayerCombo(extraStun > 0 || res.effectiveness >= 1.35 ? 2 : 1);
-      this.heroCheerTimer = 0.42;
-    } else if (defender.side === 'player') {
-      this.playerCombo = 0;
-      this.comboDecayTimer = 0;
-    }
-
-    if (extraStun > 0) {
-      defender.stun = Math.max(defender.stun, extraStun);
-      if (defender.side === 'enemy' && this.fxGroup) {
-        for (const tg of this.telegraphs) {
-          if (tg.owner === defender) {
-            this.fxGroup.remove(tg.ring, tg.fill);
-            tg.cancelled = true;
-          }
-        }
-        this.telegraphs = this.telegraphs.filter((t) => !t.cancelled);
-      }
-      this._emitUnitPopup(defender, `-${res.damage} STUNNED! 💫`, '#c084fc');
-    } else if (res.effectiveness >= 1.35) {
-      this.audio.playSfx('super_hit');
-      this.renderer.triggerShake(0.28, 0.22);
-      this._emitUnitPopup(defender, `-${res.damage} SUPER!`, '#fbbf24');
-    } else {
-      this.audio.playSfx('hit');
-      this.renderer.triggerShake(0.14, 0.14);
-      this._emitUnitPopup(
-        defender,
-        `-${res.damage}${res.isCrit ? ' CRIT!' : ''}`,
-        res.elementColor || '#f8fafc',
-      );
-    }
-
-    if (defender.mon.hp <= 0) {
-      this._handleUnitFainted(defender);
-    }
-  }
-
-  _handleUnitFainted(fainted) {
-    if (!fainted || fainted._faintedHandled || this.pendingEnd) return;
-    fainted._faintedHandled = true;
-    this.audio.playSfx('faint');
-
-    if (fainted.side === 'enemy') {
-      const defeatedMon = fainted.mon;
-      const expGain = Math.round(28 + defeatedMon.level * 16 * (defeatedMon.isAlpha ? 1.8 : 1.0));
-      if (this.playerUnit && this.playerUnit.mon) {
-        const lvInfo = grantExpToMon(this.playerUnit.mon, expGain);
-        for (const m of this.state.party) {
-          if (m !== this.playerUnit.mon && m.hp > 0) {
-            grantExpToMon(m, Math.round(expGain * 0.45));
-          }
-        }
-        this._emitUnitPopup(
-          this.playerUnit,
-          lvInfo.levelsGained > 0 ? `+${expGain} EXP · LV UP ${lvInfo.newLevel}!` : `+${expGain} EXP`,
-          '#fde047',
-        );
-      }
-
-      if (this.enemyIndex + 1 < this.enemyTeam.length) {
-        this.enemyIndex += 1;
-        const nextMon = this.enemyTeam[this.enemyIndex];
-        this._spawnEnemyUnit(nextMon, this.center.x + 3.2, this.center.z);
-        this.bannerText = `${this.trainerDef ? this.trainerDef.name : 'Rival'} sent out ${nextMon.nickname} (Lv.${nextMon.level})!`;
-        return;
-      }
-
-      // Battle won!
-      this.audio.playMusic('victory', false);
-      this._spawnBurst({
-        x: fainted.x,
-        y: 0.7,
-        z: fainted.z,
-        color: '#facc15',
-        count: 24,
-        speed: 5.2,
-        up: 4.2,
-        star: true,
-      });
-      if (this.enemyActor) this.enemyActor.root.visible = false;
-
-      let badgeAwarded = null;
-      if (this.mode === 'trainer' && this.trainerDef) {
-        if (!this.state.defeatedTrainers.includes(this.trainerDef.id)) {
-          this.state.defeatedTrainers.push(this.trainerDef.id);
-        }
-        this.state.coins += this.trainerDef.rewardCoins || 150;
-        if (this.trainerDef.badgeId && !this.state.badges.includes(this.trainerDef.badgeId)) {
-          this.state.badges.push(this.trainerDef.badgeId);
-          badgeAwarded = this.trainerDef.badgeName;
-        }
-      } else {
-        this.state.coins += 45 + defeatedMon.level * 5;
-      }
-
-      this.heroCheerTimer = 1.2;
-      this.bannerText = `VICTORY! ${this.playerUnit ? this.playerUnit.mon.nickname : 'Your squad'} won the arena match!`;
-      const beatFinalBoss = Boolean(this.wildRef && this.wildRef.isFinalBoss);
-      this._queueBattleEnd(
-        {
-          outcome: 'won',
-          badgeAwarded,
-          beatFinalBoss,
-          wildRef: this.wildRef,
-          trainerDef: this.trainerDef,
+    this.menuState = 'animating';
+    this.stepQueue = [
+      {
+        duration: 1.15,
+        text:
+          this.mode === 'wild'
+            ? `🍌 Shared a Sweet Berry! ${mon.nickname} +${healAmt} HP & wild ${this.enemyUnit.mon.nickname} Catch Rate +42%!`
+            : `🍌 Fed ${mon.nickname} a Sweet Berry (+${healAmt} HP restored)!`,
+        sub: '',
+        onDone: () => {
+          const enemyMove = this._pickEnemyMove();
+          this._enqueueAttackStep('enemy', enemyMove);
+          this._enqueueReturnToMenu();
         },
-        0.92,
-      );
-    } else {
-      const nextIdx = this.state.party.findIndex((m) => m.hp > 0);
-      if (nextIdx >= 0) {
-        this.state.activeIndex = nextIdx;
-        this._spawnPlayerUnit(this.state.party[nextIdx], this.center.x - 3.0, this.center.z);
-        this.bannerText = `Come on, ${this.state.party[nextIdx].nickname}! Keep fighting!`;
-      } else {
-        if (this.playerActor) this.playerActor.root.visible = false;
-        this.bannerText = 'Your squad needs a breather — heading safely back to the House!';
-        this._queueBattleEnd({ outcome: 'lost' }, 0.65);
-      }
-    }
+      },
+    ];
+    this.activeStep = null;
   }
 
-  _clampToArena(unit) {
-    const dx = unit.x - this.center.x;
-    const dz = unit.z - this.center.z;
-    const d = Math.hypot(dx, dz);
-    const maxR = ARENA_RADIUS - 0.55;
-    if (d > maxR) {
-      unit.x = this.center.x + (dx / d) * maxR;
-      unit.z = this.center.z + (dz / d) * maxR;
-    }
+  _executeSwitchPartyTurn(newIdx) {
+    const oldName = this.playerUnit.mon.nickname;
+    this.state.activeIndex = newIdx;
+    const nextMon = this.state.party[newIdx];
+
+    this.menuState = 'animating';
+    this.stepQueue = [
+      {
+        duration: 1.05,
+        text: `🐾 Come back, ${oldName}! Go get ’em, ${nextMon.nickname}!`,
+        sub: `Lv.${nextMon.level} · HP ${nextMon.hp}/${nextMon.maxHp}`,
+        onStart: () => {
+          this._spawnPlayerUnit(nextMon);
+          const col = (ELEMENTS[this.playerUnit.species.element] || ELEMENTS.mug).color;
+          this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, col, 0.95);
+          if (this.arenaGroup && this.arenaGroup.userData.flareCombatant) {
+            this.arenaGroup.userData.flareCombatant('player', 1.4);
+          }
+        },
+        onDone: () => {
+          const enemyMove = this._pickEnemyMove();
+          this._enqueueAttackStep('enemy', enemyMove);
+          this._enqueueReturnToMenu();
+        },
+      },
+    ];
+    this.activeStep = null;
   }
 
-  _updateUnitKinematics(unit, moveVx, moveVz, dt) {
-    if (!unit || !unit.actor) return;
-    for (const k of Object.keys(unit.cooldowns)) {
-      unit.cooldowns[k] = Math.max(0, unit.cooldowns[k] - dt);
-    }
-    unit.invuln = Math.max(0, unit.invuln - dt);
-    unit.stun = Math.max(0, unit.stun - dt);
-    unit.atkBuff = Math.max(0, unit.atkBuff - dt);
-    unit.spinTimer = Math.max(0, (unit.spinTimer || 0) - dt);
-    unit.chompTimer = Math.max(0, (unit.chompTimer || 0) - dt);
-    unit.specialTimer = Math.max(0, (unit.specialTimer || 0) - dt);
-    unit.recoilTimer = Math.max(0, (unit.recoilTimer || 0) - dt);
+  _handleEnemyFainted() {
+    this.audio.playSfx('faint');
+    const faintedMon = this.enemyUnit.mon;
+    const expGain = Math.round((this.mode === 'trainer' ? 34 : 24) + faintedMon.level * 9);
+    const lvInfo = grantExpToMon(this.playerUnit.mon, expGain);
+    this.playerUnit.displayHp = Math.min(this.playerUnit.mon.maxHp, this.playerUnit.mon.hp);
 
-    if (unit.hitFlash > 0) {
-      unit.hitFlash = Math.max(0, unit.hitFlash - dt);
-      if (unit.actor.setHitFlash) {
-        unit.actor.setHitFlash(unit.hitFlash / 0.2, unit.hitFlashHex);
-      }
+    // Clear any remaining queued attacks from this turn
+    this.stepQueue = [];
+
+    if (lvInfo.levelsGained > 0) {
+      this.audio.playSfx('level_up');
+      this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, '#fde047', 1.2);
     }
 
-    if (Math.hypot(unit.kbVx || 0, unit.kbVz || 0) > 0.08) {
-      unit.x += unit.kbVx * dt;
-      unit.z += unit.kbVz * dt;
-      const damp = Math.exp(-12 * dt);
-      unit.kbVx *= damp;
-      unit.kbVz *= damp;
-    }
+    const expLine =
+      lvInfo.levelsGained > 0
+        ? `🎉 ${faintedMon.nickname} fainted! ${this.playerUnit.mon.nickname} gained +${expGain} EXP and reached Lv.${lvInfo.newLevel}!`
+        : `✨ ${faintedMon.nickname} fainted! ${this.playerUnit.mon.nickname} gained +${expGain} EXP!`;
 
-    let currentMoveSpeed = 0;
-    let jumpProg = 0;
-    let justLanded = false;
-
-    if (unit.dashTimer > 0) {
-      unit.dashTimer = Math.max(0, unit.dashTimer - dt);
-      unit.x += unit.dashVx * dt;
-      unit.z += unit.dashVz * dt;
-      currentMoveSpeed = 14.0;
-      unit.trailTimer = (unit.trailTimer || 0) - dt;
-      if (unit.trailTimer <= 0) {
-        unit.trailTimer = 0.055;
-        this._spawnBurst({ x: unit.x, y: 0.25, z: unit.z, color: '#fef08a', count: 3, speed: 1.8, up: 1.4, size: 0.12 });
-      }
-      const foe = unit.side === 'player' ? this.enemyUnit : this.playerUnit;
-      if (!unit.dashHitDone && foe && Math.hypot(foe.x - unit.x, foe.z - unit.z) < 1.55) {
-        unit.dashHitDone = true;
-        this._applyHit(unit, foe, unit.dashMove);
-      }
-    } else if (unit.jumpTimer > 0) {
-      unit.jumpTimer = Math.max(0, unit.jumpTimer - dt);
-      unit.x += unit.jumpVx * dt;
-      unit.z += unit.jumpVz * dt;
-      jumpProg = 1.0 - unit.jumpTimer / Math.max(0.05, unit.jumpDur);
-      unit.y = Math.sin(jumpProg * Math.PI) * 2.85;
-      if (unit.jumpTimer <= 0) {
-        unit.y = 0;
-        justLanded = true;
-        const m = unit.jumpMove || MOVES.sky_jump;
-        const elem = resolveMoveElement(m, unit.species);
-        const cHex = (ELEMENTS[elem] && ELEMENTS[elem].color) || '#38bdf8';
-        this._spawnShockwave(unit.x, unit.z, m.radius || 2.45, cHex);
-        this._spawnBurst({ x: unit.x, y: 0.25, z: unit.z, color: cHex, count: 18, speed: 5.2, up: 3.0, star: true });
-        this.renderer.triggerShake(0.2, 0.16);
-        const foe = unit.side === 'player' ? this.enemyUnit : this.playerUnit;
-        if (foe && Math.hypot(foe.x - unit.x, foe.z - unit.z) <= (m.radius || 2.45) + 0.5) {
-          this._applyHit(unit, foe, m);
+    this.stepQueue.push({
+      duration: 1.35,
+      text: expLine,
+      sub: '',
+      onStart: () => {
+        if (this.enemyActor) this.enemyActor.root.visible = false;
+      },
+      onDone: () => {
+        // Does rival Trainer have another Monkemon?
+        if (this.mode === 'trainer' && this.enemyIndex + 1 < this.enemyTeam.length) {
+          this.enemyIndex += 1;
+          const nextFoe = this.enemyTeam[this.enemyIndex];
+          this._spawnEnemyUnit(nextFoe);
+          const eCol = (ELEMENTS[this.enemyUnit.species.element] || ELEMENTS.monster).color;
+          this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, eCol, 0.95);
+          this.stepQueue.push({
+            duration: 1.05,
+            text: `⚔️ ${this.trainerDef.name} sent out ${nextFoe.nickname} (Lv.${nextFoe.level})!`,
+            sub: `${this.enemyTeam.length - this.enemyIndex} opponent Monkemon remaining`,
+            onDone: () => this._enterRootMenu(),
+          });
+          return;
         }
-      }
-    } else if (unit.stun <= 0) {
-      const spd = 5.4 + (unit.mon.spd || 60) * 0.025;
-      const inputMag = Math.min(1, Math.hypot(moveVx, moveVz));
-      unit.x += moveVx * spd * dt;
-      unit.z += moveVz * spd * dt;
-      currentMoveSpeed = inputMag * spd;
-      if (inputMag > 0.12) {
-        unit.yaw = Math.atan2(moveVx, moveVz);
-      }
-      unit.y = 0;
+
+        // Victory! Award Coins & House Badge if House Leader!
+        let badgeAwarded = null;
+        if (this.mode === 'trainer' && this.trainerDef) {
+          const coins = this.trainerDef.rewardCoins || 150;
+          this.state.coins = (this.state.coins || 0) + coins;
+          if (!this.state.defeatedTrainers.includes(this.trainerDef.id)) {
+            this.state.defeatedTrainers.push(this.trainerDef.id);
+          }
+          if (this.trainerDef.badgeId && !this.state.badges.includes(this.trainerDef.badgeId)) {
+            this.state.badges.push(this.trainerDef.badgeId);
+            badgeAwarded = this.trainerDef.badgeName || 'House Badge';
+          }
+        } else {
+          this.state.coins = (this.state.coins || 0) + 35 + faintedMon.level * 4;
+        }
+
+        const beatFinalBoss = Boolean(this.wildRef && this.wildRef.isFinalBoss);
+        this.pendingEnd = {
+          timer: 0.25,
+          result: {
+            outcome: 'won',
+            wildRef: this.wildRef,
+            badgeAwarded,
+            beatFinalBoss,
+          },
+        };
+      },
+    });
+  }
+
+  _handlePlayerFainted() {
+    this.audio.playSfx('faint');
+    const faintedName = this.playerUnit.mon.nickname;
+    this.stepQueue = [];
+
+    const nextIdx = this.state.party.findIndex((m) => m.hp > 0);
+    if (nextIdx >= 0) {
+      this.stepQueue.push({
+        duration: 1.25,
+        text: `${faintedName} fainted! Sending out ${this.state.party[nextIdx].nickname}!`,
+        sub: '',
+        onStart: () => {
+          if (this.playerActor) this.playerActor.root.visible = false;
+        },
+        onDone: () => {
+          this.state.activeIndex = nextIdx;
+          this._spawnPlayerUnit(this.state.party[nextIdx]);
+          this._enterRootMenu();
+        },
+      });
     } else {
-      unit.y = 0;
-    }
-
-    this._clampToArena(unit);
-    unit.actor.root.position.set(unit.x, 0, unit.z);
-
-    if (unit.actor.updateMotion) {
-      unit.actor.updateMotion(dt, {
-        targetYaw: unit.yaw,
-        moveSpeed: currentMoveSpeed,
-        inBattle: true,
-        jumpHeight: unit.y,
-        jumpProg,
-        dashActive: unit.dashTimer > 0,
-        spinProg: unit.spinTimer > 0 ? 1.0 - unit.spinTimer / unit.spinDur : 0,
-        chompProg: unit.chompTimer > 0 ? 1.0 - unit.chompTimer / unit.chompDur : 0,
-        specialProg: unit.specialTimer > 0 ? 1.0 - unit.specialTimer / unit.specialDur : 0,
-        stun: unit.stun,
-        hitRecoil: unit.recoilTimer > 0 ? unit.recoilTimer / 0.24 : 0,
-        landedImpact: justLanded,
+      this.stepQueue.push({
+        duration: 1.35,
+        text: `${faintedName} fainted! Hurrying back to the Sanctuary House to rest...`,
+        sub: 'All party Monkemon will be restored to 100% HP!',
+        onDone: () => {
+          this.pendingEnd = {
+            timer: 0.1,
+            result: { outcome: 'lost' },
+          };
+        },
       });
     }
   }
 
-  _updateEnemyAI(dt) {
-    const e = this.enemyUnit;
-    const p = this.playerUnit;
-    if (!e || !p || this.pendingEnd || e.mon.hp <= 0) return;
+  // =========================================================================
+  // 3D GLSL SHADER VFX HELPERS (Beams, Impact Shockwaves, Aura Pillars, Sparks)
+  // =========================================================================
 
-    if (e.stun > 0) {
-      this._updateUnitKinematics(e, 0, 0, dt);
-      return;
-    }
+  _spawnShaderBeam(x0, z0, x1, z1, coreColor = '#ffffff', glowColor = '#38bdf8') {
+    if (!this.fxGroup) return;
+    const start = new THREE.Vector3(x0, 0.95, z0);
+    const end = new THREE.Vector3(x1, 0.95, z1);
+    const dir = new THREE.Vector3().subVectors(end, start);
+    const dist = Math.max(0.5, dir.length());
 
-    const dx = p.x - e.x;
-    const dz = p.z - e.z;
-    const dist = Math.max(0.01, Math.hypot(dx, dz));
-    const nx = dx / dist;
-    const nz = dz / dist;
+    const mat = createElementalBeamShaderMaterial({ coreColor, glowColor, twist: 6.5 });
+    const mesh = new THREE.Mesh(SHARED_BEAM_GEO, mat);
+    mesh.position.copy(start);
+    mesh.scale.set(1.15, dist, 1.15);
+    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
+    this.fxGroup.add(mesh);
 
-    let mx = -nz * e.strafeDir * 0.65;
-    let mz = nx * e.strafeDir * 0.65;
-    if (dist > 4.6) {
-      mx += nx * 0.75;
-      mz += nz * 0.75;
-    } else if (dist < 2.2) {
-      mx -= nx * 0.55;
-      mz -= nz * 0.55;
-    }
+    this.shaderBeams.push({ mesh, mat, t: 0, dur: 0.58 });
+  }
 
-    e.aiThink -= dt;
-    if (e.aiThink <= 0) {
-      e.aiThink = 1.05 + Math.random() * 0.75;
-      if (Math.random() < 0.35) e.strafeDir *= -1;
+  _spawnImpactWave(lx, lz, color = '#fde047', accentColor = '#ffffff', maxRadius = 3.6) {
+    if (!this.fxGroup) return;
+    const mat = createBattleImpactWaveShaderMaterial({ color, accentColor });
+    const mesh = new THREE.Mesh(SHARED_WAVE_GEO, mat);
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.set(lx, 0.09, lz);
+    mesh.scale.setScalar(maxRadius * 2);
+    this.fxGroup.add(mesh);
 
-      const moves = e.mon.moves;
-      const specialId = moves[4] || moves[0];
-      if ((e.cooldowns[specialId] || 0) <= 0 && Math.random() < 0.52) {
-        this._castMove(e, p, specialId);
-      } else if (e.mon.hp < e.mon.maxHp * 0.42 && (e.cooldowns.eat_snack || 0) <= 0 && Math.random() < 0.45) {
-        this._castMove(e, p, 'eat_snack');
-      } else if (dist < 4.8 && (e.cooldowns.sky_jump || 0) <= 0 && Math.random() < 0.45) {
-        this._castMove(e, p, 'sky_jump');
-      } else if ((e.cooldowns.monk_run || 0) <= 0) {
-        this._castMove(e, p, 'monk_run');
-      }
-    }
+    this.shaderWaves.push({ mesh, mat, t: 0, dur: 0.62 });
+  }
 
-    if (!this.pendingEnd && this.enemyUnit === e) {
-      this._updateUnitKinematics(e, mx, mz, dt);
+  _spawnAuraPillar(lx, lz, glowColor = '#4ade80', dur = 0.85) {
+    if (!this.fxGroup) return;
+    const mat = createElementalBeamShaderMaterial({
+      coreColor: '#ffffff',
+      glowColor,
+      twist: 4.0,
+    });
+    const geo = new THREE.CylinderGeometry(1.05, 1.25, 2.8, 24, 10, true);
+    geo.translate(0, 1.4, 0);
+    const mesh = new THREE.Mesh(geo, mat);
+    mesh.position.set(lx, 0.05, lz);
+    this.fxGroup.add(mesh);
+
+    this.shaderPillars.push({ mesh, geo, mat, t: 0, dur });
+  }
+
+  _spawnBurstParticles(lx, ly, lz, colorHex = '#fde047', count = 12) {
+    if (!this.fxGroup) return;
+    for (let i = 0; i < count; i++) {
+      const isStar = i % 2 === 0;
+      const mat = new THREE.MeshBasicMaterial({
+        color: isStar ? '#fef08a' : colorHex,
+        transparent: true,
+        opacity: 1,
+      });
+      const mesh = new THREE.Mesh(isStar ? SHARED_STAR_GEO : SHARED_SPARK_GEO, mat);
+      const scale = isStar ? 0.16 : 0.12;
+      mesh.scale.setScalar(scale);
+      mesh.position.set(lx, ly, lz);
+      this.fxGroup.add(mesh);
+
+      const ang = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+      const spd = 2.4 + Math.random() * 3.8;
+      this.particles.push({
+        mesh,
+        mat,
+        vx: Math.cos(ang) * spd,
+        vy: 1.8 + Math.random() * 3.2,
+        vz: Math.sin(ang) * spd,
+        t: 0,
+        dur: 0.55 + Math.random() * 0.25,
+      });
     }
   }
 
-  _updateCatchSequence(dt) {
-    const c = this.catchAnim;
-    if (!c || this.pendingEnd) return;
-    c.t += dt;
+  // =========================================================================
+  // MAIN FRAME UPDATE (`update(dt, input)`)
+  // =========================================================================
 
-    if (c.phase === 'fly') {
+  _updateCatchAnim(dt) {
+    const ca = this.catchAnim;
+    if (!ca) return;
+    ca.t += dt;
+
+    const startX = this.center.x + PLAYER_SLOT.x - 1.2;
+    const startZ = this.center.z + PLAYER_SLOT.z;
+    const targetX = this.center.x + ENEMY_SLOT.x;
+    const targetZ = this.center.z + ENEMY_SLOT.z;
+
+    if (ca.phase === 'fly') {
       const dur = 0.48;
-      const u = Math.min(1, c.t / dur);
-      const x = c.startX + (c.targetX - c.startX) * u;
-      const z = c.startZ + (c.targetZ - c.startZ) * u;
-      const y = 1.1 * (1 - u) + Math.sin(u * Math.PI) * 3.1 + 0.35;
-      c.ballActor.root.position.set(x, 0, z);
-      c.ballActor.animRoot.position.y = y;
-      c.ballActor.animRoot.rotation.x += dt * 12;
+      const u = Math.min(1, ca.t / dur);
+      const x = startX + (targetX - startX) * u;
+      const z = startZ + (targetZ - startZ) * u;
+      const arcY = 0.8 * (1 - u) + Math.sin(u * Math.PI) * 2.85 + 0.25;
+      ca.ballActor.root.position.set(x, this.center.y, z);
+      ca.ballActor.animRoot.position.y = arcY;
+      ca.ballActor.animRoot.rotation.x += dt * 13;
+
       if (u >= 1) {
-        c.phase = 'wiggle';
-        c.t = 0;
+        ca.phase = 'wiggle';
+        ca.t = 0;
         this.audio.playSfx('ball_bounce');
-        this._spawnShockwave(c.targetX, c.targetZ, 1.9, '#fde047');
         if (this.enemyActor) this.enemyActor.root.visible = false;
+        this._spawnImpactWave(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047', '#ffffff', 3.4);
+        if (this.arenaGroup && this.arenaGroup.userData.triggerShockwave) {
+          this.arenaGroup.userData.triggerShockwave(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047');
+        }
       }
       return;
     }
 
-    if (c.phase === 'wiggle') {
-      c.ballActor.animRoot.position.y = 0.12;
-      c.ballActor.animRoot.rotation.x = 0;
-      c.ballActor.animRoot.rotation.z = Math.sin(c.t * 16) * 0.32 * Math.exp(-c.t * 2.5);
-      if (c.t >= 0.65) {
-        c.t = 0;
-        c.wigglesDone += 1;
-        if (c.wigglesDone <= c.wigglesTotal) {
+    if (ca.phase === 'wiggle') {
+      ca.ballActor.animRoot.position.y = 0.16;
+      ca.ballActor.animRoot.rotation.x = 0;
+      ca.ballActor.animRoot.rotation.z = Math.sin(ca.t * 16) * 0.35 * Math.exp(-ca.t * 2.3);
+
+      if (ca.t >= 0.65) {
+        ca.t = 0;
+        ca.wigglesDone += 1;
+        if (ca.wigglesDone <= ca.wigglesTotal) {
           this.audio.playSfx('ball_wiggle');
-          this._spawnShockwave(c.targetX, c.targetZ, 1.1, '#38bdf8');
-        } else if (c.caught) {
+          this.narrationSub = `Wiggle ${ca.wigglesDone}...`;
+        } else if (ca.caught) {
           this.audio.playSfx('catch_fanfare');
-          if (this.renderer && this.renderer.flashLight) {
-            this.renderer.flashLight(c.targetX, 1.8, c.targetZ, '#facc15', 7.0, 0.55);
-          }
-          this._spawnShockwave(c.targetX, c.targetZ, 2.8, '#fbbf24');
-          this._spawnBurst({
-            x: c.targetX,
-            y: 0.45,
-            z: c.targetZ,
-            color: '#facc15',
-            count: 28,
-            speed: 5.5,
-            up: 5.2,
-            size: 0.2,
-            life: 0.78,
-            star: true,
-          });
+          this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047', 1.1);
+          this._spawnBurstParticles(ENEMY_SLOT.x, 0.8, ENEMY_SLOT.z, '#fde047', 22);
+
           const capturedMon = this.enemyUnit.mon;
           capturedMon.hp = capturedMon.maxHp;
           const slotInfo = addCaughtMonToState(this.state, capturedMon);
-          if (this.playerUnit && this.playerUnit.mon) {
-            grantExpToMon(this.playerUnit.mon, 35 + capturedMon.level * 12);
+          for (const pm of this.state.party) {
+            if (pm.hp > 0) grantExpToMon(pm, 22 + capturedMon.level * 7);
           }
-          const caughtFinalBoss = Boolean(this.wildRef && this.wildRef.isFinalBoss);
-          this.bannerText = `GOTCHA!! ${capturedMon.nickname} was caught in the Monkeball!`;
-          this.heroCheerTimer = 1.2;
-          c.phase = 'done';
-          this._queueBattleEnd(
+
+          this.sceneRoot.remove(ca.ballActor.root);
+          this.catchAnim = null;
+
+          const beatFinalBoss = Boolean(this.wildRef && this.wildRef.isFinalBoss);
+          this.stepQueue = [
             {
-              outcome: 'caught',
-              capturedMon,
-              slotInfo,
-              beatFinalBoss: caughtFinalBoss,
-              wildRef: this.wildRef,
+              duration: 1.4,
+              text: `🎉 GOTCHA! ${capturedMon.nickname} (Lv.${capturedMon.level}) was caught!`,
+              sub: slotInfo.inParty
+                ? `Added to Squad Slot #${slotInfo.slot + 1} & registered in MonkeDex!`
+                : `Sent to Sanctuary Box & registered in MonkeDex!`,
+              onDone: () => {
+                this.pendingEnd = {
+                  timer: 0.1,
+                  result: {
+                    outcome: 'caught',
+                    capturedMon,
+                    wildRef: this.wildRef,
+                    beatFinalBoss,
+                  },
+                };
+              },
             },
-            0.9,
-          );
+          ];
+          this.activeStep = null;
         } else {
           this.audio.playSfx('break_free');
           if (this.enemyActor) this.enemyActor.root.visible = true;
-          if (this.fxGroup) this.fxGroup.remove(c.ballActor.root);
+          this.sceneRoot.remove(ca.ballActor.root);
           this.catchAnim = null;
-          this.bannerText = `Oh no! ${this.enemyUnit.mon.nickname} popped out—weaken it more and try again!`;
+
+          this.stepQueue = [
+            {
+              duration: 1.1,
+              text: `😣 Oh no! Wild ${this.enemyUnit.mon.nickname} popped free!`,
+              sub: 'Tip: Weaken its HP further with ⚔️ FIGHT or feed a 🍌 Berry!',
+              onDone: () => {
+                const enemyMove = this._pickEnemyMove();
+                this._enqueueAttackStep('enemy', enemyMove);
+                this._enqueueReturnToMenu();
+              },
+            },
+          ];
+          this.activeStep = null;
         }
       }
     }
   }
 
-  _updateEffects(dt) {
-    if (!this.fxGroup) return;
+  _handleMenuNavigation(input) {
+    const nav = input.menuNav || { left: false, right: false, up: false, down: false };
 
-    // Update projectiles
-    for (const pr of this.projectiles) {
-      pr.life -= dt;
-      pr.x += pr.vx * dt;
-      pr.z += pr.vz * dt;
-      pr.mesh.position.set(pr.x, 0.65, pr.z);
-      if (
-        !this.pendingEnd &&
-        pr.target &&
-        pr.target.mon.hp > 0 &&
-        pr.target.y < 1.35 &&
-        Math.hypot(pr.target.x - pr.x, pr.target.z - pr.z) <= pr.radius + 0.45
-      ) {
-        this._applyHit(pr.owner, pr.target, pr.move, pr.stunSec || 0);
-        pr.life = -1;
-      }
-      if (pr.life <= 0 && this.fxGroup) {
-        this.fxGroup.remove(pr.mesh);
-      }
+    if (this.menuState === 'root') {
+      const prev = this.rootCursor;
+      if (nav.left && this.rootCursor % 2 === 1) this.rootCursor -= 1;
+      if (nav.right && this.rootCursor % 2 === 0) this.rootCursor += 1;
+      if (nav.up && this.rootCursor >= 2) this.rootCursor -= 2;
+      if (nav.down && this.rootCursor < 2) this.rootCursor += 2;
+      if (this.rootCursor !== prev) this.audio.playSfx('menu');
+
+      if (input.pressed.slot1) return this.selectRootOption(0);
+      if (input.pressed.slot2) return this.selectRootOption(1);
+      if (input.pressed.slot3) return this.selectRootOption(2);
+      if (input.pressed.slot4) return this.selectRootOption(3);
+      if (input.pressed.btnA) return this.selectRootOption(this.rootCursor);
+      return;
     }
-    this.projectiles = this.projectiles.filter((p) => p.life > 0);
 
-    // Update ground AoE telegraphs
-    for (const tg of this.telegraphs) {
-      tg.elapsed += dt;
-      const u = Math.min(1, tg.elapsed / tg.delay);
-      tg.fill.scale.setScalar(Math.max(0.05, u * 10));
-      if (tg.elapsed >= tg.delay) {
-        this._spawnShockwave(tg.x, tg.z, tg.radius, tg.color);
-        this._spawnBurst({ x: tg.x, y: 0.35, z: tg.z, color: tg.color, count: 18, speed: 5.0, up: 3.4, star: true });
-        if (
-          !this.pendingEnd &&
-          tg.target &&
-          tg.target.mon.hp > 0 &&
-          tg.target.y < 1.2 &&
-          Math.hypot(tg.target.x - tg.x, tg.target.z - tg.z) <= tg.radius + 0.35
-        ) {
-          this._applyHit(tg.owner, tg.target, tg.move);
-        }
-        if (this.fxGroup) this.fxGroup.remove(tg.ring, tg.fill);
-        tg.done = true;
-      }
+    if (this.menuState === 'fight') {
+      const moves = this.getPlayerMoves();
+      const prev = this.subCursor;
+      if (nav.left && this.subCursor % 2 === 1) this.subCursor -= 1;
+      if (nav.right && this.subCursor % 2 === 0 && this.subCursor + 1 < moves.length) this.subCursor += 1;
+      if (nav.up && this.subCursor >= 2) this.subCursor -= 2;
+      if (nav.down && this.subCursor + 2 < moves.length) this.subCursor += 2;
+      if (this.subCursor !== prev) this.audio.playSfx('menu');
+
+      if (input.pressed.back || input.pressed.btnB) return this.cancelSubMenu();
+      if (input.pressed.slot1) return this.selectFightMove(0);
+      if (input.pressed.slot2) return this.selectFightMove(1);
+      if (input.pressed.slot3) return this.selectFightMove(2);
+      if (input.pressed.slot4) return this.selectFightMove(3);
+      if (input.pressed.btnA) return this.selectFightMove(this.subCursor);
+      return;
     }
-    this.telegraphs = this.telegraphs.filter((t) => !t.done);
 
-    // Update expanding shockwaves
-    for (const sw of this.shockwaves) {
-      sw.t += dt;
-      const u = Math.min(1, sw.t / sw.dur);
-      sw.mesh.scale.setScalar(0.35 + u * sw.maxRadius);
-      sw.mesh.material.opacity = 0.92 * (1 - u);
-      if (sw.t >= sw.dur && this.fxGroup) {
-        this.fxGroup.remove(sw.mesh);
-      }
+    if (this.menuState === 'bag') {
+      const prev = this.subCursor;
+      if (nav.left && this.subCursor % 2 === 1) this.subCursor -= 1;
+      if (nav.right && this.subCursor % 2 === 0) this.subCursor += 1;
+      if (nav.up && this.subCursor >= 2) this.subCursor -= 2;
+      if (nav.down && this.subCursor < 2) this.subCursor += 2;
+      if (this.subCursor !== prev) this.audio.playSfx('menu');
+
+      if (input.pressed.back || input.pressed.btnB) return this.cancelSubMenu();
+      if (input.pressed.slot1) return this.selectBagItem(0);
+      if (input.pressed.slot2) return this.selectBagItem(1);
+      if (input.pressed.slot3) return this.selectBagItem(2);
+      if (input.pressed.slot4) return this.selectBagItem(3);
+      if (input.pressed.btnA) return this.selectBagItem(this.subCursor);
+      return;
     }
-    this.shockwaves = this.shockwaves.filter((s) => s.t < s.dur);
 
-    // Update 3D burst particles
-    for (const pt of this.particles) {
-      pt.t += dt;
-      pt.vy -= pt.gravity * dt;
-      pt.x += pt.vx * dt;
-      pt.y = Math.max(0.04, pt.y + pt.vy * dt);
-      pt.z += pt.vz * dt;
-      const u = Math.min(1, pt.t / pt.life);
-      pt.mesh.position.set(pt.x, pt.y, pt.z);
-      pt.mesh.rotation.y += dt * 7;
-      pt.mesh.rotation.x += dt * 5;
-      pt.mesh.scale.setScalar(pt.baseScale * (1 - u * 0.72));
-      pt.mesh.material.opacity = 0.95 * (1 - u);
-      if (pt.t >= pt.life) {
-        if (this.fxGroup) this.fxGroup.remove(pt.mesh);
-        pt.mesh.material.dispose();
-      }
+    if (this.menuState === 'party') {
+      const count = this.state.party.length;
+      const prev = this.subCursor;
+      if (nav.up || nav.left) this.subCursor = (this.subCursor - 1 + count) % count;
+      if (nav.down || nav.right) this.subCursor = (this.subCursor + 1) % count;
+      if (this.subCursor !== prev) this.audio.playSfx('menu');
+
+      if (input.pressed.back || input.pressed.btnB) return this.cancelSubMenu();
+      if (input.pressed.slot1 && count >= 1) return this.selectPartySlot(0);
+      if (input.pressed.slot2 && count >= 2) return this.selectPartySlot(1);
+      if (input.pressed.slot3 && count >= 3) return this.selectPartySlot(2);
+      if (input.pressed.slot4 && count >= 4) return this.selectPartySlot(3);
+      if (input.pressed.btnA) return this.selectPartySlot(this.subCursor);
     }
-    this.particles = this.particles.filter((pt) => pt.t < pt.life);
-  }
-
-  _finishBattle(result) {
-    this.pendingEnd = null;
-    this.cleanupMeshes();
-    this.active = false;
-    if (this.onBattleEnd) this.onBattleEnd(result);
   }
 
   update(dt, input) {
@@ -1235,72 +1269,187 @@ export class BattleController {
       this.arenaGroup.userData.update(this.time);
     }
 
-    if (this.comboDecayTimer > 0) {
-      this.comboDecayTimer = Math.max(0, this.comboDecayTimer - dt);
-      if (this.comboDecayTimer <= 0) this.playerCombo = 0;
+    // Smoothly tween displayed HP values on both plaques!
+    for (const unit of [this.playerUnit, this.enemyUnit]) {
+      if (!unit) continue;
+      const targetHp = unit.mon.hp;
+      const diff = targetHp - unit.displayHp;
+      if (Math.abs(diff) > 0.05) {
+        const speed = Math.max(18, unit.mon.maxHp * 0.95);
+        unit.displayHp += Math.sign(diff) * Math.min(Math.abs(diff), speed * dt);
+      } else {
+        unit.displayHp = targetHp;
+      }
+
+      // Position & animate 3D Combatant Rig
+      unit.hitFlash = Math.max(0, unit.hitFlash - dt);
+      if (unit.actor) {
+        const shakeX = unit.hitFlash > 0 ? Math.sin(this.time * 55) * 0.16 : 0;
+        unit.actor.root.position.set(
+          this.center.x + unit.homeX + unit.offsetX + shakeX,
+          this.center.y + unit.offsetY,
+          this.center.z + unit.homeZ + unit.offsetZ,
+        );
+        if (unit.actor.updateMotion) {
+          unit.actor.updateMotion(dt, {
+            targetYaw: unit.yaw,
+            moveSpeed: Math.hypot(unit.offsetX, unit.offsetZ) > 0.15 ? 8.5 : 0,
+            inBattle: true,
+          });
+        }
+      }
     }
 
-    if (this.heroCheerTimer > 0) this.heroCheerTimer = Math.max(0, this.heroCheerTimer - dt);
-    if (this.rivalCheerTimer > 0) this.rivalCheerTimer = Math.max(0, this.rivalCheerTimer - dt);
-
+    // Animate Rim Coaches (`ALEX` & Rival Trainer)
+    this.heroCheerTimer = Math.max(0, this.heroCheerTimer - dt);
+    this.rivalCheerTimer = Math.max(0, this.rivalCheerTimer - dt);
     if (this.heroCoachActor && this.heroCoachActor.updateMotion) {
       this.heroCoachActor.updateMotion(dt, {
-        targetYaw: Math.PI * 0.5,
-        inBattle: true,
-        cheer: this.heroCheerTimer > 0 ? 1 : 0,
+        targetYaw: Math.PI * 0.42,
+        moveSpeed: 0,
+        cheer: this.heroCheerTimer > 0 ? 1.0 : 0.2,
       });
     }
     if (this.rivalCoachActor && this.rivalCoachActor.updateMotion) {
       this.rivalCoachActor.updateMotion(dt, {
-        targetYaw: -Math.PI * 0.5,
-        inBattle: true,
-        cheer: this.rivalCheerTimer > 0 ? 1 : 0,
+        targetYaw: -Math.PI * 0.42,
+        moveSpeed: 0,
+        cheer: this.rivalCheerTimer > 0 ? 1.0 : 0.2,
       });
     }
 
-    // Frame-safe completion countdown: animates celebration & finishes cleanly at top of tick!
-    if (this.pendingEnd) {
-      if (this.playerUnit && this.playerUnit.actor && this.playerUnit.actor.updateMotion && this.playerUnit.mon.hp > 0) {
-        this.playerUnit.actor.updateMotion(dt, {
-          targetYaw: 0,
-          inBattle: true,
-          cheer: this.pendingEnd.result.outcome === 'won' || this.pendingEnd.result.outcome === 'caught' ? 1 : 0,
-        });
+    // Update Active 3D Shader Beams, Shockwaves, Aura Pillars & Particles!
+    for (let i = this.shaderBeams.length - 1; i >= 0; i--) {
+      const b = this.shaderBeams[i];
+      b.t += dt;
+      b.mat.uniforms.uTime.value = this.time;
+      b.mat.uniforms.uProgress.value = Math.min(1, b.t / b.dur);
+      if (b.t >= b.dur) {
+        if (this.fxGroup) this.fxGroup.remove(b.mesh);
+        b.mat.dispose();
+        this.shaderBeams.splice(i, 1);
       }
-      this._updateEffects(dt);
+    }
+
+    for (let i = this.shaderWaves.length - 1; i >= 0; i--) {
+      const w = this.shaderWaves[i];
+      w.t += dt;
+      w.mat.uniforms.uProgress.value = Math.min(1, w.t / w.dur);
+      if (w.t >= w.dur) {
+        if (this.fxGroup) this.fxGroup.remove(w.mesh);
+        w.mat.dispose();
+        this.shaderWaves.splice(i, 1);
+      }
+    }
+
+    for (let i = this.shaderPillars.length - 1; i >= 0; i--) {
+      const p = this.shaderPillars[i];
+      p.t += dt;
+      p.mat.uniforms.uTime.value = this.time;
+      p.mat.uniforms.uProgress.value = Math.min(1, p.t / p.dur);
+      if (p.t >= p.dur) {
+        if (this.fxGroup) this.fxGroup.remove(p.mesh);
+        p.geo.dispose();
+        p.mat.dispose();
+        this.shaderPillars.splice(i, 1);
+      }
+    }
+
+    for (let i = this.particles.length - 1; i >= 0; i--) {
+      const pt = this.particles[i];
+      pt.t += dt;
+      pt.vy -= 9.5 * dt;
+      pt.mesh.position.x += pt.vx * dt;
+      pt.mesh.position.y = Math.max(0.05, pt.mesh.position.y + pt.vy * dt);
+      pt.mesh.position.z += pt.vz * dt;
+      pt.mesh.rotation.x += dt * 7;
+      pt.mat.opacity = Math.max(0, 1 - pt.t / pt.dur);
+      if (pt.t >= pt.dur) {
+        if (this.fxGroup) this.fxGroup.remove(pt.mesh);
+        pt.mat.dispose();
+        this.particles.splice(i, 1);
+      }
+    }
+
+    // Frame-safe battle end transition
+    if (this.pendingEnd) {
       this.pendingEnd.timer -= dt;
       if (this.pendingEnd.timer <= 0) {
-        const finalRes = this.pendingEnd.result;
-        this._finishBattle(finalRes);
+        const res = this.pendingEnd.result;
+        this.pendingEnd = null;
+        this.active = false;
+        this.cleanupSceneObjects();
+        if (this.onBattleEnd) this.onBattleEnd(res);
       }
       return;
     }
 
-    // Gamepad & Keyboard Battle Bindings ([A] Monk Run, [B] Fake Out, [X] Eat, [Y] Jump, [RB] Special)
-    if (!this.catchAnim) {
-      if (input.pressed.btnA) this.triggerPlayerMoveSlot(0);
-      if (input.pressed.btnB) this.triggerPlayerMoveSlot(1);
-      if (input.pressed.btnX) this.triggerPlayerMoveSlot(2);
-      if (input.pressed.btnY) this.triggerPlayerMoveSlot(3);
-      if (input.pressed.btnRB) this.triggerPlayerMoveSlot(4);
-      if (input.pressed.btnLB) this.tryThrowBattleMonkeball();
-      if (input.pressed.btnLT) this.cyclePartySwitch();
-      if (input.pressed.back && this.mode === 'wild') this.tryRunAway();
-    }
-
-    if (this.pendingEnd) return;
-
+    // Catch animation in flight
     if (this.catchAnim) {
-      this._updateCatchSequence(dt);
-    } else {
-      if (this.playerUnit && this.playerUnit.mon.hp > 0) {
-        this._updateUnitKinematics(this.playerUnit, input.moveX, input.moveZ, dt);
-      }
-      if (!this.pendingEnd) {
-        this._updateEnemyAI(dt);
-      }
+      this._updateCatchAnim(dt);
+      return;
     }
 
-    this._updateEffects(dt);
+    // Step Queue Choreography
+    if (this.menuState === 'animating') {
+      if (!this.activeStep && this.stepQueue.length > 0) {
+        this.activeStep = this.stepQueue.shift();
+        this.activeStep.elapsed = 0;
+        if (this.activeStep.text) this.bannerText = this.activeStep.text;
+        if (this.activeStep.sub !== undefined) this.narrationSub = this.activeStep.sub;
+        if (this.activeStep.onStart) this.activeStep.onStart(this.activeStep);
+      }
+
+      if (this.activeStep) {
+        this.activeStep.elapsed += dt;
+        if (this.activeStep.onUpdate) this.activeStep.onUpdate(this.activeStep, dt);
+
+        const canSkip =
+          !this.activeStep.attackerSide &&
+          this.activeStep.elapsed > 0.32 &&
+          input &&
+          input.pressed &&
+          input.pressed.btnA;
+
+        if (this.activeStep.elapsed >= (this.activeStep.duration || 1.0) || canSkip) {
+          const finished = this.activeStep;
+          this.activeStep = null;
+          if (finished.onDone) finished.onDone();
+        }
+      } else if (this.stepQueue.length === 0 && !this.pendingEnd) {
+        this._enterRootMenu();
+      }
+      return;
+    }
+
+    // Player is calmly browsing the Turn-Based Menu!
+    if (input) {
+      this._handleMenuNavigation(input);
+    }
+  }
+
+  cleanupSceneObjects() {
+    for (const obj of [
+      this.arenaGroup,
+      this.fxGroup,
+      this.heroCoachActor && this.heroCoachActor.root,
+      this.rivalCoachActor && this.rivalCoachActor.root,
+      this.playerActor && this.playerActor.root,
+      this.enemyActor && this.enemyActor.root,
+      this.catchAnim && this.catchAnim.ballActor && this.catchAnim.ballActor.root,
+    ]) {
+      if (obj) this.sceneRoot.remove(obj);
+    }
+    this.arenaGroup = null;
+    this.fxGroup = null;
+    this.heroCoachActor = null;
+    this.rivalCoachActor = null;
+    this.playerActor = null;
+    this.enemyActor = null;
+    this.catchAnim = null;
+    this.shaderBeams = [];
+    this.shaderWaves = [];
+    this.shaderPillars = [];
+    this.particles = [];
   }
 }
