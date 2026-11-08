@@ -266,6 +266,28 @@
       border-color: var(--coral);
     }
 
+    .battle-center-badge {
+      background: #132238f8;
+      border: 2px solid #475569;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-size: 12px;
+      font-weight: 900;
+      letter-spacing: 0.04em;
+      color: #bae6fd;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
+      align-self: center;
+      white-space: nowrap;
+      transition: transform 0.12s ease, border-color 0.15s ease;
+    }
+
+    .battle-center-badge.hot {
+      border-color: var(--gold);
+      background: #2b1d0ef8;
+      color: var(--gold);
+      transform: scale(1.06);
+    }
+
     .fc-coach {
       font-size: 11px;
       font-weight: 800;
@@ -1209,6 +1231,8 @@
         <div class="fc-hp-bar-outer"><div class="fc-hp-bar-inner" id="bf-p-hp-bar"></div></div>
         <div class="fc-hp-num" id="bf-p-hp-txt">40 / 40</div>
       </div>
+
+      <div class="battle-center-badge" id="battle-combo-pill">⚡ FLOW 1.00×</div>
 
       <div class="fighter-card enemy">
         <div class="fc-coach" id="bf-e-coach">RIVAL TAMER · MONK 2</div>

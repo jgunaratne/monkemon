@@ -94,13 +94,20 @@ export function grantExpToMon(mon, rawExp) {
   return { gained, levelsGained, newLevel: mon.level };
 }
 
+export function computeComboMultiplier(comboCount = 0) {
+  const c = Math.max(0, Math.floor(comboCount || 0));
+  if (c <= 1) return 1.0;
+  return Math.min(1.5, Math.round((1.0 + (c - 1) * 0.08) * 100) / 100);
+}
+
 export function calculateHitDamage(attackerMon, defenderMon, move, opts = {}) {
   const atkSp = getSpecies(attackerMon.speciesId);
   const defSp = getSpecies(defenderMon.speciesId);
   const elem = resolveMoveElement(move, atkSp);
   const typeMult = getTypeMultiplier(elem, defSp.element, defSp.secondaryElement);
-  const stab = elem === atkSp.element || elem === defSp.secondaryElement ? 1.15 : 1.0;
+  const stab = elem === atkSp.element || elem === atkSp.secondaryElement ? 1.15 : 1.0;
   const atkBuff = opts.attackerBuffed ? 1.28 : 1.0;
+  const comboMult = computeComboMultiplier(opts.comboCount || 0);
   const rngVal = typeof opts.rng === 'number' ? opts.rng : Math.random();
   const isCrit = Boolean(opts.forceCrit) || rngVal > 0.91;
   const critMult = isCrit ? 1.42 : 1.0;
@@ -108,7 +115,7 @@ export function calculateHitDamage(attackerMon, defenderMon, move, opts = {}) {
 
   const power = Math.max(10, move.power || 45);
   const raw =
-    (((2 * attackerMon.level) / 5 + 4) * power * (attackerMon.atk * atkBuff)) /
+    (((2 * attackerMon.level) / 5 + 4) * power * (attackerMon.atk * atkBuff * comboMult)) /
       (Math.max(8, defenderMon.def) * 18) +
     3;
   const damage = Math.max(2, Math.round(raw * stab * typeMult * critMult * variance));
@@ -123,6 +130,7 @@ export function calculateHitDamage(attackerMon, defenderMon, move, opts = {}) {
     element: elem,
     elementColor: elemMeta.color,
     effectiveness: typeMult,
+    comboMult,
     isCrit,
     label,
   };

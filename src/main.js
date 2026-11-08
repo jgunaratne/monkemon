@@ -71,11 +71,13 @@ async function boot() {
     onFloatText: (x, y, t, c) => ui && ui.spawnFloatingText(x, y, t, c),
     onStartWildBattle: (wildEnt, centerPos) => {
       world.entitiesGroup.visible = false;
+      if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
       battle.startWildBattle(wildEnt, centerPos);
       touch.updateMode(true);
     },
     onStartTrainerBattle: (trainerDef, centerPos) => {
       world.entitiesGroup.visible = false;
+      if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
       battle.startTrainerBattle(trainerDef, centerPos);
       touch.updateMode(true);
     },
@@ -101,7 +103,10 @@ async function boot() {
     onFloatText: (x, y, t, c) => ui && ui.spawnFloatingText(x, y, t, c),
     onBattleEnd: (res) => {
       world.entitiesGroup.visible = true;
+      if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(true);
+      world.gateCooldown = 2.5;
       touch.updateMode(false);
+      input._latched = {};
 
       if (res.outcome === 'caught' && res.wildRef) {
         world.removeWildEntity(res.wildRef);
@@ -115,7 +120,6 @@ async function boot() {
           ui.showToast('🏆 Victory! Your Monkemon grew stronger!');
         }
       } else if (res.outcome === 'lost') {
-        // Cozy hometown rescue back to nearest House with full heal!
         healAllParty(state);
         const house = (world.zone && world.zone.houses && world.zone.houses[0]) || null;
         if (house) {
@@ -127,8 +131,13 @@ async function boot() {
         ui.showToast('💨 Dashed safely out of the arena!');
       }
 
+      world.pushNearbyWildsAway(3.0);
+      world.refreshPartnerActor();
       saveGameToStorage(state);
       renderer.setCameraFraming(world.heroX, 0.7, world.heroZ, 'overworld', false);
+      if (canvas && canvas.focus) {
+        try { canvas.focus({ preventScroll: true }); } catch {}
+      }
 
       if (res.beatFinalBoss) {
         ui.openEndingModal();
@@ -230,7 +239,12 @@ async function boot() {
     ui.closeAllModals();
     const tr = (world.zone.trainers && world.zone.trainers[0]) || ZONES.sunpalm.trainers[0];
     world.entitiesGroup.visible = false;
+    if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
     battle.startTrainerBattle(tr, { x: 0, z: 2 });
+    if (params.get('action') === 'cast') {
+      battle._bumpPlayerCombo(3);
+      battle.triggerPlayerMoveSlot(4);
+    }
   } else if (screenParam === 'boss20') {
     state.starterChosen = true;
     state.party = [
@@ -242,6 +256,7 @@ async function boot() {
     world.loadZone('cinderpeak');
     const bossEnt = world.wildEntities.find((w) => w.isFinalBoss) || world.wildEntities[0];
     world.entitiesGroup.visible = false;
+    if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(false);
     battle.startWildBattle(bossEnt, { x: 8, z: -6 });
   } else if (screenParam === 'dex') {
     state.starterChosen = true;
@@ -267,91 +282,103 @@ async function boot() {
   let saveAccum = 0;
 
   async function frame(now) {
-    const dt = Math.min(0.05, Math.max(0.001, (now - lastTs) / 1000));
-    lastTs = now;
+    try {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTs) / 1000));
+      lastTs = now;
 
-    input.update();
+      input.update();
 
-    // Global hotkeys & gamepad shortcuts
-    if (input.pressed.mute) {
-      const m = audio.toggleMute();
-      const b = document.getElementById('btn-toggle-mute');
-      if (b) b.textContent = m ? '🔇 Muted [N]' : '🔊 Audio [N]';
-    }
-    if (input.pressed.tilt) {
-      const on = renderer.toggleTiltShift();
-      ui.showToast(`📷 Miniature Tilt-Shift Lens: ${on ? 'ON' : 'OFF'}`);
-    }
-
-    // Voice skip on Space / Gamepad A while voice banner is active
-    if (audio.activeVoice && (input.pressed.back || (ui.modal === null && input.pressed.btnA && !battle.active))) {
-      // Allow skipping long voice lines cleanly with Back/Esc
-      if (input.pressed.back) audio.stopVoice();
-    }
-
-    if (ui.modal === 'title') {
-      renderer.setCameraFraming(
-        Math.sin(now * 0.00035) * 4.5,
-        0.9,
-        2.5 + Math.cos(now * 0.00035) * 3.0,
-        'title',
-        false,
-      );
-      if (world.diorama) world.diorama.update(now * 0.001, dt);
-      if (!input.typing && input.pressed.btnA) {
-        const startBtn = document.getElementById('btn-continue-save') || document.getElementById('btn-new-adventure');
-        if (startBtn) startBtn.click();
+      // Global hotkeys & gamepad shortcuts
+      if (input.pressed.mute) {
+        const m = audio.toggleMute();
+        const b = document.getElementById('btn-toggle-mute');
+        if (b) b.textContent = m ? '🔇 Muted [N]' : '🔊 Audio [N]';
       }
-    } else if (ui.modal) {
-      if (input.pressed.back || (ui.modal === 'dex' && input.pressed.dex) || (ui.modal === 'map' && input.pressed.map)) {
-        ui.closeAllModals();
+      if (input.pressed.tilt) {
+        const on = renderer.toggleTiltShift();
+        ui.showToast(`📷 Miniature Tilt-Shift Lens: ${on ? 'ON' : 'OFF'}`);
       }
-    } else {
-      if (input.pressed.dex && !battle.active) ui.toggleModal('dex');
-      else if (input.pressed.map && !battle.active) ui.toggleModal('map');
-      else if (input.pressed.forge && !battle.active) ui.toggleModal('forge');
-      else if (battle.active) {
-        battle.update(dt, input);
+
+      if (audio.activeVoice && input.pressed.back) {
+        audio.stopVoice();
+      }
+
+      if (ui.modal === 'title') {
+        renderer.setCameraFraming(
+          Math.sin(now * 0.00032) * 5.2,
+          0.9,
+          2.2 + Math.cos(now * 0.00032) * 3.4,
+          'title',
+          false,
+        );
+        if (world.diorama) world.diorama.update(now * 0.001, dt);
+        // Animate roaming wilds & hero gently during the cinematic live-diorama intro!
+        if (world.heroActor && world.heroActor.updateMotion) {
+          world.heroActor.updateMotion(dt, { targetYaw: Math.sin(now * 0.0008) * 0.4, moveSpeed: 0 });
+        }
+        if (world.partnerActor && world.partnerActor.updateMotion) {
+          world.partnerActor.updateMotion(dt, { targetYaw: 0.3, moveSpeed: 0, cheer: 0.4 });
+        }
+        for (const w of world.wildEntities) {
+          if (w.actor && w.actor.updateMotion) {
+            w.actor.updateMotion(dt, { targetYaw: w.yaw, moveSpeed: 0 });
+          }
+        }
+        ui.handleModalInput(input);
+      } else if (ui.modal) {
+        if (world.diorama) world.diorama.update(now * 0.001, dt);
+        ui.handleModalInput(input);
       } else {
-        world.update(dt, input);
+        if (input.pressed.dex && !battle.active) ui.toggleModal('dex');
+        else if (input.pressed.map && !battle.active) ui.toggleModal('map');
+        else if (input.pressed.forge && !battle.active) ui.toggleModal('forge');
+        else if (battle.active) {
+          if (world.diorama) world.diorama.update(now * 0.001, dt);
+          battle.update(dt, input);
+        } else {
+          world.update(dt, input);
+        }
       }
-    }
 
-    const activeMon = state.party[state.activeIndex] || state.party[0];
-    net.update(
-      dt,
-      {
-        zoneId: state.zoneId,
-        x: world.heroX,
-        z: world.heroZ,
-        yaw: world.heroYaw,
-        moving: world.heroMoving,
+      const activeMon = state.party[state.activeIndex] || state.party[0];
+      net.update(
+        dt,
+        {
+          zoneId: state.zoneId,
+          x: world.heroX,
+          z: world.heroZ,
+          yaw: world.heroYaw,
+          moving: world.heroMoving,
+          inBattle: battle.active,
+          partnerId: activeMon ? activeMon.speciesId : 'mugchimp',
+          partnerLv: activeMon ? activeMon.level : 5,
+          badges: state.badges.length,
+        },
+        state.zoneId,
+      );
+
+      ui.updateHUD({
         inBattle: battle.active,
-        partnerId: activeMon ? activeMon.speciesId : 'mugchimp',
-        partnerLv: activeMon ? activeMon.level : 5,
-        badges: state.badges.length,
-      },
-      state.zoneId,
-    );
+        zone: world.zone,
+        world,
+        battle,
+        onlineCount: net.onlineCount,
+      });
 
-    ui.updateHUD({
-      inBattle: battle.active,
-      zone: world.zone,
-      world,
-      battle,
-      onlineCount: net.onlineCount,
-    });
+      state.playSeconds = (state.playSeconds || 0) + dt;
+      saveAccum += dt;
+      if (saveAccum >= 8.0 && state.starterChosen) {
+        saveAccum = 0;
+        saveGameToStorage(state);
+      }
 
-    state.playSeconds = (state.playSeconds || 0) + dt;
-    saveAccum += dt;
-    if (saveAccum >= 8.0 && state.starterChosen) {
-      saveAccum = 0;
-      saveGameToStorage(state);
+      renderer.render(dt);
+      await renderer.afterDraw();
+    } catch (err) {
+      console.error('Monkemon frame error:', err);
+    } finally {
+      requestAnimationFrame(frame);
     }
-
-    renderer.render(dt);
-    await renderer.afterDraw();
-    requestAnimationFrame(frame);
   }
 
   requestAnimationFrame(frame);

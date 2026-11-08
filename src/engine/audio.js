@@ -56,10 +56,11 @@ function findTrimPoints(buf) {
   const len = ch.length;
   const sr = buf.sampleRate || 44100;
   const thresh = 0.0025;
+  const step = 64;
   let s = 0;
-  while (s < len - sr && Math.abs(ch[s]) < thresh) s++;
+  while (s < len - sr && Math.abs(ch[s]) < thresh) s += step;
   let e = len - 1;
-  while (e > s + sr && Math.abs(ch[e]) < thresh) e--;
+  while (e > s + sr && Math.abs(ch[e]) < thresh) e -= step;
   return { start: Math.max(0, s / sr - 0.02), end: Math.min(buf.duration, e / sr + 0.04) };
 }
 
@@ -459,21 +460,27 @@ export class AudioSys {
   playSfx(kind) {
     if (this.muted || !this.ctx || !this.sfxBus) return;
     if (this.ctx.state !== 'running') this.ctx.resume().catch(() => {});
-    const t = this.ctx.currentTime;
+    const t = Math.max(0, this.ctx.currentTime);
     const tone = (freq0, freq1, dur, type = 'sine', vol = 0.24, delay = 0) => {
-      const osc = this.ctx.createOscillator();
-      const g = this.ctx.createGain();
-      osc.type = type;
-      osc.frequency.setValueAtTime(freq0, t + delay);
-      if (freq1 !== freq0) {
-        osc.frequency.exponentialRampToValueAtTime(Math.max(24, freq1), t + delay + dur);
+      try {
+        const startT = Math.max(this.ctx.currentTime, t + Math.max(0, delay));
+        const safeDur = Math.max(0.02, dur);
+        const osc = this.ctx.createOscillator();
+        const g = this.ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(Math.max(24, freq0), startT);
+        if (freq1 !== freq0) {
+          osc.frequency.exponentialRampToValueAtTime(Math.max(24, freq1), startT + safeDur);
+        }
+        g.gain.setValueAtTime(0.0001, startT);
+        g.gain.linearRampToValueAtTime(Math.max(0.001, vol), startT + Math.min(0.012, safeDur * 0.4));
+        g.gain.exponentialRampToValueAtTime(0.0008, startT + safeDur);
+        osc.connect(g).connect(this.sfxBus);
+        osc.start(startT);
+        osc.stop(startT + safeDur + 0.02);
+      } catch {
+        // Never allow Web Audio scheduling edge cases to interrupt game frames
       }
-      g.gain.setValueAtTime(0.0001, t + delay);
-      g.gain.linearRampToValueAtTime(vol, t + delay + 0.012);
-      g.gain.exponentialRampToValueAtTime(0.0008, t + delay + dur);
-      osc.connect(g).connect(this.sfxBus);
-      osc.start(t + delay);
-      osc.stop(t + delay + dur + 0.02);
     };
 
     switch (kind) {
