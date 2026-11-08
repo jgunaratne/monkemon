@@ -69,9 +69,10 @@ const TiltShiftMiniatureShader = {
 export class DioramaRenderer {
   constructor(canvas) {
     this.canvas = canvas;
+    const isHeadless = typeof navigator !== 'undefined' && /HeadlessChrome/i.test(navigator.userAgent || '');
     this.renderer = new THREE.WebGLRenderer({
       canvas,
-      antialias: true,
+      antialias: !isHeadless,
       preserveDrawingBuffer: true,
       powerPreference: 'high-performance',
     });

@@ -152,11 +152,59 @@ export class ModelBank {
     root.add(animRoot);
 
     let ready = false;
+    let materialsCloned = false;
+    const origEmissive = new Map();
+
+    const ensureUniqueMaterials = () => {
+      if (materialsCloned) return;
+      materialsCloned = true;
+      meshHolder.traverse((child) => {
+        if (child.isMesh && child.material) {
+          if (Array.isArray(child.material)) {
+            child.material = child.material.map((m) => (m ? m.clone() : m));
+          } else {
+            child.material = child.material.clone();
+          }
+          const mats = Array.isArray(child.material) ? child.material : [child.material];
+          for (const m of mats) {
+            if (m && m.emissive) {
+              origEmissive.set(m.uuid, {
+                hex: m.emissive.getHex(),
+                intensity: m.emissiveIntensity ?? 0,
+              });
+            }
+          }
+        }
+      });
+    };
+
+    const setHitFlash = (strength = 0, hex = 0xffffff) => {
+      if (strength <= 0.001 && !materialsCloned) return;
+      ensureUniqueMaterials();
+      meshHolder.traverse((child) => {
+        if (!child.isMesh || !child.material) return;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        for (const m of mats) {
+          if (!m || !m.emissive) continue;
+          const base = origEmissive.get(m.uuid) || { hex: 0x000000, intensity: 0 };
+          if (strength <= 0.001) {
+            m.emissive.setHex(base.hex);
+            m.emissiveIntensity = base.intensity;
+          } else {
+            m.emissive.setHex(hex);
+            m.emissiveIntensity = base.intensity + strength * 1.15;
+          }
+        }
+      });
+    };
+
     const readyPromise = this.loadPrototype(glbUrl).then((proto) => {
       if (proto) {
         meshHolder.remove(standIn);
         const inst = proto.clone(true);
         meshHolder.add(inst);
+        materialsCloned = false;
+        origEmissive.clear();
         ready = true;
       }
       return root;
@@ -169,6 +217,7 @@ export class ModelBank {
       shadow,
       baseScale: scale,
       readyPromise,
+      setHitFlash,
       get isReady() {
         return ready;
       },
@@ -176,71 +225,159 @@ export class ModelBank {
   }
 }
 
+let _measureCtx = null;
+function getMeasureCtx() {
+  if (!_measureCtx) {
+    const c = document.createElement('canvas');
+    c.width = 16;
+    c.height = 16;
+    _measureCtx = c.getContext('2d');
+  }
+  return _measureCtx;
+}
+
 /**
- * Builds a crisp rounded floating 3D `Sprite` label (House signboards, Wild Monkemon pills, Trainer names).
+ * Builds a crisp, auto-sized, collision-free floating 3D `Sprite` enamel signboard
+ * (House signboards, Wild Monkemon pills, Trainer names, Gateway markers).
  */
 export function makeLabelSprite({
   title,
   subtitle = '',
   badgeText = '',
   badgeColor = '#f59e0b',
-  bg = 'rgba(15, 23, 42, 0.88)',
+  bg = 'rgba(15, 23, 42, 0.92)',
   borderColor = '#fde68a',
   widthWorld = 3.2,
 }) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = subtitle ? 148 : 104;
-  const ctx = canvas.getContext('2d');
+  const mctx = getMeasureCtx();
+  const titleFont = '800 33px system-ui, -apple-system, sans-serif';
+  const badgeFont = '800 26px system-ui, -apple-system, sans-serif';
+  const subFont = '600 22px system-ui, -apple-system, sans-serif';
+
+  mctx.font = titleFont;
+  const titleW = mctx.measureText(title || '').width;
+
+  let badgeW = 0;
+  if (badgeText) {
+    mctx.font = badgeFont;
+    badgeW = Math.ceil(mctx.measureText(badgeText).width + 30);
+  }
+
+  let subW = 0;
+  if (subtitle) {
+    mctx.font = subFont;
+    subW = mctx.measureText(subtitle).width;
+  }
 
   const pad = 12;
-  const w = canvas.width - pad * 2;
-  const h = canvas.height - pad * 2;
-  const r = 28;
+  const caretH = 14;
+  const innerPadX = 24;
+  const gap = badgeText ? 16 : 0;
+  const topRowNeeded = innerPadX * 2 + badgeW + gap + titleW;
+  const subRowNeeded = subtitle ? innerPadX * 2 + subW : 0;
+  const neededW = Math.max(380, Math.ceil(Math.max(topRowNeeded, subRowNeeded) + pad * 2));
+  const canvasW = Math.min(960, Math.ceil(neededW / 16) * 16);
+  const boxH = subtitle ? 124 : 82;
+  const canvasH = boxH + pad * 2 + caretH;
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = canvasW;
+  canvas.height = canvasH;
+  const ctx = canvas.getContext('2d');
+
+  const w = canvasW - pad * 2;
+  const h = boxH;
+  const r = 26;
+
+  ctx.clearRect(0, 0, canvasW, canvasH);
+
+  // Drop shadow under enamel signboard
+  ctx.save();
+  ctx.fillStyle = 'rgba(2, 6, 23, 0.42)';
+  ctx.beginPath();
+  ctx.roundRect(pad + 2, pad + 5, w, h, r);
+  ctx.fill();
+  ctx.restore();
+
+  // Main rounded enamel body
   ctx.fillStyle = bg;
   ctx.strokeStyle = borderColor;
-  ctx.lineWidth = 5;
-
+  ctx.lineWidth = 4.5;
   ctx.beginPath();
   ctx.roundRect(pad, pad, w, h, r);
   ctx.fill();
   ctx.stroke();
 
-  let textX = canvas.width / 2;
+  // Subtle top toy-gloss sheen
+  const sheen = ctx.createLinearGradient(0, pad, 0, pad + h * 0.5);
+  sheen.addColorStop(0, 'rgba(255, 255, 255, 0.14)');
+  sheen.addColorStop(1, 'rgba(255, 255, 255, 0.0)');
+  ctx.fillStyle = sheen;
+  ctx.beginPath();
+  ctx.roundRect(pad + 3, pad + 3, w - 6, h * 0.48, r - 3);
+  ctx.fill();
+
+  // Cute bottom pointer caret
+  const cx = canvasW / 2;
+  ctx.fillStyle = borderColor;
+  ctx.beginPath();
+  ctx.moveTo(cx - 12, pad + h - 1);
+  ctx.lineTo(cx + 12, pad + h - 1);
+  ctx.lineTo(cx, pad + h + caretH);
+  ctx.closePath();
+  ctx.fill();
+
+  const rowY = subtitle ? pad + 41 : pad + h / 2;
   if (badgeText) {
-    ctx.font = 'bold 30px system-ui, -apple-system, sans-serif';
-    const bw = Math.min(180, ctx.measureText(badgeText).width + 28);
+    const groupW = badgeW + gap + titleW;
+    const startX = Math.max(pad + 16, (canvasW - groupW) / 2);
     ctx.fillStyle = badgeColor;
     ctx.beginPath();
-    ctx.roundRect(pad + 14, pad + 16, bw, 46, 16);
+    ctx.roundRect(startX, rowY - 22, badgeW, 44, 15);
     ctx.fill();
+
     ctx.fillStyle = '#0f172a';
+    ctx.font = badgeFont;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(badgeText, pad + 14 + bw / 2, pad + 39);
-    textX = pad + 18 + bw + (w - bw - 26) / 2;
+    ctx.fillText(badgeText, startX + badgeW / 2, rowY + 1);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = titleFont;
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(title, startX + badgeW + gap, rowY + 1);
+  } else {
+    ctx.fillStyle = '#ffffff';
+    ctx.font = titleFont;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(title, canvasW / 2, rowY + 1);
   }
 
-  ctx.fillStyle = '#ffffff';
-  ctx.font = '800 34px system-ui, -apple-system, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText(title, textX, subtitle ? pad + 42 : canvas.height / 2);
-
   if (subtitle) {
+    // Divider hairline
+    ctx.strokeStyle = 'rgba(253, 230, 138, 0.22)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(pad + 24, pad + 72);
+    ctx.lineTo(pad + w - 24, pad + 72);
+    ctx.stroke();
+
     ctx.fillStyle = '#fde68a';
-    ctx.font = '600 23px system-ui, -apple-system, sans-serif';
-    ctx.fillText(subtitle, canvas.width / 2, pad + 92);
+    ctx.font = subFont;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(subtitle, canvasW / 2, pad + 98);
   }
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
   const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false });
   const sprite = new THREE.Sprite(mat);
-  const aspect = canvas.height / canvas.width;
-  sprite.scale.set(widthWorld, widthWorld * aspect, 1);
+  const baseHeightWorld = (subtitle ? 0.96 : 0.68) * Math.max(0.78, Math.min(1.18, widthWorld / 3.4));
+  const computedWidthWorld = Math.max(widthWorld * 0.82, baseHeightWorld * (canvasW / canvasH));
+  sprite.scale.set(computedWidthWorld, baseHeightWorld, 1);
   sprite.renderOrder = 12;
   return sprite;
 }
