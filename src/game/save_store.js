@@ -1,6 +1,7 @@
-// Persistent Save / Load / MonkeDex / Party / Toy Shop Store (`monkemon.save.v1`).
+// Persistent Save / Load / MonkeDex / Party / Story Relics / Toy Shop Store (`monkemon.save.v1`).
 
 import { CORE_SPECIES, getSpecies } from '../data/species.js';
+import { KEY_ITEMS_META, TOTAL_BANANA_RELICS } from '../data/storyline.js';
 import { createMonkemonInstance, grantExpToMon, refreshMonStats } from './combat_math.js';
 
 export const SAVE_KEY = 'monkemon.save.v1';
@@ -11,7 +12,7 @@ export const SHOP_CATALOG = [
     name: 'Monkeball ×5 Pack',
     icon: '🐵',
     cost: 80,
-    desc: '+5 Smiling Monkeballs for catching wild Monkemon across all 5 islands.',
+    desc: '+5 Smiling Monkeballs for catching wild Monkemon across all 10 Sky-Vine Realms.',
   },
   {
     id: 'superball',
@@ -42,7 +43,7 @@ export function createInitialGameState(playerName = 'ALEX', starterId = 'mugchim
     version: 1,
     playerName: String(playerName || 'ALEX').toUpperCase().slice(0, 12),
     zoneId: 'sunpalm',
-    pos: { x: -6.0, z: 7.5 },
+    pos: { x: 14.5, z: 16.5 },
     party: [starter],
     storage: [],
     activeIndex: 0,
@@ -50,6 +51,10 @@ export function createInitialGameState(playerName = 'ALEX', starterId = 'mugchim
     superBalls: 2,
     berries: 10,
     coins: 280,
+    bananaRelics: 0,
+    collectedRelicIds: [],
+    keyItems: [],
+    storyFlags: [],
     badges: [],
     defeatedTrainers: [],
     openedChests: [],
@@ -59,6 +64,35 @@ export function createInitialGameState(playerName = 'ALEX', starterId = 'mugchim
     starterChosen: false,
     playSeconds: 0,
   };
+}
+
+export function grantStoryProgress(state, { relics = 0, relicId = null, keyItem = null, flag = null } = {}) {
+  if (!state) return { addedRelics: 0, newKeyItem: null, newFlag: null };
+  if (!Array.isArray(state.collectedRelicIds)) state.collectedRelicIds = [];
+  if (!Array.isArray(state.keyItems)) state.keyItems = [];
+  if (!Array.isArray(state.storyFlags)) state.storyFlags = [];
+
+  let addedRelics = 0;
+  if (relics > 0 && (!relicId || !state.collectedRelicIds.includes(relicId))) {
+    if (relicId) state.collectedRelicIds.push(relicId);
+    const before = state.bananaRelics || 0;
+    state.bananaRelics = Math.min(TOTAL_BANANA_RELICS, before + relics);
+    addedRelics = state.bananaRelics - before;
+  }
+
+  let newKeyItem = null;
+  if (keyItem && !state.keyItems.includes(keyItem)) {
+    state.keyItems.push(keyItem);
+    newKeyItem = KEY_ITEMS_META[keyItem] || { id: keyItem, name: keyItem, icon: '🔑' };
+  }
+
+  let newFlag = null;
+  if (flag && !state.storyFlags.includes(flag)) {
+    state.storyFlags.push(flag);
+    newFlag = flag;
+  }
+
+  return { addedRelics, newKeyItem, newFlag };
 }
 
 export function markDexSeen(state, speciesId) {
@@ -134,10 +168,24 @@ export function claimChestReward(state, chestDef) {
   if (!state || !chestDef || !chestDef.id) return { ok: false, alreadyOpened: false, summary: '' };
   if (!Array.isArray(state.openedChests)) state.openedChests = [];
   if (state.openedChests.includes(chestDef.id)) {
-    return { ok: false, alreadyOpened: true, summary: 'Already opened this Supply Chest!' };
+    return { ok: false, alreadyOpened: true, summary: 'Already opened this Chest!' };
   }
   state.openedChests.push(chestDef.id);
   const parts = [];
+
+  const prog = grantStoryProgress(state, {
+    relics: chestDef.relics || 0,
+    relicId: `chest:${chestDef.id}`,
+    keyItem: chestDef.keyItem || null,
+    flag: chestDef.storyFlag || null,
+  });
+
+  if (prog.newKeyItem) {
+    parts.push(`${prog.newKeyItem.icon} ${prog.newKeyItem.name}`);
+  }
+  if (prog.addedRelics > 0) {
+    parts.push(`🍌 +${prog.addedRelics} Golden Relic${prog.addedRelics > 1 ? 's' : ''}`);
+  }
   if (chestDef.balls) {
     state.monkeballs = (state.monkeballs || 0) + chestDef.balls;
     parts.push(`+${chestDef.balls} Monkeballs`);
@@ -157,7 +205,7 @@ export function claimChestReward(state, chestDef) {
   return {
     ok: true,
     alreadyOpened: false,
-    summary: parts.join(' · '),
+    summary: parts.join(' · ') || 'Treasure Collected',
   };
 }
 
@@ -223,6 +271,10 @@ export function loadGameFromStorage(storage = globalThis.localStorage) {
     parsed.superBalls = typeof parsed.superBalls === 'number' ? parsed.superBalls : 2;
     parsed.berries = typeof parsed.berries === 'number' ? parsed.berries : 8;
     parsed.coins = typeof parsed.coins === 'number' ? parsed.coins : 250;
+    parsed.bananaRelics = typeof parsed.bananaRelics === 'number' ? parsed.bananaRelics : 0;
+    parsed.collectedRelicIds = Array.isArray(parsed.collectedRelicIds) ? parsed.collectedRelicIds : [];
+    parsed.keyItems = Array.isArray(parsed.keyItems) ? parsed.keyItems : [];
+    parsed.storyFlags = Array.isArray(parsed.storyFlags) ? parsed.storyFlags : [];
     parsed.badges = Array.isArray(parsed.badges) ? parsed.badges : [];
     parsed.defeatedTrainers = Array.isArray(parsed.defeatedTrainers) ? parsed.defeatedTrainers : [];
     parsed.openedChests = Array.isArray(parsed.openedChests) ? parsed.openedChests : [];

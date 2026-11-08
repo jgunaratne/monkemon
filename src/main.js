@@ -114,7 +114,7 @@ async function boot() {
       world.entitiesGroup.visible = true;
       if (world.diorama && world.diorama.setLabelsVisible) world.diorama.setLabelsVisible(true);
       if (world.diorama && world.diorama.clearBattleClearance) world.diorama.clearBattleClearance();
-      world.gateCooldown = 2.5;
+      world.gateCooldown = 3.2;
       touch.updateMode(false);
       input._latched = {};
 
@@ -141,10 +141,10 @@ async function boot() {
         }
         ui.showToast('🏠 Rested safely at the House — your Monkemon are back to 100% HP!');
       } else if (res.outcome === 'ran') {
-        ui.showToast('💨 Got away safely from the wild encounter!');
+        ui.showToast('🏃 Stepped away safely from battle!');
       }
 
-      world.pushNearbyWildsAway(3.0);
+      world.pushNearbyWildsAway(3.8);
       world.refreshPartnerActor();
       saveGameToStorage(state);
       renderer.setCameraFraming(

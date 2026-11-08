@@ -1671,48 +1671,66 @@ export class UIManager {
     }
 
     // Narration Headline & Sub-Prompt
-    let headline = battle.bannerText || `What will ${p.mon.nickname} do?`;
-    let subText = battle.narrationSub || '';
-    if (battle.menuState === 'fight') {
-      const moves = battle.getPlayerMoves();
-      const focusedMove = moves[battle.subCursor] || moves[0];
-      headline = `Choose ${p.mon.nickname}’s Move:`;
-      if (focusedMove) {
-        const mElem = resolveMoveElement(focusedMove, p.species);
-        const mult = focusedMove.healPct ? 1.0 : getTypeMultiplier(mElem, e.species.element, e.species.secondaryElement);
-        const effTxt = focusedMove.healPct
-          ? 'Restores Partner HP + Boosts ATK!'
-          : mult >= 1.35
-            ? '★ SUPER EFFECTIVE (1.5× Damage!)'
-            : mult <= 0.75
-              ? 'Resisted (0.67× Damage)'
-              : 'Standard Matchup (1.0×)';
-        subText = `${focusedMove.desc || ''} — ${effTxt}`;
-      }
-    } else if (battle.menuState === 'bag') {
-      headline = battle.mode === 'wild' ? 'Choose a Monkeball or Berry:' : 'Choose an Item from Your Satchel:';
-      subText =
-        battle.mode === 'wild'
-          ? `Tip: Lower HP or toss a 🍌 Sweet Berry (+42% bonus) to boost capture lock-on!`
-          : `Monkeballs can only be thrown at wild Monkemon — use Berries to heal!`;
-    } else if (battle.menuState === 'party') {
-      headline = 'Switch Active Monkemon:';
-      subText = 'Select a healthy teammate to send into the holographic battle ring.';
-    }
-
+    const headline = battle.bannerText || `Your Turn — Choose ${p.mon.nickname}’s Action!`;
+    const subText = battle.narrationSub || '';
     setTxt('battle-banner-txt', headline);
     setTxt('battle-sub-txt', subText);
 
-    // Command Grid (`#battle-menu-grid`)
+    // Command Grid (`#battle-menu-grid`) — Single-Screen 1-Click Action Bar!
+    // Uses delegated `pointerdown` + `click` (never rebuilds DOM on hover/cursor move so clicks NEVER drop!)
     const grid = document.getElementById('battle-menu-grid');
     if (!grid) return;
 
+    if (!grid._delegatedBound) {
+      grid._delegatedBound = true;
+      const fireBtn = (btn) => {
+        if (!btn || !battle.active) return;
+        if (btn.hasAttribute('data-broot')) {
+          battle.selectRootOption(parseInt(btn.getAttribute('data-broot'), 10));
+        } else if (btn.id === 'btn-battle-run-now') {
+          battle.tryRunAway();
+        } else if (btn.id === 'btn-battle-advance') {
+          battle.advanceOrSkipStep();
+        } else if (btn.id === 'btn-battle-superball') {
+          battle.tryThrowBattleMonkeball(true);
+        } else if (btn.id === 'btn-battle-berry') {
+          battle.useBerryInBattle();
+        } else if (btn.id === 'btn-battle-swap') {
+          battle.cyclePartySwitch();
+        }
+      };
+
+      grid.addEventListener('pointerdown', (ev) => {
+        if (ev.button !== undefined && ev.button !== 0) return;
+        const btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+        if (!btn) return;
+        ev.preventDefault();
+        grid._handledPointerDownTs = performance.now();
+        fireBtn(btn);
+      });
+
+      grid.addEventListener('click', (ev) => {
+        if (grid._handledPointerDownTs && performance.now() - grid._handledPointerDownTs < 380) return;
+        const btn = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+        if (!btn) return;
+        fireBtn(btn);
+      });
+
+      grid.addEventListener('pointerover', (ev) => {
+        const btn = ev.target && ev.target.closest ? ev.target.closest('[data-broot]') : null;
+        if (btn && battle.menuState === 'root') {
+          battle.rootCursor = parseInt(btn.getAttribute('data-broot'), 10);
+        }
+      });
+    }
+
     const catchPct = battle.getLiveCatchPercent(false);
     const superPct = battle.getLiveCatchPercent(true);
+    const quickMove = battle.getQuickStrikeMove();
+    const specMove = battle.getSpecialMove();
     const gridSig = [
-      battle.menuState,
-      battle.rootCursor,
-      battle.subCursor,
+      battle.menuState === 'animating' ? 'anim' : 'ready',
+      battle.mode,
       p.mon.uid,
       e.species.id,
       this.state.monkeballs,
@@ -1720,187 +1738,120 @@ export class UIManager {
       this.state.berries,
       catchPct,
       superPct,
-      this.state.party.map((m) => `${m.uid}:${m.hp}`).join(','),
+      this.state.party.length,
     ].join('|');
 
-    if (grid.dataset.sig === gridSig) return;
-    grid.dataset.sig = gridSig;
+    if (grid.dataset.sig !== gridSig) {
+      grid.dataset.sig = gridSig;
 
-    if (battle.menuState === 'root') {
-      const aliveCount = this.state.party.filter((m) => m.hp > 0).length;
-      const rootItems = [
-        {
-          title: '⚔️ FIGHT',
-          key: '1 / A',
-          sub: '4 Turn-Based Moves & Specials',
-        },
-        {
-          title: battle.mode === 'wild' ? '🐵 CATCH / BAG' : '🎒 BAG / HEAL',
-          key: '2',
-          sub:
-            battle.mode === 'wild'
-              ? `🐵 ${this.state.monkeballs} Balls (${catchPct}% Catch) · 🌟 ${this.state.superBalls}`
-              : `🍌 ${this.state.berries} Sweet Berries (+40% HP)`,
-        },
-        {
-          title: '🐾 MONKEMON',
-          key: '3',
-          sub: `Squad (${aliveCount}/${this.state.party.length} Healthy)`,
-        },
-        {
-          title: '🏃 RUN',
-          key: '4',
-          sub: battle.mode === 'wild' ? 'Safely Leave Wild Battle' : 'Locked in Tamer Duel',
-        },
-      ];
+      if (battle.menuState !== 'animating') {
+        const qElem = quickMove ? resolveMoveElement(quickMove, p.species) : p.species.element;
+        const qMult = getTypeMultiplier(qElem, e.species.element, e.species.secondaryElement);
+        const qTag = qMult >= 1.35 ? ' · <span class="tb-eff-tag">★ 1.5× SUPER!</span>' : '';
 
-      grid.innerHTML = rootItems
-        .map(
-          (item, idx) => `
-          <button type="button" class="tb-menu-btn ${battle.rootCursor === idx ? 'focused' : ''}" data-broot="${idx}">
+        const sElem = specMove ? resolveMoveElement(specMove, p.species) : p.species.element;
+        const sMeta = ELEMENTS[sElem] || ELEMENTS.mug;
+        const sMult = getTypeMultiplier(sElem, e.species.element, e.species.secondaryElement);
+        const sTag =
+          sMult >= 1.35
+            ? '<span class="tb-eff-tag">★ 1.5× SUPER!</span>'
+            : sMult <= 0.75
+              ? '<span style="color:#fca5a5;">0.67× Resisted</span>'
+              : `Pwr ${specMove ? specMove.power : 65}`;
+
+        const itemBtn =
+          battle.mode === 'wild'
+            ? {
+                title: `🐵 CATCH (${catchPct}%)`,
+                key: '3 / F',
+                sub: `Throw Monkeball (×${this.state.monkeballs})${this.state.superBalls > 0 ? ` · 🌟${this.state.superBalls}` : ''}`,
+              }
+            : {
+                title: `🍌 HEAL (+40% HP)`,
+                key: '3 / F',
+                sub: `Feed Sweet Berry (×${this.state.berries} left)`,
+              };
+
+        const rootItems = [
+          {
+            title: `⚔️ ATTACK`,
+            key: '1 / Enter',
+            sub: `${quickMove ? quickMove.name : 'Strike'} (Pwr ${quickMove ? quickMove.power : 45})${qTag}`,
+          },
+          {
+            title: `${sMeta.icon} ${specMove ? specMove.name.toUpperCase() : 'SPECIAL'}`,
+            key: '2 / E',
+            sub: `Shader Blast · ${sTag}`,
+          },
+          itemBtn,
+          {
+            title: '🏃 RUN AWAY',
+            key: '4 / Esc',
+            sub: 'Leave Battle Safely Anytime',
+          },
+        ];
+
+        const extras = [];
+        if (battle.mode === 'wild' && (this.state.superBalls || 0) > 0) {
+          extras.push(
+            `<button type="button" class="pill-btn" id="btn-battle-superball" style="font-size:11px;padding:3px 9px;">🌟 Super Ball ×${this.state.superBalls} (${superPct}%)</button>`,
+          );
+        }
+        if (battle.mode === 'wild' && (this.state.berries || 0) > 0) {
+          extras.push(
+            `<button type="button" class="pill-btn" id="btn-battle-berry" style="font-size:11px;padding:3px 9px;">🍌 Berry ×${this.state.berries} (+HP & Catch)</button>`,
+          );
+        }
+        if (this.state.party.length > 1) {
+          extras.push(
+            `<button type="button" class="pill-btn" id="btn-battle-swap" style="font-size:11px;padding:3px 9px;">🐾 Swap [Q]</button>`,
+          );
+        }
+        const extrasRow =
+          extras.length > 0
+            ? `<div style="grid-column:1 / -1;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;margin-top:2px;">${extras.join('')}</div>`
+            : '';
+
+        grid.innerHTML =
+          rootItems
+            .map(
+              (item, idx) => `
+              <button type="button" class="tb-menu-btn ${battle.rootCursor === idx ? 'focused' : ''}" data-broot="${idx}">
+                <div class="tb-btn-top">
+                  <span>${item.title}</span>
+                  <span class="tb-key-badge">${item.key}</span>
+                </div>
+                <div class="tb-btn-sub">${item.sub}</div>
+              </button>
+            `,
+            )
+            .join('') + extrasRow;
+      } else {
+        // `animating` step beat — includes BOTH Next/Skip AND instant Run Away!
+        grid.innerHTML = `
+          <button type="button" class="tb-menu-btn focused" id="btn-battle-advance">
             <div class="tb-btn-top">
-              <span>${item.title}</span>
-              <span class="tb-key-badge">${item.key}</span>
+              <span>⚡ NEXT / SKIP</span>
+              <span class="tb-key-badge">Enter / (A)</span>
             </div>
-            <div class="tb-btn-sub">${item.sub}</div>
+            <div class="tb-btn-sub">Fast-forward turn animation</div>
           </button>
-        `,
-        )
-        .join('');
+          <button type="button" class="tb-menu-btn" id="btn-battle-run-now">
+            <div class="tb-btn-top">
+              <span>🏃 RUN AWAY</span>
+              <span class="tb-key-badge">4 / Esc</span>
+            </div>
+            <div class="tb-btn-sub">Leave battle immediately</div>
+          </button>
+        `;
+      }
+    }
 
+    // Update focus outline in-place WITHOUT touching innerHTML (zero dropped clicks!)
+    if (battle.menuState !== 'animating') {
       for (const btn of grid.querySelectorAll('[data-broot]')) {
         const idx = parseInt(btn.getAttribute('data-broot'), 10);
-        btn.addEventListener('mouseenter', () => { battle.rootCursor = idx; });
-        btn.addEventListener('click', () => battle.selectRootOption(idx));
-      }
-    } else if (battle.menuState === 'fight') {
-      const moves = battle.getPlayerMoves();
-      grid.innerHTML = moves
-        .map((m, idx) => {
-          const mElem = resolveMoveElement(m, p.species);
-          const em = ELEMENTS[mElem] || ELEMENTS.mug;
-          const mult = m.healPct ? 1.0 : getTypeMultiplier(mElem, e.species.element, e.species.secondaryElement);
-          const effBadge = m.healPct
-            ? `<span class="tb-eff-tag">💚 Heal ${Math.round(m.healPct * 100)}%</span>`
-            : mult >= 1.35
-              ? `<span class="tb-eff-tag">★ Super Effective!</span>`
-              : mult <= 0.75
-                ? `<span style="color:#f87171;">Resisted</span>`
-                : `Pwr ${m.power}`;
-          return `
-            <button type="button" class="tb-menu-btn ${battle.subCursor === idx ? 'focused' : ''}" data-bfight="${idx}">
-              <div class="tb-btn-top">
-                <span>${em.icon} ${m.name}</span>
-                <span class="tb-key-badge">${idx + 1}</span>
-              </div>
-              <div class="tb-btn-sub">${em.label} · ${effBadge}</div>
-            </button>
-          `;
-        })
-        .join('');
-
-      for (const btn of grid.querySelectorAll('[data-bfight]')) {
-        const idx = parseInt(btn.getAttribute('data-bfight'), 10);
-        btn.addEventListener('mouseenter', () => {
-          battle.subCursor = idx;
-          grid.dataset.sig = ''; // refresh move preview subtitle
-        });
-        btn.addEventListener('click', () => battle.selectFightMove(idx));
-      }
-    } else if (battle.menuState === 'bag') {
-      const bagItems = [
-        {
-          title: `🐵 Monkeball (×${this.state.monkeballs})`,
-          key: '1',
-          sub: battle.mode === 'wild' ? `Live Lock-On: ${catchPct}% Catch` : 'Wild Monkemon Only',
-        },
-        {
-          title: `🌟 Super Ball (×${this.state.superBalls})`,
-          key: '2',
-          sub: battle.mode === 'wild' ? `1.85× Lock-On: ${superPct}% Catch!` : 'Wild Monkemon Only',
-        },
-        {
-          title: `🍌 Sweet Berry (×${this.state.berries})`,
-          key: '3',
-          sub: battle.mode === 'wild' ? '+40% HP or +42% Catch Bonus' : 'Heals +40% Partner HP',
-        },
-        {
-          title: '↩ Back to Menu',
-          key: 'Esc / B',
-          sub: 'Return to Root Commands',
-        },
-      ];
-
-      grid.innerHTML = bagItems
-        .map(
-          (it, idx) => `
-          <button type="button" class="tb-menu-btn ${battle.subCursor === idx ? 'focused' : ''}" data-bbag="${idx}">
-            <div class="tb-btn-top">
-              <span>${it.title}</span>
-              <span class="tb-key-badge">${it.key}</span>
-            </div>
-            <div class="tb-btn-sub">${it.sub}</div>
-          </button>
-        `,
-        )
-        .join('');
-
-      for (const btn of grid.querySelectorAll('[data-bbag]')) {
-        const idx = parseInt(btn.getAttribute('data-bbag'), 10);
-        btn.addEventListener('mouseenter', () => { battle.subCursor = idx; });
-        btn.addEventListener('click', () => battle.selectBagItem(idx));
-      }
-    } else if (battle.menuState === 'party') {
-      const slotsHtml = this.state.party
-        .map((m, idx) => {
-          const sp = getSpecies(m.speciesId);
-          const em = ELEMENTS[sp.element] || ELEMENTS.mug;
-          const isAct = idx === this.state.activeIndex;
-          return `
-            <button type="button" class="tb-menu-btn ${battle.subCursor === idx ? 'focused' : ''}" data-bparty="${idx}">
-              <div class="tb-btn-top">
-                <span>${em.icon} ${m.nickname} Lv.${m.level}</span>
-                <span class="tb-key-badge">${isAct ? 'ACTIVE' : idx + 1}</span>
-              </div>
-              <div class="tb-btn-sub">HP: ${m.hp} / ${m.maxHp}</div>
-            </button>
-          `;
-        })
-        .join('');
-      const backBtn =
-        this.state.party.length < 6
-          ? `
-            <button type="button" class="tb-menu-btn" id="btn-bparty-back">
-              <div class="tb-btn-top"><span>↩ Back</span><span class="tb-key-badge">Esc / B</span></div>
-              <div class="tb-btn-sub">Return to Commands</div>
-            </button>
-          `
-          : '';
-      grid.innerHTML = slotsHtml + backBtn;
-
-      for (const btn of grid.querySelectorAll('[data-bparty]')) {
-        const idx = parseInt(btn.getAttribute('data-bparty'), 10);
-        btn.addEventListener('mouseenter', () => { battle.subCursor = idx; });
-        btn.addEventListener('click', () => battle.selectPartySlot(idx));
-      }
-      const bBack = grid.querySelector('#btn-bparty-back');
-      if (bBack) bBack.addEventListener('click', () => battle.cancelSubMenu());
-    } else {
-      // `animating` step beat
-      grid.innerHTML = `
-        <button type="button" class="tb-menu-btn focused" style="grid-column: 1 / -1; align-items: center; text-align: center;" id="btn-battle-advance">
-          <div class="tb-btn-top" style="justify-content:center;">
-            <span>⚡ Executing Turn...</span>
-            <span class="tb-key-badge">Enter / (A)</span>
-          </div>
-          <div class="tb-btn-sub">Watch the 3D Elemental Shader Clash — or press [Enter / Space / (A)] to advance!</div>
-        </button>
-      `;
-      const adv = grid.querySelector('#btn-battle-advance');
-      if (adv) {
-        adv.addEventListener('click', () => {
-          this.input._latched.btnA = true;
-        });
+        btn.classList.toggle('focused', battle.rootCursor === idx);
       }
     }
   }

@@ -20,6 +20,7 @@ import {
   createCombatantPadShaderMaterial,
   createHoloArenaShaderMaterial,
   createOceanMagmaShaderMaterial,
+  createStreamChannelShaderMaterial,
   createSunbeamShaderMaterial,
 } from './shaders.js';
 
@@ -360,9 +361,9 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
       const lx = (x - br.x) * ca - (z - br.z) * sa;
       const lz = (x - br.x) * sa + (z - br.z) * ca;
       const hw = (br.width || 3.4) * 0.52;
-      const hl = (br.length || 5.2) * 0.52;
+      const hl = (br.length || 5.2) * 0.55;
       if (Math.abs(lx) <= hw && Math.abs(lz) <= hl) {
-        const arch = Math.cos((lz / hl) * Math.PI * 0.5) * 0.34;
+        const arch = 0.08 + Math.cos((lz / hl) * Math.PI * 0.5) * 0.36;
         hOut = Math.max(hOut, arch);
       }
     }
@@ -514,7 +515,7 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
     }),
     shoreMat,
   );
-  shoreShelf.position.y = -0.92;
+  shoreShelf.position.y = -0.98;
   shoreShelf.receiveShadow = !isSoftwareGl;
   group.add(shoreShelf);
 
@@ -541,7 +542,8 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
     }),
     cliffBaseMat,
   );
-  cliffBase.position.y = -0.78;
+  // Top cap = -0.83 + (0.68 + 0.09) = -0.06m (cleanly below y=0.000 lawn!)
+  cliffBase.position.y = -0.83;
   cliffBase.receiveShadow = !isSoftwareGl;
   group.add(cliffBase);
 
@@ -595,7 +597,8 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
     }),
     lawnMat,
   );
-  lawn.position.y = -0.28;
+  // ExtrudeGeometry top cap sits at local +(depth + bevelThickness) = +0.34 => position.y = -0.34 puts top at exact y = 0.000!
+  lawn.position.y = -0.34;
   lawn.receiveShadow = !isSoftwareGl;
   group.add(lawn);
 
@@ -642,12 +645,13 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
     capGeo.rotateX(-Math.PI / 2);
     applyWorldPlanarUVs(capGeo, 4.2);
     const tCap = new THREE.Mesh(capGeo, lawnMat);
-    tCap.position.set(t.x, (t.h || 0.68) - 0.12, t.z);
+    // ExtrudeGeometry top sits at +(depth + bevelThickness) = +0.16 => position.y = h - 0.16 puts top at exact t.h!
+    tCap.position.set(t.x, (t.h || 0.68) - 0.16, t.z);
     tCap.receiveShadow = !isSoftwareGl;
     tCap.userData.keepInBattle = true;
     group.add(tCap);
 
-    // 4-step walkable 3D Stone Staircase on the south edge of the terrace!
+    // 5-step walkable 3D Stone Staircase on the south edge of the terrace (stepped width prevents side z-fighting!)
     const stepsCount = 5;
     const stairStartZ = t.z + t.rz * 0.84;
     const stairLen = 2.25;
@@ -658,9 +662,9 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
       roughness: 0.66,
     });
     for (let s = 0; s < stepsCount; s++) {
-      const frac = (s + 1) / stepsCount;
       const stepH = (t.h || 0.68) * (1.0 - s / stepsCount);
-      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(3.1, stepH, stairLen / stepsCount + 0.14), stepMat);
+      const stepW = 3.0 + s * 0.06;
+      const stepMesh = new THREE.Mesh(new THREE.BoxGeometry(stepW, stepH, stairLen / stepsCount + 0.08), stepMat);
       stepMesh.position.set(t.x, stepH * 0.5, stairStartZ + (s + 0.5) * (stairLen / stepsCount));
       stepMesh.receiveShadow = !isSoftwareGl;
       stepMesh.userData.keepInBattle = true;
@@ -679,63 +683,167 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
   }
 
   // 2c. Flowing Island Streams / Harbor Canals / Magma Rifts + Walkable Arched 3D Bridges & Piers!
-  const streamMat = createOceanMagmaShaderMaterial({
+  // Uses dedicated `createStreamChannelShaderMaterial` (micro-ripples <= 3mm so water NEVER clips below ground,
+  // directional downstream caustics, organic coastline clipping, and soft under-bridge arch shadows!).
+  const streamMat = createStreamChannelShaderMaterial({
     waterColor: theme === 'volcano' ? '#f97316' : theme === 'snow' ? '#2dd4bf' : '#38bdf8',
-    deepColor: theme === 'volcano' ? '#7c2d12' : '#0284c7',
+    deepColor: theme === 'volcano' ? '#7c2d12' : '#0369a1',
     skyColor: zone.skyColor || '#87dcff',
     fogColor: zone.fogColor || '#9be4ff',
-    fogNear: 50,
-    fogFar: 110,
-    islandHalfW: 80,
-    islandHalfD: 80,
+    fogNear: 48,
+    fogFar: 108,
+    islandHalfW: halfW,
+    islandHalfD: halfD,
+    coastParams,
+    lobeDirs,
+    bridges,
+    clipToCoast: true,
     theme: theme === 'volcano' ? 'volcano' : 'tropical',
   });
   animated.push((t) => {
-    streamMat.uniforms.uTime.value = t * 1.35;
+    streamMat.uniforms.uTime.value = t * 1.25;
   });
 
+  const riverbedMat = new THREE.MeshStandardMaterial({
+    map: cliffPair.map,
+    normalMap: cliffPair.normalMap,
+    color: theme === 'volcano' ? '#291510' : '#0f3a5d',
+    roughness: 0.9,
+    polygonOffset: true,
+    polygonOffsetFactor: -1,
+    polygonOffsetUnits: -1,
+  });
+
+  // Helper: clip a 2D line segment so its endpoints stay inside the organic island coast
+  const clipSegmentInsideCoast = (ax, az, bx, bz, margin = -0.3) => {
+    const N = 48;
+    let firstT = null;
+    let lastT = null;
+    for (let i = 0; i <= N; i++) {
+      const t = i / N;
+      const px = ax + (bx - ax) * t;
+      const pz = az + (bz - az) * t;
+      if (isInsideCoast(px, pz, margin)) {
+        if (firstT === null) firstT = t;
+        lastT = t;
+      }
+    }
+    if (firstT === null || lastT === null || lastT - firstT < 0.04) return null;
+    return [
+      ax + (bx - ax) * firstT,
+      az + (bz - az) * firstT,
+      ax + (bx - ax) * lastT,
+      az + (bz - az) * lastT,
+    ];
+  };
+
+  // Helper: split a 2D segment around any bridge footprint so banks & roads never cut across bridge ramps/water!
+  const splitSegmentAroundBridges = (ax, az, bx, bz, extraClear = 0.0) => {
+    let intervals = [[0, 1]];
+    const segLen = Math.hypot(bx - ax, bz - az);
+    if (segLen < 0.2) return [];
+
+    for (const br of bridges) {
+      const clearR = Math.max(br.width || 3.4, (br.length || 5.2) * 0.5) * 0.56 + extraClear;
+      const next = [];
+      for (const [t0, t1] of intervals) {
+        const steps = 32;
+        let curStart = null;
+        for (let s = 0; s <= steps; s++) {
+          const t = t0 + ((t1 - t0) * s) / steps;
+          const px = ax + (bx - ax) * t;
+          const pz = az + (bz - az) * t;
+          const insideBridge = Math.hypot(px - br.x, pz - br.z) < clearR;
+          if (!insideBridge && curStart === null) {
+            curStart = t;
+          } else if (insideBridge && curStart !== null) {
+            if ((t - curStart) * segLen > 0.35) next.push([curStart, t]);
+            curStart = null;
+          }
+        }
+        if (curStart !== null && (t1 - curStart) * segLen > 0.35) {
+          next.push([curStart, t1]);
+        }
+      }
+      intervals = next;
+    }
+
+    return intervals.map(([t0, t1]) => [
+      ax + (bx - ax) * t0,
+      az + (bz - az) * t0,
+      ax + (bx - ax) * t1,
+      az + (bz - az) * t1,
+    ]);
+  };
+
   for (const ch of waterChannels) {
-    const dx = ch.x1 - ch.x0;
-    const dz = ch.z1 - ch.z0;
+    const clipped = clipSegmentInsideCoast(ch.x0, ch.z0, ch.x1, ch.z1, -0.45);
+    if (!clipped) continue;
+    const [cx0, cz0, cx1, cz1] = clipped;
+    const dx = cx1 - cx0;
+    const dz = cz1 - cz0;
     const len = Math.hypot(dx, dz);
     const w = ch.width || 2.8;
     const ang = Math.atan2(dx, dz);
 
     const chGroup = new THREE.Group();
-    chGroup.position.set((ch.x0 + ch.x1) * 0.5, 0, (ch.z0 + ch.z1) * 0.5);
+    chGroup.position.set((cx0 + cx1) * 0.5, 0, (cz0 + cz1) * 0.5);
     chGroup.rotation.y = ang;
 
-    // Stone/pebble banks flanking the flowing water ribbon
-    const bankGeo = new THREE.BoxGeometry(0.45, 0.14, len);
-    const bankL = new THREE.Mesh(bankGeo, shoreMat);
-    bankL.position.set(-w * 0.5 - 0.15, 0.045, 0);
-    const bankR = new THREE.Mesh(bankGeo, shoreMat);
-    bankR.position.set(w * 0.5 + 0.15, 0.045, 0);
+    // Dark submerged pebbled riverbed liner safely above y=0.000 lawn
+    const bedGeo = new THREE.PlaneGeometry(w + 0.25, len * 0.96, 2, 12);
+    bedGeo.rotateX(-Math.PI / 2);
+    const bed = new THREE.Mesh(bedGeo, riverbedMat);
+    bed.position.y = 0.015;
 
-    const ribbonGeo = new THREE.PlaneGeometry(w, len, 8, 36);
+    // Continuous directional flowing stream surface at y=0.062 (flows smoothly right underneath every bridge!)
+    const ribbonGeo = new THREE.PlaneGeometry(w, len, 10, 48);
     ribbonGeo.rotateX(-Math.PI / 2);
     const ribbon = new THREE.Mesh(ribbonGeo, streamMat);
-    ribbon.position.y = 0.056;
+    ribbon.position.y = 0.062;
 
-    chGroup.add(bankL, bankR, ribbon);
+    chGroup.add(bed, ribbon);
     chGroup.userData.keepInBattle = true;
     group.add(chGroup);
 
+    // Sculpted stone/sand embankments along both sides, parted cleanly at bridge abutments!
+    const bankSpans = splitSegmentAroundBridges(cx0, cz0, cx1, cz1, -0.2);
+    for (const [bx0, bz0, bx1, bz1] of bankSpans) {
+      const bClipped = clipSegmentInsideCoast(bx0, bz0, bx1, bz1, 0.65);
+      if (!bClipped) continue;
+      const [sx0, sz0, sx1, sz1] = bClipped;
+      const bLen = Math.hypot(sx1 - sx0, sz1 - sz0);
+      if (bLen < 0.4) continue;
+      const bAng = Math.atan2(sx1 - sx0, sz1 - sz0);
+      const bankSegGroup = new THREE.Group();
+      bankSegGroup.position.set((sx0 + sx1) * 0.5, 0, (sz0 + sz1) * 0.5);
+      bankSegGroup.rotation.y = bAng;
+
+      const bankGeo = new THREE.BoxGeometry(0.42, 0.11, bLen);
+      const bankL = new THREE.Mesh(bankGeo, shoreMat);
+      bankL.position.set(-w * 0.5 - 0.16, 0.055, 0);
+      const bankR = new THREE.Mesh(bankGeo, shoreMat);
+      bankR.position.set(w * 0.5 + 0.16, 0.055, 0);
+      bankSegGroup.add(bankL, bankR);
+      bankSegGroup.userData.keepInBattle = true;
+      group.add(bankSegGroup);
+    }
+
     // Block walking straight into deep water/magma EXCEPT across arched bridges!
-    const samples = Math.max(8, Math.floor(len / 1.9));
+    const samples = Math.max(8, Math.floor(len / 1.8));
     for (let s = 0; s <= samples; s++) {
       const u = s / samples;
-      const sx = ch.x0 + dx * u;
-      const sz = ch.z0 + dz * u;
+      const sx = cx0 + dx * u;
+      const sz = cz0 + dz * u;
       if (!isInsideCoast(sx, sz, 0.5)) continue;
-      const coveredByBridge = bridges.some((br) => Math.hypot(sx - br.x, sz - br.z) < (br.width || 3.4) * 0.72);
+      const coveredByBridge = bridges.some((br) => Math.hypot(sx - br.x, sz - br.z) < (br.width || 3.4) * 0.76);
       if (!coveredByBridge) {
         colliders.push({ x: sx, z: sz, r: w * 0.44 });
       }
     }
   }
 
-  // Walkable Arched 3D Bridges!
+  // Walkable Arched 3D Bridges (0.38m sunlit air gap above y=0.062 flowing water + zero coplanar plank faces!)
   const bridgeTimberMat = new THREE.MeshStandardMaterial({
     map: woodPair.map,
     normalMap: woodPair.normalMap,
@@ -751,7 +859,7 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
 
   for (const br of bridges) {
     const bw = br.width || 3.4;
-    const bl = br.length || 5.2;
+    const bl = br.length || 5.4;
     const isStone = br.style === 'stone';
     const deckMat = isStone ? bridgeStoneMat : bridgeTimberMat;
     const railMat = isStone ? cliffBaseMat : bridgeTimberMat;
@@ -760,14 +868,23 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
     bg.position.set(br.x, 0, br.z);
     bg.rotation.y = br.yaw || 0;
 
-    const planks = 9;
+    // Solid stone abutment foundations on both banks outside the stream channel
+    for (const endSign of [-1, 1]) {
+      const abut = new THREE.Mesh(new THREE.BoxGeometry(bw + 0.24, 0.14, 0.55), cliffBaseMat);
+      abut.position.set(0, 0.07, endSign * (bl * 0.5 + 0.12));
+      bg.add(abut);
+    }
+
+    const planks = 11;
+    const plankStep = bl / planks;
     for (let i = 0; i < planks; i++) {
       const u = (i + 0.5) / planks - 0.5; // -0.5..0.5
       const lz = u * bl;
-      const archY = Math.cos(u * Math.PI) * 0.34;
-      const plank = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.14, bl / planks + 0.05), deckMat);
+      const archY = 0.08 + Math.cos(u * Math.PI) * 0.36;
+      // Crisp 0.03m gap between planks eliminates coplanar side-face z-fighting and shows real timber/stone joints!
+      const plank = new THREE.Mesh(new THREE.BoxGeometry(bw, 0.11, plankStep - 0.03), deckMat);
       plank.position.set(0, archY, lz);
-      plank.rotation.x = Math.sin(u * Math.PI) * 0.16;
+      plank.rotation.x = Math.sin(u * Math.PI) * 0.19;
       if (!isSoftwareGl) {
         plank.castShadow = true;
         plank.receiveShadow = true;
@@ -775,17 +892,28 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
       bg.add(plank);
     }
 
-    // Side posts & arched handrails
+    // Arched side posts & segmented arched handrails following the bridge curve
     for (const side of [-1, 1]) {
-      for (const u of [-0.46, 0, 0.46]) {
-        const archY = Math.cos(u * Math.PI) * 0.34;
-        const post = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.72, 0.18), railMat);
-        post.position.set(side * (bw * 0.5 - 0.08), archY + 0.36, u * bl);
+      const postUs = [-0.46, -0.23, 0, 0.23, 0.46];
+      for (const u of postUs) {
+        const archY = 0.08 + Math.cos(u * Math.PI) * 0.36;
+        const post = new THREE.Mesh(new THREE.BoxGeometry(0.16, 0.62, 0.16), railMat);
+        post.position.set(side * (bw * 0.5 - 0.09), archY + 0.31, u * bl);
         bg.add(post);
       }
-      const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.12, bl * 0.96), railMat);
-      rail.position.set(side * (bw * 0.5 - 0.08), 0.78, 0);
-      bg.add(rail);
+      for (let r = 0; r < postUs.length - 1; r++) {
+        const u0 = postUs[r];
+        const u1 = postUs[r + 1];
+        const y0 = 0.08 + Math.cos(u0 * Math.PI) * 0.36 + 0.58;
+        const y1 = 0.08 + Math.cos(u1 * Math.PI) * 0.36 + 0.58;
+        const z0 = u0 * bl;
+        const z1 = u1 * bl;
+        const rLen = Math.hypot(z1 - z0, y1 - y0);
+        const rail = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.1, rLen + 0.04), railMat);
+        rail.position.set(side * (bw * 0.5 - 0.09), (y0 + y1) * 0.5, (z0 + z1) * 0.5);
+        rail.rotation.x = -Math.atan2(y1 - y0, z1 - z0);
+        bg.add(rail);
+      }
     }
     bg.userData.keepInBattle = true;
     group.add(bg);
@@ -799,15 +927,15 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
     pg.position.set(p.x, 0, p.z);
     pg.rotation.y = p.yaw || 0;
 
-    const deck = new THREE.Mesh(new THREE.BoxGeometry(pw, 0.16, pl), bridgeTimberMat);
-    deck.position.y = 0.04;
+    const deck = new THREE.Mesh(new THREE.BoxGeometry(pw, 0.15, pl), bridgeTimberMat);
+    deck.position.y = 0.095;
     deck.receiveShadow = !isSoftwareGl;
     pg.add(deck);
 
     for (const side of [-1, 1]) {
       for (const uz of [-0.42, 0.0, 0.42]) {
         const piling = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 1.45, 8), bridgeTimberMat);
-        piling.position.set(side * (pw * 0.46), -0.35, uz * pl);
+        piling.position.set(side * (pw * 0.46), -0.32, uz * pl);
         pg.add(piling);
       }
     }
@@ -816,6 +944,8 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
   }
 
   // 3. Winding Multi-Point Cobblestone Avenues + Town Plaza Mosaic!
+  // Zero z-fighting: roads split cleanly around bridges, use non-overlapping lengths + rounded vertex caps,
+  // and deterministic vertical micro-steps well above y=0.000 lawn!
   const curbMat = new THREE.MeshStandardMaterial({
     map: cliffPair.map,
     normalMap: cliffPair.normalMap,
@@ -825,11 +955,43 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
   const pathTint =
     theme === 'volcano' ? '#a8a29e' : theme === 'snow' ? '#e2e8f0' : '#fff7ed';
 
-  const addPathSegment = (x0, z0, x1, z1, width = 2.55) => {
+  const plazaX = (zone.landmarks && zone.landmarks[0]) ? zone.landmarks[0].x : 0;
+  const plazaZ = (zone.landmarks && zone.landmarks[0]) ? zone.landmarks[0].z : 2.0;
+  const hasCentralPlaza = Math.hypot(plazaX, plazaZ) < 12;
+
+  let roadStepIdx = 0;
+  const placedJunctions = [];
+  const juncPair = loadDedicatedPair('cobble_path', 1, 1);
+  const juncMat = new THREE.MeshStandardMaterial({
+    map: juncPair.map,
+    normalMap: juncPair.normalMap,
+    color: pathTint,
+    roughness: 0.72,
+    polygonOffset: true,
+    polygonOffsetFactor: -2,
+    polygonOffsetUnits: -2,
+  });
+
+  const addRoadJunctionDisc = (jx, jz, width) => {
+    if (!isInsideCoast(jx, jz, 0.8)) return;
+    if (bridges.some((br) => Math.hypot(jx - br.x, jz - br.z) < (br.length || 5.2) * 0.56)) return;
+    if (hasCentralPlaza && Math.hypot(jx - plazaX, jz - plazaZ) < 4.2) return;
+    if (placedJunctions.some((p) => Math.hypot(jx - p.x, jz - p.z) < 0.5)) return;
+    placedJunctions.push({ x: jx, z: jz });
+
+    const disc = new THREE.Mesh(new THREE.CylinderGeometry(width * 0.52, width * 0.54, 0.036, 20), juncMat);
+    disc.position.set(jx, 0.02 + placedJunctions.length * 0.0006, jz);
+    disc.receiveShadow = !isSoftwareGl;
+    disc.userData.keepInBattle = true;
+    group.add(disc);
+  };
+
+  const addRawPathSegment = (x0, z0, x1, z1, width = 2.5) => {
     const dx = x1 - x0;
     const dz = z1 - z0;
     const len = Math.hypot(dx, dz);
-    if (len < 0.2) return;
+    if (len < 0.35) return;
+    const stepLift = (roadStepIdx++ % 9) * 0.0016;
     const repY = Math.max(1, Math.round(len / 2.6));
     const pair = loadDedicatedPair('cobble_path', 1, repY);
     const segMat = new THREE.MeshStandardMaterial({
@@ -838,36 +1000,45 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
       normalScale: new THREE.Vector2(1.08, 1.08),
       color: pathTint,
       roughness: 0.72,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
     });
     const segGroup = new THREE.Group();
     segGroup.position.set((x0 + x1) * 0.5, 0, (z0 + z1) * 0.5);
     segGroup.rotation.y = Math.atan2(dx, dz);
 
-    const seg = new THREE.Mesh(new THREE.BoxGeometry(width, 0.055, len + width * 0.38), segMat);
-    seg.position.y = 0.016;
+    // Exact segment length `len` (no corner box overlap!) sitting cleanly at yTop ~= 0.038 + stepLift
+    const seg = new THREE.Mesh(new THREE.BoxGeometry(width, 0.034, len), segMat);
+    seg.position.y = 0.019 + stepLift;
     seg.receiveShadow = !isSoftwareGl;
     segGroup.add(seg);
 
-    const curbGeo = new THREE.BoxGeometry(0.14, 0.075, len + width * 0.22);
+    const curbLen = Math.max(0.2, len - 0.35);
+    const curbGeo = new THREE.BoxGeometry(0.14, 0.052, curbLen);
     const curbL = new THREE.Mesh(curbGeo, curbMat);
-    curbL.position.set(-width * 0.5 - 0.04, 0.022, 0);
+    curbL.position.set(-width * 0.5 - 0.06, 0.028 + stepLift, 0);
     const curbR = new THREE.Mesh(curbGeo, curbMat);
-    curbR.position.set(width * 0.5 + 0.04, 0.022, 0);
+    curbR.position.set(width * 0.5 + 0.06, 0.028 + stepLift, 0);
     segGroup.add(curbL, curbR);
     segGroup.userData.keepInBattle = true;
     group.add(segGroup);
   };
 
   for (const poly of roads) {
+    for (let i = 0; i < poly.length; i++) {
+      addRoadJunctionDisc(poly[i][0], poly[i][1], 2.5);
+    }
     for (let i = 0; i < poly.length - 1; i++) {
-      addPathSegment(poly[i][0], poly[i][1], poly[i + 1][0], poly[i + 1][1], 2.5);
+      const subSegs = splitSegmentAroundBridges(poly[i][0], poly[i][1], poly[i + 1][0], poly[i + 1][1], 0.1);
+      for (const [sx0, sz0, sx1, sz1] of subSegs) {
+        addRawPathSegment(sx0, sz0, sx1, sz1, 2.5);
+      }
     }
   }
 
-  // Central Town Plaza Stone Circle
-  const plazaX = (zone.landmarks && zone.landmarks[0]) ? zone.landmarks[0].x : 0;
-  const plazaZ = (zone.landmarks && zone.landmarks[0]) ? zone.landmarks[0].z : 2.0;
-  if (Math.hypot(plazaX, plazaZ) < 12) {
+  // Central Town Plaza Stone Circle (elevated cleanly above road segments so zero z-fighting!)
+  if (hasCentralPlaza) {
     const plazaPair = loadDedicatedPair('cobble_path', 3, 3);
     const plazaMat = new THREE.MeshStandardMaterial({
       map: plazaPair.map,
@@ -876,18 +1047,18 @@ export function buildZoneDiorama(zone, modelBank, state = null) {
       color: pathTint,
       roughness: 0.68,
     });
-    const plaza = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.85, 0.065, 40), plazaMat);
-    plaza.position.set(plazaX, 0.02, plazaZ);
+    const plaza = new THREE.Mesh(new THREE.CylinderGeometry(4.6, 4.85, 0.056, 40), plazaMat);
+    plaza.position.set(plazaX, 0.036, plazaZ);
     plaza.receiveShadow = !isSoftwareGl;
     plaza.userData.keepInBattle = true;
     group.add(plaza);
 
     const plazaRim = new THREE.Mesh(
-      new THREE.TorusGeometry(4.62, 0.13, 10, 48),
+      new THREE.TorusGeometry(4.62, 0.12, 10, 48),
       new THREE.MeshStandardMaterial({ color: '#fde68a', roughness: 0.38, metalness: 0.18 }),
     );
     plazaRim.rotation.x = Math.PI / 2;
-    plazaRim.position.set(plazaX, 0.055, plazaZ);
+    plazaRim.position.set(plazaX, 0.072, plazaZ);
     plazaRim.userData.keepInBattle = true;
     group.add(plazaRim);
   }
