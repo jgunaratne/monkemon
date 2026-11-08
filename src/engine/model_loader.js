@@ -592,9 +592,9 @@ export function makeLabelSprite({
   widthWorld = 3.2,
 }) {
   const mctx = getMeasureCtx();
-  const titleFont = '800 33px system-ui, -apple-system, sans-serif';
-  const badgeFont = '800 26px system-ui, -apple-system, sans-serif';
-  const subFont = '600 22px system-ui, -apple-system, sans-serif';
+  const titleFont = "400 35px 'Lilita One', 'Fredoka', system-ui, sans-serif";
+  const badgeFont = "700 25px 'Fredoka', system-ui, sans-serif";
+  const subFont = "600 22px 'Fredoka', system-ui, sans-serif";
 
   mctx.font = titleFont;
   const titleW = mctx.measureText(title || '').width;

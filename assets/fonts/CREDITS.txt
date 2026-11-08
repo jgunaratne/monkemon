@@ -1,0 +1,4 @@
+Bundled Open-Source Typefaces in Monkemon:
+- Luckiest Guy (`LuckiestGuy-Regular.ttf`): Copyright Astigmatic (AOETI), licensed under Apache License 2.0.
+- Lilita One (`LilitaOne-Regular.ttf`): Copyright Juan Montoreano, licensed under SIL Open Font License 1.1.
+- Fredoka (`Fredoka-Variable.ttf`): Copyright Milena Brandao / Hafontia, licensed under SIL Open Font License 1.1.

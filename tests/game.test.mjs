@@ -193,4 +193,10 @@ test('All 16 Nano Banana PBR surface albedo & tangent-space normal maps and 7 GL
   ]) {
     assert.ok(shaderSrc.includes(`export function ${fn}`), `Missing shader builder ${fn}`);
   }
+
+  for (const fontFile of ['LuckiestGuy-Regular.ttf', 'LilitaOne-Regular.ttf', 'Fredoka-Variable.ttf']) {
+    const fp = path.join(ROOT, 'assets', 'fonts', fontFile);
+    assert.ok(fs.existsSync(fp), `Missing bundled UI font: ${fp}`);
+    assert.ok(fs.statSync(fp).size > 20_000, `Expected non-empty bundled UI font: ${fp}`);
+  }
 });

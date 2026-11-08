@@ -122,7 +122,7 @@ export class NetClient {
     const k = 1 - Math.exp(-10 * dt);
     for (const entry of this.peers.values()) {
       const s = entry.state || {};
-      const visible = s.zoneId === currentZoneId;
+      const visible = s.zoneId === currentZoneId && !(localSnapshot && localSnapshot.inBattle);
       entry.heroActor.root.visible = visible;
       entry.partnerActor.root.visible = visible;
       if (!visible) continue;

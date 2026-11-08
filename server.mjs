@@ -44,6 +44,7 @@ const MIME_TYPES = {
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.woff2': 'font/woff2',
+  '.ttf': 'font/ttf',
 };
 
 /** @type {Map<string, Map<string, object>>} */
