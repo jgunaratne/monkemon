@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:06ba239a-13c3-4245-abff-ebb734b5c4be",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 122.59,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_cave_entrance.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "d4598112e049bac3"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 606,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 34000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "sculpted rocky mountain cavern archway entrance framed by sturdy carved timber support beams, warm hanging miner lantern, mossy cliff boulders, and glowing amber crystal clusters",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_cave_entrance.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_cave_entrance.glb",
+    "file_size_bytes": 9262336,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 25682,
+    "triangle_count": 33424,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.50059,
+      -0.39407,
+      -0.38246
+    ],
+    "bbox_max": [
+      0.49996,
+      0.3943,
+      0.38351
+    ],
+    "bbox_extents": [
+      1.00055,
+      0.78837,
+      0.76597
+    ]
+  }
+}

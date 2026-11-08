@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:2eef9b02-7868-45ba-b450-6e52f178b3eb",
+  "job_id": "STEP_ID_TRELLIS2:d2250e57-c140-49d5-905c-b4b67e212955",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 41.98,
+  "elapsed_seconds": 53.85,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/solarkong.concept.png"
   ],
   "input_sha256_prefix": [
     "87d6d5ea40266ae7"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 212,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 11000,
-    "texture_size": 1024
+    "decimation_target": 42000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "majestic ivory-furred and radiant gold legendary silverback ape guardian creature, ornate golden temple gauntlets with sun engravings, sculpted solar halo ring behind shoulders, noble powerful stance",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/solarkong.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/solarkong.glb",
-    "file_size_bytes": 2631184,
+    "file_size_bytes": 9407308,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 8828,
-    "triangle_count": 10689,
+    "vertex_count": 29623,
+    "triangle_count": 40694,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.33972,
-      -0.49961,
-      -0.44299
+      -0.34843,
+      -0.50058,
+      -0.44838
     ],
     "bbox_max": [
-      0.32569,
-      0.49769,
-      0.44307
+      0.3186,
+      0.49889,
+      0.44779
     ],
     "bbox_extents": [
-      0.66541,
-      0.9973,
-      0.88606
+      0.66703,
+      0.99947,
+      0.89617
     ]
   }
 }

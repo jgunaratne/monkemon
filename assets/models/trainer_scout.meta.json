@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:2a090083-1989-4dad-ac29-be6a106799ca",
+  "job_id": "STEP_ID_TRELLIS2:cb2dc8a7-a11f-40e0-88f8-21d079e22167",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 84.47,
+  "elapsed_seconds": 40.11,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/trainer_scout.concept.png"
   ],
   "input_sha256_prefix": [
     "6ac2dc0331249a80"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 102,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8000,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "confident chibi rival creature trainer standing upright, forest-green ranger vest, pith explorer hat with goggles, fingerless gloves, utility belt holding miniature red capture spheres, khaki boots",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/trainer_scout.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/trainer_scout.glb",
-    "file_size_bytes": 2519860,
+    "file_size_bytes": 9250560,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7278,
-    "triangle_count": 7874,
+    "vertex_count": 23606,
+    "triangle_count": 29834,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.23176,
-      -0.49988,
-      -0.23378
+      -0.23398,
+      -0.50068,
+      -0.23706
     ],
     "bbox_max": [
-      0.23285,
-      0.49767,
-      0.23373
+      0.23518,
+      0.50027,
+      0.23119
     ],
     "bbox_extents": [
-      0.46461,
-      0.99755,
-      0.46751
+      0.46916,
+      1.00095,
+      0.46825
     ]
   }
 }

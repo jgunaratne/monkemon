@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:b02dcb48-4256-433c-b6af-1de9b745264c",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 106.13,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_derby_stadium.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "5309714a7cf9c425"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 611,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 36000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "festive miniature grand-prix creature raceway stadium entrance pavilion with bold red-and-white checkered archway, gleaming golden champion trophy crest on roof, and colorful racing pennants",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_derby_stadium.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_derby_stadium.glb",
+    "file_size_bytes": 11107888,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 39066,
+    "triangle_count": 34777,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.37019,
+      -0.45924,
+      -0.46315
+    ],
+    "bbox_max": [
+      0.36878,
+      0.43257,
+      0.45998
+    ],
+    "bbox_extents": [
+      0.73897,
+      0.89181,
+      0.92313
+    ]
+  }
+}

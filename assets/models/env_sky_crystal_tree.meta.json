@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:8cb073b5-d090-4ec0-8c50-75c6c6861bf6",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 120.4,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_sky_crystal_tree.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "7d76192abe74baa3"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 604,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 24000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "celestial floating island crystal tree rooted in a swirling pearl-white cloud base, silver-gold trunk supporting radiant faceted cyan and golden starlight crystal boughs",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_sky_crystal_tree.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_sky_crystal_tree.glb",
+    "file_size_bytes": 13106624,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 25743,
+    "triangle_count": 23793,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.41674,
+      -0.50076,
+      -0.3919
+    ],
+    "bbox_max": [
+      0.39247,
+      0.49527,
+      0.39382
+    ],
+    "bbox_extents": [
+      0.80921,
+      0.99603,
+      0.78572
+    ]
+  }
+}

@@ -1,0 +1,176 @@
+{
+  "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+  "preset": "hero",
+  "output_dir": "../assets/models",
+  "image_model": "gempix-2-flash-lite-png",
+  "assets": [
+    {
+      "id": "env_street_lamp",
+      "prompt": "ornate wrought-iron and carved warm cedar island streetlamp post on a stepped cobblestone base, curved floral bracket holding a glowing warm amber glass lantern globe",
+      "preset": "hero",
+      "decimation_target": 22000,
+      "texture_size": 2048,
+      "seed": 601
+    },
+    {
+      "id": "env_mossy_boulder",
+      "prompt": "sculpted weathered grey granite island boulder cluster blanketed in plush emerald-green moss patches, small tropical fern fronds, and a tiny cluster of glowing turquoise crystals",
+      "preset": "hero",
+      "decimation_target": 20000,
+      "texture_size": 2048,
+      "seed": 602
+    },
+    {
+      "id": "env_desert_cactus",
+      "prompt": "vibrant sculpted desert saguaro cactus cluster with ribbed emerald-green stems, two cheerful raised cactus arms, blooming golden-yellow desert crown flowers, and warm sandstone pebble base",
+      "preset": "hero",
+      "decimation_target": 22000,
+      "texture_size": 2048,
+      "seed": 603
+    },
+    {
+      "id": "env_sky_crystal_tree",
+      "prompt": "celestial floating island crystal tree rooted in a swirling pearl-white cloud base, silver-gold trunk supporting radiant faceted cyan and golden starlight crystal boughs",
+      "preset": "hero",
+      "decimation_target": 24000,
+      "texture_size": 2048,
+      "seed": 604
+    },
+    {
+      "id": "env_sky_vine_pillar",
+      "prompt": "towering ancient carved ivory-and-gold celestial temple column wrapped in thick spiraling emerald-green sky-vines with glowing golden blossoms, stepped golden rune pedestal base",
+      "preset": "hero",
+      "decimation_target": 30000,
+      "texture_size": 2048,
+      "seed": 605
+    },
+    {
+      "id": "env_cave_entrance",
+      "prompt": "sculpted rocky mountain cavern archway entrance framed by sturdy carved timber support beams, warm hanging miner lantern, mossy cliff boulders, and glowing amber crystal clusters",
+      "preset": "hero",
+      "decimation_target": 34000,
+      "texture_size": 2048,
+      "seed": 606
+    },
+    {
+      "id": "env_ancient_pyramid",
+      "prompt": "miniature stepped golden sandstone ancient relic pyramid temple with lush jungle vines, carved monkey sun-emblem lintel above a glowing mysterious stone doorway, and twin torch braziers",
+      "preset": "hero",
+      "decimation_target": 36000,
+      "texture_size": 2048,
+      "seed": 607
+    },
+    {
+      "id": "env_mirage_tower",
+      "prompt": "whimsical multi-tiered stepped desert sandstone mirage ziggurat tower inlaid with glossy turquoise oasis tiles, arched brass entrance gate, fluttering amber silk banners, and golden sun finial",
+      "preset": "hero",
+      "decimation_target": 38000,
+      "texture_size": 2048,
+      "seed": 608
+    },
+    {
+      "id": "env_fortress_keep",
+      "prompt": "imposing miniature multi-tiered stone castle fortress keep with curved dark-slate shogun roofs, golden ridge ornaments, crimson war banners, iron-studded wooden gate, and stone ramparts",
+      "preset": "hero",
+      "decimation_target": 40000,
+      "texture_size": 2048,
+      "seed": 609
+    },
+    {
+      "id": "env_colossus_manor",
+      "prompt": "grand miniature classical cream-marble and carved oak colossus estate manor house with tall fluted columns, oversized double doors with brass knockers, royal blue Mansard roof, and golden cupola",
+      "preset": "hero",
+      "decimation_target": 38000,
+      "texture_size": 2048,
+      "seed": 610
+    },
+    {
+      "id": "env_derby_stadium",
+      "prompt": "festive miniature grand-prix creature raceway stadium entrance pavilion with bold red-and-white checkered archway, gleaming golden champion trophy crest on roof, and colorful racing pennants",
+      "preset": "hero",
+      "decimation_target": 36000,
+      "texture_size": 2048,
+      "seed": 611
+    },
+    {
+      "id": "int_healing_station",
+      "prompt": "charming miniature sanctuary healing counter desk in pearl-white and coral-red enamel, six glowing emerald restoration cradle wells on top holding tiny capture spheres, warm heart-banana monitor screen",
+      "preset": "hero",
+      "decimation_target": 28000,
+      "texture_size": 2048,
+      "seed": 612
+    },
+    {
+      "id": "int_party_pc",
+      "prompt": "whimsical retro-futuristic miniature cobalt-blue and brass creature storage PC terminal kiosk with a glowing sky-blue CRT screen, chunky colorful mechanical keys, and cute monkey-ear antenna",
+      "preset": "hero",
+      "decimation_target": 26000,
+      "texture_size": 2048,
+      "seed": 613
+    },
+    {
+      "id": "int_mart_counter",
+      "prompt": "cozy carved honey-wood adventure shop counter displaying neat stacks of glossy red-and-gold capture balls, woven baskets of plump golden berries, a brass shop bell, and striped awning trim",
+      "preset": "hero",
+      "decimation_target": 28000,
+      "texture_size": 2048,
+      "seed": 614
+    },
+    {
+      "id": "int_jukebox",
+      "prompt": "colorful vintage miniature ruby-red and polished chrome Wurlitzer-style jukebox with glowing golden-amber neon arch tubes, visible vinyl record turntable window, and brass speaker grille",
+      "preset": "hero",
+      "decimation_target": 28000,
+      "texture_size": 2048,
+      "seed": 615
+    },
+    {
+      "id": "int_lore_lectern",
+      "prompt": "ornate carved mahogany and gleaming brass adventure lore lectern stand holding a thick open leather-bound tome with illuminated golden pages and a crimson ribbon bookmark",
+      "preset": "hero",
+      "decimation_target": 24000,
+      "texture_size": 2048,
+      "seed": 616
+    },
+    {
+      "id": "int_cozy_bed",
+      "prompt": "charming miniature cottage carved oak wooden bed with a plump crimson-and-gold patchwork quilted blanket, two fluffy cream pillows, and a cute carved monkey-crest headboard",
+      "preset": "hero",
+      "decimation_target": 26000,
+      "texture_size": 2048,
+      "seed": 617
+    },
+    {
+      "id": "int_bookcase",
+      "prompt": "tall carved warm walnut wooden adventure bookcase packed with colorful leather-bound encyclopedias, rolled parchment map scrolls, a tiny brass globe, and a glowing crystal jar",
+      "preset": "hero",
+      "decimation_target": 28000,
+      "texture_size": 2048,
+      "seed": 618
+    },
+    {
+      "id": "int_potted_plant",
+      "prompt": "decorative glazed terracotta planter pot with relief patterns holding a lush tropical monstera and palm indoor plant accented by bright pink hibiscus blossoms",
+      "preset": "hero",
+      "decimation_target": 22000,
+      "texture_size": 2048,
+      "seed": 619
+    },
+    {
+      "id": "int_temple_pillar",
+      "prompt": "ornate carved cream-marble and brushed-gold indoor architectural column with fluted cylindrical shaft, stepped square plinth, and sculpted golden leaf capital",
+      "preset": "hero",
+      "decimation_target": 22000,
+      "texture_size": 2048,
+      "seed": 620
+    },
+    {
+      "id": "int_rock_boulder",
+      "prompt": "sculpted dark cavern stalagmite and boulder cluster with layered basalt rock facets and warm glowing amber-orange mineral crystal veins",
+      "preset": "hero",
+      "decimation_target": 20000,
+      "texture_size": 2048,
+      "seed": 621
+    }
+  ]
+}

@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:ff25f9a3-b043-4506-a93d-2e6958ccda42",
+  "job_id": "STEP_ID_TRELLIS2:ea0fe64e-d9d7-4be0-9e31-5bce9739fee2",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 61.82,
+  "elapsed_seconds": 78.21,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/peanut_butter_house.concept.png"
   ],
   "input_sha256_prefix": [
     "a7588746be14939f"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 502,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 9500,
-    "texture_size": 1024
+    "decimation_target": 38000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "whimsical miniature toy-diorama dojo building shaped like an oversized golden peanut-butter jar with a bright red screw-cap roof, creamy peanut-butter swirl trim, wooden double doors and peanut lanterns",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/peanut_butter_house.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/peanut_butter_house.glb",
-    "file_size_bytes": 2945144,
+    "file_size_bytes": 11292572,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 8457,
-    "triangle_count": 9410,
+    "vertex_count": 31809,
+    "triangle_count": 37042,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.40763,
-      -0.50096,
-      -0.40691
+      -0.40931,
+      -0.50064,
+      -0.40934
     ],
     "bbox_max": [
-      0.40756,
-      0.4991,
-      0.40782
+      0.40894,
+      0.49987,
+      0.40918
     ],
     "bbox_extents": [
-      0.81519,
-      1.00006,
-      0.81473
+      0.81825,
+      1.00051,
+      0.81852
     ]
   }
 }

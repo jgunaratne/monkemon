@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:3fc65555-6ba1-4970-ac2d-1101c4a22e0d",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 104.7,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_mossy_boulder.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "1dfa7372e9f5fd86"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 602,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 20000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "sculpted weathered grey granite island boulder cluster blanketed in plush emerald-green moss patches, small tropical fern fronds, and a tiny cluster of glowing turquoise crystals",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_mossy_boulder.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_mossy_boulder.glb",
+    "file_size_bytes": 13680584,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 17897,
+    "triangle_count": 19929,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.45784,
+      -0.35582,
+      -0.49996
+    ],
+    "bbox_max": [
+      0.47301,
+      0.35415,
+      0.49701
+    ],
+    "bbox_extents": [
+      0.93085,
+      0.70997,
+      0.99697
+    ]
+  }
+}

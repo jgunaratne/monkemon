@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:53998dd4-e9fe-4b91-96d7-23117159f1c5",
+  "job_id": "STEP_ID_TRELLIS2:c1bdf8f7-7ac4-4a14-a03b-c3ff4cbf2574",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 98.75,
+  "elapsed_seconds": 128.02,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mugchimp.concept.png"
   ],
   "input_sha256_prefix": [
     "797c4c678210398f"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 402,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "cute cheeky brown baby monkey sitting cozily inside an oversized glossy ceramic coffee mug with a curved mug handle, whipped cream swirl hat on its head, holding a tiny spoon",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mugchimp.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/mugchimp.glb",
-    "file_size_bytes": 2545812,
+    "file_size_bytes": 8356764,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7618,
-    "triangle_count": 8051,
+    "vertex_count": 23987,
+    "triangle_count": 29186,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.48233,
-      -0.4992,
-      -0.42875
+      -0.49688,
+      -0.50033,
+      -0.43465
     ],
     "bbox_max": [
-      0.48661,
-      0.49355,
-      0.42986
+      0.49817,
+      0.49858,
+      0.43454
     ],
     "bbox_extents": [
-      0.96894,
-      0.99275,
-      0.85861
+      0.99505,
+      0.99891,
+      0.86919
     ]
   }
 }

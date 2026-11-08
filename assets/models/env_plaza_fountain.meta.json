@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:8ec3c505-5221-4c3f-a43f-1de798104ec4",
+  "job_id": "STEP_ID_TRELLIS2:4869740a-2f94-4084-8f80-c80970b1cc50",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 111.78,
+  "elapsed_seconds": 73.14,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_plaza_fountain.concept.png"
   ],
   "input_sha256_prefix": [
     "e8e316efed4c2166"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 510,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 9500,
-    "texture_size": 1024
+    "decimation_target": 34000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "ornate circular carved cream-limestone town plaza fountain with sparkling turquoise water basin, golden rim trim, and a joyful golden monkey statue centerpiece pouring water from a giant cocoa mug",
-    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_plaza_fountain.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_plaza_fountain.glb",
-    "file_size_bytes": 3063588,
+    "file_size_bytes": 9521168,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 9326,
-    "triangle_count": 9170,
+    "vertex_count": 27566,
+    "triangle_count": 32693,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.49861,
-      -0.38095,
-      -0.49874
+      -0.50026,
+      -0.38045,
+      -0.50067
     ],
     "bbox_max": [
-      0.4998,
-      0.37498,
-      0.49898
+      0.50053,
+      0.37751,
+      0.50064
     ],
     "bbox_extents": [
-      0.99841,
-      0.75593,
-      0.99772
+      1.00079,
+      0.75796,
+      1.00131
     ]
   }
 }

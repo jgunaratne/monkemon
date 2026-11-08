@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:dbefb248-3a2f-4987-be48-6fb17973a284",
+  "job_id": "STEP_ID_TRELLIS2:c2102dd3-d81b-4958-838a-4abf8a5be7fb",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 36.56,
+  "elapsed_seconds": 62.09,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/banana_shrine.concept.png"
   ],
   "input_sha256_prefix": [
     "3c677c7899b5ace4"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 302,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "ancient moss-covered carved grey stone monkey statue sitting on an octagonal stepped stone pedestal, holding up a giant glowing golden crystal banana relic wrapped in tropical vines",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/banana_shrine.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/banana_shrine.glb",
-    "file_size_bytes": 2991164,
+    "file_size_bytes": 10115564,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 8750,
-    "triangle_count": 8328,
+    "vertex_count": 26116,
+    "triangle_count": 29285,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.34925,
-      -0.50088,
-      -0.3478
+      -0.34843,
+      -0.50096,
+      -0.34863
     ],
     "bbox_max": [
-      0.34794,
-      0.49953,
-      0.34902
+      0.34889,
+      0.4999,
+      0.3489
     ],
     "bbox_extents": [
-      0.69719,
-      1.00041,
-      0.69682
+      0.69732,
+      1.00086,
+      0.69753
     ]
   }
 }

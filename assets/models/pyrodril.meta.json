@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:142d222e-6ba7-42a4-ae9b-97ac69aeb667",
+  "job_id": "STEP_ID_TRELLIS2:ebaed96a-1c89-4093-97be-0cfe35c73d2b",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 67.43,
+  "elapsed_seconds": 53.91,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/pyrodril.concept.png"
   ],
   "input_sha256_prefix": [
     "58ea7c44ea36ed3a"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 207,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 9000,
-    "texture_size": 1024
+    "decimation_target": 32000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "fierce dark-obsidian volcanic baboon creature with glowing molten orange magma veins across heavy rock-armored shoulders and a dramatic sculpted flame mane",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/pyrodril.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/pyrodril.glb",
-    "file_size_bytes": 3098080,
+    "file_size_bytes": 10804244,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7568,
-    "triangle_count": 8374,
+    "vertex_count": 24089,
+    "triangle_count": 31052,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.4172,
-      -0.50001,
-      -0.35257
+      -0.42142,
+      -0.49986,
+      -0.35376
     ],
     "bbox_max": [
-      0.41943,
-      0.49714,
-      0.35449
+      0.42038,
+      0.4999,
+      0.35595
     ],
     "bbox_extents": [
-      0.83663,
-      0.99715,
-      0.70706
+      0.8418,
+      0.99976,
+      0.70971
     ]
   }
 }

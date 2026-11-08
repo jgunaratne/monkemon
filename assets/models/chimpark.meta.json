@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:b46f0232-1b0c-4a0f-97e4-1c77fb724db2",
+  "job_id": "STEP_ID_TRELLIS2:315fa33e-c83f-47ea-8a3c-164800e26e53",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 35.88,
+  "elapsed_seconds": 44.62,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/chimpark.concept.png"
   ],
   "input_sha256_prefix": [
     "48f9cb1302dc3d30"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 201,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 9000,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "adorable scarlet and tangerine-orange baby ember chimpanzee creature standing happily, fluffy cream belly, oversized expressive amber eyes, stylized sculpted orange-yellow flame tuft burning at the tip of its curled tail",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/chimpark.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/chimpark.glb",
-    "file_size_bytes": 1944896,
+    "file_size_bytes": 7205844,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7791,
-    "triangle_count": 8648,
+    "vertex_count": 20361,
+    "triangle_count": 28753,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.37032,
-      -0.49992,
-      -0.29323
+      -0.37039,
+      -0.50086,
+      -0.29641
     ],
     "bbox_max": [
-      0.36723,
-      0.49701,
-      0.30416
+      0.37031,
+      0.50019,
+      0.29676
     ],
     "bbox_extents": [
-      0.73755,
-      0.99693,
-      0.59739
+      0.7407,
+      1.00105,
+      0.59317
     ]
   }
 }

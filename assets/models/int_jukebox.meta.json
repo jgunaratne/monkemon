@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:62abe00f-8a61-43fa-8e40-f2a274497728",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 83.95,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_jukebox.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "b61a186240bd60da"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 615,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 28000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "colorful vintage miniature ruby-red and polished chrome Wurlitzer-style jukebox with glowing golden-amber neon arch tubes, visible vinyl record turntable window, and brass speaker grille",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_jukebox.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_jukebox.glb",
+    "file_size_bytes": 11327924,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 25537,
+    "triangle_count": 27699,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.293,
+      -0.50097,
+      -0.18014
+    ],
+    "bbox_max": [
+      0.29322,
+      0.49739,
+      0.17742
+    ],
+    "bbox_extents": [
+      0.58622,
+      0.99836,
+      0.35756
+    ]
+  }
+}

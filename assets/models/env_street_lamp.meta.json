@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:59e0618e-2528-4e19-adab-a750d937c5f3",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 87.44,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_street_lamp.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "2021c7ab240831c2"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 601,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 22000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "ornate wrought-iron and carved warm cedar island streetlamp post on a stepped cobblestone base, curved floral bracket holding a glowing warm amber glass lantern globe",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_street_lamp.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_street_lamp.glb",
+    "file_size_bytes": 9594620,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 20618,
+    "triangle_count": 20686,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.26717,
+      -0.50054,
+      -0.28652
+    ],
+    "bbox_max": [
+      0.26798,
+      0.50085,
+      0.29155
+    ],
+    "bbox_extents": [
+      0.53515,
+      1.00139,
+      0.57807
+    ]
+  }
+}

@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:68d4036c-1ebc-4270-927d-51dbbea8dbd9",
+  "job_id": "STEP_ID_TRELLIS2:ba2bb222-3b1c-4599-b595-931007ea9793",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 73.3,
+  "elapsed_seconds": 116.91,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/bamboon.concept.png"
   ],
   "input_sha256_prefix": [
     "97267988cb577111"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 205,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "sturdy martial-arts mandrill monkey brawler creature with teal and terracotta face markings, carved green bamboo forearm gauntlets, braided rope belt, powerful crouched fighting stance",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/bamboon.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/bamboon.glb",
-    "file_size_bytes": 3124712,
+    "file_size_bytes": 10022836,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 11298,
-    "triangle_count": 8189,
+    "vertex_count": 28034,
+    "triangle_count": 28656,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.38131,
-      -0.49619,
-      -0.49434
+      -0.38948,
+      -0.491,
+      -0.49608
     ],
     "bbox_max": [
-      0.38648,
-      0.48487,
-      0.4954
+      0.39064,
+      0.49264,
+      0.49888
     ],
     "bbox_extents": [
-      0.76779,
-      0.98106,
-      0.98974
+      0.78012,
+      0.98364,
+      0.99496
     ]
   }
 }

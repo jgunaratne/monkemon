@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:88912589-00ca-4a54-80c1-b18bbf129fae",
+  "job_id": "STEP_ID_TRELLIS2:08a20842-9447-4d31-89ad-03e548a903e1",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 104.04,
+  "elapsed_seconds": 69.73,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/plushaki.concept.png"
   ],
   "input_sha256_prefix": [
     "52d91ca0d6bc53f9"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 406,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "adorable pastel patchwork knitted plushie stuffie sock-monkey toy creature with visible yarn stitching, shiny black button eyes, rosy felt cheeks, soft cotton-stuffed limbs and ribbon bow",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/plushaki.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/plushaki.glb",
-    "file_size_bytes": 3472900,
+    "file_size_bytes": 11190064,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7917,
-    "triangle_count": 8029,
+    "vertex_count": 33358,
+    "triangle_count": 29631,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.47537,
-      -0.49842,
-      -0.44402
+      -0.47902,
+      -0.49981,
+      -0.4464
     ],
     "bbox_max": [
-      0.47524,
-      0.49409,
-      0.44337
+      0.47956,
+      0.49991,
+      0.44666
     ],
     "bbox_extents": [
-      0.95061,
-      0.99251,
-      0.88739
+      0.95858,
+      0.99972,
+      0.89306
     ]
   }
 }

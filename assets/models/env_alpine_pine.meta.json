@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:db8bcf9d-6481-4ace-814e-0f41798fdf89",
+  "job_id": "STEP_ID_TRELLIS2:4d576a3b-a57b-47aa-80b0-33f8345cbb2e",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 91.35,
+  "elapsed_seconds": 48.12,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_alpine_pine.concept.png"
   ],
   "input_sha256_prefix": [
     "bc0ee56b03dabf6f"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 503,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 24000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "picturesque layered alpine evergreen pine tree with rich teal-green boughs capped with fluffy sculpted white snow drifts, warm cedar trunk, pinecones, and a small mossy rock at the base",
-    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_alpine_pine.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_alpine_pine.glb",
-    "file_size_bytes": 2795592,
+    "file_size_bytes": 8001824,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 8879,
-    "triangle_count": 8465,
+    "vertex_count": 21831,
+    "triangle_count": 22884,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.26289,
-      -0.50097,
-      -0.3072
+      -0.2606,
+      -0.50071,
+      -0.30707
     ],
     "bbox_max": [
-      0.26188,
-      0.49766,
-      0.30501
+      0.26142,
+      0.49841,
+      0.30571
     ],
     "bbox_extents": [
-      0.52477,
-      0.99863,
-      0.61221
+      0.52202,
+      0.99912,
+      0.61278
     ]
   }
 }

@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:98b6fcc4-0406-4eed-83db-24c97a00dfeb",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 38.17,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_temple_pillar.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "80e6b1c13919da76"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 620,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 22000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "ornate carved cream-marble and brushed-gold indoor architectural column with fluted cylindrical shaft, stepped square plinth, and sculpted golden leaf capital",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_temple_pillar.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_temple_pillar.glb",
+    "file_size_bytes": 9343632,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 19237,
+    "triangle_count": 21147,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.17379,
+      -0.50085,
+      -0.17394
+    ],
+    "bbox_max": [
+      0.17393,
+      0.50095,
+      0.17394
+    ],
+    "bbox_extents": [
+      0.34772,
+      1.0018,
+      0.34788
+    ]
+  }
+}

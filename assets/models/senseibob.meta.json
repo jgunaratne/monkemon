@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:6f47ee15-88a1-410d-904a-d68238abf2a7",
+  "job_id": "STEP_ID_TRELLIS2:87fdc2c9-6789-4e08-9375-32788ba93c70",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 141.4,
+  "elapsed_seconds": 153.06,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/senseibob.concept.png"
   ],
   "input_sha256_prefix": [
     "d36b931450bb0a70"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 408,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "cool martial-arts dad-monkey master wearing round glasses, white karate gi uniform with black belt and red necktie tucked in, headband, confident friendly kung-fu stance",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/senseibob.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/senseibob.glb",
-    "file_size_bytes": 2754564,
+    "file_size_bytes": 9538152,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7187,
-    "triangle_count": 8135,
+    "vertex_count": 22451,
+    "triangle_count": 29426,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.31226,
-      -0.49979,
-      -0.24614
+      -0.3146,
+      -0.49983,
+      -0.24857
     ],
     "bbox_max": [
-      0.30995,
-      0.49802,
-      0.24409
+      0.31257,
+      0.49983,
+      0.24968
     ],
     "bbox_extents": [
-      0.62221,
-      0.99781,
-      0.49023
+      0.62717,
+      0.99966,
+      0.49825
     ]
   }
 }

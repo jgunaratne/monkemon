@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:4d4d2040-7ae7-471d-ac83-dae189812387",
+  "job_id": "STEP_ID_TRELLIS2:8c047273-7a51-4385-b842-13a73ab35e25",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 42.95,
+  "elapsed_seconds": 85.53,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mossaki.concept.png"
   ],
   "input_sha256_prefix": [
     "7414a115730fa29e"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 203,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 9000,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "adorable emerald-green and cream squirrel-monkey creature wearing a sculpted tropical monstera-leaf poncho, blooming pink hibiscus flower bud on top of its head, curled leafy vine tail, bright cheerful eyes",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mossaki.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/mossaki.glb",
-    "file_size_bytes": 2829108,
+    "file_size_bytes": 9650328,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 8633,
-    "triangle_count": 8916,
+    "vertex_count": 25438,
+    "triangle_count": 28742,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.39966,
-      -0.5006,
-      -0.32077
+      -0.39903,
+      -0.50031,
+      -0.3273
     ],
     "bbox_max": [
-      0.40296,
-      0.48774,
-      0.29027
+      0.40158,
+      0.49889,
+      0.29538
     ],
     "bbox_extents": [
-      0.80262,
-      0.98834,
-      0.61104
+      0.80061,
+      0.9992,
+      0.62268
     ]
   }
 }

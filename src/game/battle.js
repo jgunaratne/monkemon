@@ -1,22 +1,27 @@
 // Classic Turn-Based 2.5D Command-Menu Battle Engine for Monkemon!
 // - Calm, unhurried handheld RPG pacing: zero enemy attacks while reading or picking menus!
-// - Root Menu (`2×2`): `1: ⚔️ FIGHT`, `2: 🐵 CATCH / BAG`, `3: 🐾 MONKEMON`, `4: 🏃 RUN`
-// - Sub-Menus (`fight`, `bag`, `party`) navigable via Keyboard (`WASD / Arrows / 1-4 / Enter / Esc`),
-//   Steam Deck Controller (`D-Pad / Stick / (A) / (B)`), or Mouse / Touch!
-// - Powered by the Multi-Layered Reactive GLSL Battle Shader Suite:
-//     • Split-Elemental Nebula + Hex Lattice + Sacred Glyph + Shockwave Arena Floor
-//     • 3D Fresnel Hexagonal Forcefield Stadium Cylinder
-//     • Spinning Elemental Summon Pedestals under both combatants
-//     • Twisted 3D Helical Plasma Beams, Rising Aura Pillars & Supersonic Impact Wave Shaders!
+// - One-screen command bar: `ATTACK` · `SPECIAL` · `CATCH / HEAL` · `RUN` (keyboard, Steam Deck, mouse, touch)
+// - Traditional side-view presentation: your Monkemon stands front-left (seen from behind), the
+//   foe back-right, with a low, close camera that eases toward whoever is being hit. No arena
+//   floor or pedestals — combatants stand on the island itself.
+// - Shader attack suite (`engine/battle_fx.js`): elemental energy-orb projectiles with comet
+//   tails, crescent slash arcs, clap/slam shock rings and starburst hit bursts, plus rising aura
+//   pillars for heals / specials and spark particles.
 
 import * as THREE from 'three';
 import { ELEMENTS, MOVES } from '../data/moves.js';
 import { getSpecies } from '../data/species.js';
-import { buildBattleArenaGroup } from '../engine/diorama_builder.js';
+import { getGuestCompanion } from '../data/storyline.js';
 import {
-  createBattleImpactWaveShaderMaterial,
-  createElementalBeamShaderMaterial,
-} from '../engine/shaders.js';
+  createEnergyOrbShaderMaterial,
+  createHitBurstShaderMaterial,
+  createShockRingShaderMaterial,
+  createSlashArcShaderMaterial,
+  makeBillboardQuad,
+  orientBillboard,
+  screenSpaceDirection,
+} from '../engine/battle_fx.js';
+import { createElementalBeamShaderMaterial } from '../engine/shaders.js';
 import {
   calculateHitDamage,
   computeCatchProbability,
@@ -27,15 +32,23 @@ import {
 } from './combat_math.js';
 import { addCaughtMonToState, markDexSeen, useBerryOnPartyMon } from './save_store.js';
 
-const ARENA_RADIUS = 6.6;
-const PLAYER_SLOT = { x: -3.15, z: 0.85 };
-const ENEMY_SLOT = { x: 3.15, z: -0.85 };
+// Side-view layout (local to the battle centre): player front-left, foe back-right. The camera
+// sits behind the centre looking toward -Z, so the player's Monkemon is nearer and larger.
+const PLAYER_SLOT = { x: -2.05, z: 0.25 };
+const ENEMY_SLOT = { x: 2.25, z: -0.95 };
+const HERO_COACH_SLOT = { x: -3.65, z: -0.25 };
+const COMPANION_COACH_SLOT = { x: -4.4, z: 0.65 };
+const RIVAL_COACH_SLOT = { x: 3.55, z: -0.35 };
+
+// Low, close "handheld RPG" battle camera: offset from the look-at target (renderer FOV 30°).
+// Tuned so both combatants & coaches sit cleanly in the middle band between the top status
+// plaques (player-left, enemy-right) and the bottom command deck.
+const BATTLE_CAM_TARGET = { x: 0.15, y: 0.88, z: -0.1 };
+const BATTLE_CAM_OFFSET = { x: 0, y: 4.1, z: 12.0 };
+const BATTLE_CAM_FOV = 30;
 
 const SHARED_SPARK_GEO = new THREE.SphereGeometry(1, 8, 8);
 const SHARED_STAR_GEO = new THREE.OctahedronGeometry(1, 0);
-const SHARED_WAVE_GEO = new THREE.PlaneGeometry(1, 1);
-const SHARED_BEAM_GEO = new THREE.CylinderGeometry(0.32, 0.42, 1.0, 20, 16, true);
-SHARED_BEAM_GEO.translate(0, 0.5, 0); // origin at start `(0,0,0)` extending `+Y` to `1.0`
 
 /**
  * Returns the 4 curated Turn-Based Battle Moves for `mon`:
@@ -61,7 +74,7 @@ export function getBattleMoves(mon, species) {
 }
 
 export class BattleController {
-  constructor({ sceneRoot, modelBank, renderer, audio, state, onToast, onFloatText, onBattleEnd }) {
+  constructor({ sceneRoot, modelBank, renderer, audio, state, onToast, onFloatText, onBattleEnd, groundHeightAt }) {
     this.sceneRoot = sceneRoot;
     this.modelBank = modelBank;
     this.renderer = renderer;
@@ -70,15 +83,18 @@ export class BattleController {
     this.onToast = onToast;
     this.onFloatText = onFloatText;
     this.onBattleEnd = onBattleEnd;
+    // Optional `(worldX, worldZ) => groundY` so each combatant stands on the actual terrain.
+    this.groundHeightAt = typeof groundHeightAt === 'function' ? groundHeightAt : null;
 
     this.active = false;
     this.pendingEnd = null; // { timer, result }
     this.mode = 'wild'; // 'wild' | 'trainer'
     this.center = { x: 0, y: 0, z: 0 };
-    this.arenaGroup = null;
+    this.isBossEncounter = false;
     this.fxGroup = null;
 
     this.heroCoachActor = null;
+    this.companionCoachActor = null;
     this.rivalCoachActor = null;
     this.playerActor = null;
     this.enemyActor = null;
@@ -100,9 +116,8 @@ export class BattleController {
     this.bannerText = '';
     this.narrationSub = '';
 
-    // Active 3D Shader VFX Lists
-    this.shaderBeams = [];
-    this.shaderWaves = [];
+    // Active shader VFX lists (see `engine/battle_fx.js`)
+    this.fxBillboards = []; // hit bursts, slash arcs, shock rings, orb projectiles
     this.shaderPillars = [];
     this.particles = [];
     this.catchAnim = null;
@@ -179,9 +194,10 @@ export class BattleController {
     this.pendingEnd = null;
     this.center = {
       x: centerPos?.x || 0,
-      y: (centerPos?.y || 0) + 0.44,
+      y: centerPos?.y || 0,
       z: centerPos?.z || 0,
     };
+    this.isBossEncounter = Boolean(isBoss);
     this.enemyTeam = enemyTeam;
     this.enemyIndex = 0;
     this.playerCombo = 0;
@@ -194,27 +210,15 @@ export class BattleController {
 
     const pIdx = this._pickHealthyPartyIndex();
     const pMon = this.state.party[pIdx];
-    const pSp = getSpecies(pMon.speciesId);
     const eMon = this.enemyTeam[0];
-    const eSp = getSpecies(eMon.speciesId);
     markDexSeen(this.state, eMon.speciesId);
 
-    const pElemColor = (ELEMENTS[pSp.element] || ELEMENTS.mug).color;
-    const eElemColor = (ELEMENTS[eSp.element] || ELEMENTS.monster).color;
-
-    this.arenaGroup = buildBattleArenaGroup(this.center.x, this.center.z, ARENA_RADIUS, {
-      playerColor: pElemColor,
-      enemyColor: eElemColor,
-      baseY: this.center.y,
-      isBoss,
-    });
-    this.sceneRoot.add(this.arenaGroup);
-
+    // All effects live in a group anchored at the battle centre (local y = 0 at centre ground).
     this.fxGroup = new THREE.Group();
     this.fxGroup.position.set(this.center.x, this.center.y, this.center.z);
     this.sceneRoot.add(this.fxGroup);
 
-    // Spawn Hero Coach ALEX on Left Rim + Rival Coach on Right Rim
+    // Hero ALEX stands just behind-left of their Monkemon; a rival trainer stands behind-right of theirs.
     this.heroCoachActor = this.modelBank.spawnActor({
       glbUrl: 'assets/models/hero_tamer.glb',
       scale: 1.55,
@@ -224,11 +228,29 @@ export class BattleController {
       animateRig: true,
     });
     this.heroCoachActor.root.position.set(
-      this.center.x - ARENA_RADIUS - 0.8,
-      this.center.y,
-      this.center.z + 1.35,
+      this.center.x + HERO_COACH_SLOT.x,
+      this._groundY(HERO_COACH_SLOT.x, HERO_COACH_SLOT.z),
+      this.center.z + HERO_COACH_SLOT.z,
     );
     this.sceneRoot.add(this.heroCoachActor.root);
+
+    const activeGuest = getGuestCompanion(this.state);
+    if (activeGuest) {
+      this.companionCoachActor = this.modelBank.spawnActor({
+        glbUrl: activeGuest.modelGlb || 'assets/models/trainer_warden.glb',
+        scale: activeGuest.scale || 1.54,
+        primaryColor: activeGuest.color || '#38bdf8',
+        secondaryColor: '#fef3c7',
+        shadowRadius: 0.52,
+        animateRig: true,
+      });
+      this.companionCoachActor.root.position.set(
+        this.center.x + COMPANION_COACH_SLOT.x,
+        this._groundY(COMPANION_COACH_SLOT.x, COMPANION_COACH_SLOT.z),
+        this.center.z + COMPANION_COACH_SLOT.z,
+      );
+      this.sceneRoot.add(this.companionCoachActor.root);
+    }
 
     if (this.mode === 'trainer' && this.trainerDef) {
       const glb =
@@ -244,9 +266,9 @@ export class BattleController {
         animateRig: true,
       });
       this.rivalCoachActor.root.position.set(
-        this.center.x + ARENA_RADIUS + 0.8,
-        this.center.y,
-        this.center.z - 1.35,
+        this.center.x + RIVAL_COACH_SLOT.x,
+        this._groundY(RIVAL_COACH_SLOT.x, RIVAL_COACH_SLOT.z),
+        this.center.z + RIVAL_COACH_SLOT.z,
       );
       this.sceneRoot.add(this.rivalCoachActor.root);
     }
@@ -254,24 +276,16 @@ export class BattleController {
     this._spawnPlayerUnit(pMon);
     this._spawnEnemyUnit(eMon);
 
-    this.renderer.setCameraFraming(this.center.x, this.center.y + 0.85, this.center.z + 0.4, 'battle', true);
+    this._applyBattleCamera({ snap: true });
     this.audio.playMusic(music || 'battle', true);
 
-    // Brief dramatic intro beat (`0.85s`) with shader summon flare, then open Root Command Menu!
+    // Brief summon beat (`0.45s`) — a clean reveal, no flares under the combatants — then open the command bar.
     this.bannerText = headline;
     this.narrationSub =
       this.mode === 'wild'
         ? 'Pick 1 action below: ⚔️ Attack, ✨ Special, 🐵 Catch, or 🏃 Run Away anytime!'
         : `Duel vs ${this.trainerDef.name} — pick ⚔️ Attack, ✨ Special, 🍌 Heal, or 🏃 Run Away anytime!`;
 
-    if (this.arenaGroup.userData.flareCombatant) {
-      this.arenaGroup.userData.flareCombatant('player', 1.2);
-      this.arenaGroup.userData.flareCombatant('enemy', 1.2);
-    }
-    this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, pElemColor, 0.65);
-    this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, eElemColor, 0.65);
-
-    // Open the 1-screen action bar immediately after a brief 0.45s summon flare so commands work right away!
     this.menuState = 'animating';
     this.stepQueue.push({
       duration: 0.45,
@@ -280,6 +294,44 @@ export class BattleController {
       onDone: () => {
         this._enterRootMenu();
       },
+    });
+  }
+
+  /** World-space ground height under a battle-local (x, z) offset; falls back to the centre height. */
+  _groundY(localX, localZ) {
+    if (!this.groundHeightAt) return this.center.y;
+    const y = this.groundHeightAt(this.center.x + localX, this.center.z + localZ);
+    return Number.isFinite(y) ? y : this.center.y;
+  }
+
+  /**
+   * Low, close side-view camera. `focus` (a unit) eases the look-at toward that combatant and
+   * pushes in slightly — used while an attack lands; `null` returns to the neutral framing.
+   */
+  _applyBattleCamera({ snap = false, focus = null } = {}) {
+    const r = this.renderer;
+    if (!r || typeof r.setCameraFraming !== 'function') return;
+    const bossLift = this.isBossEncounter ? 0.45 : 0;
+    const bossBack = this.isBossEncounter ? 1.12 : 1;
+    const pBaseY = this.playerActor ? this.playerActor.root.position.y : this.center.y;
+    const eBaseY = this.enemyActor ? this.enemyActor.root.position.y : this.center.y;
+    const rBaseY = this.rivalCoachActor ? this.rivalCoachActor.root.position.y : eBaseY;
+    const stageY = 0.6 * pBaseY + 0.4 * Math.max(eBaseY, rBaseY);
+    let tx = this.center.x + BATTLE_CAM_TARGET.x;
+    let ty = stageY + BATTLE_CAM_TARGET.y + bossLift;
+    let tz = this.center.z + BATTLE_CAM_TARGET.z;
+    let zoom = 1;
+    if (focus) {
+      tx += focus.homeX * 0.38;
+      tz += focus.homeZ * 0.38;
+      ty += (focus.homeY || 0) * 0.5;
+      zoom = 0.93;
+    }
+    // Close side-view framing via the renderer's override hook (6th arg); the 'battle' preset also
+    // widens the depth-of-field band so both combatants stay sharp at this distance.
+    r.setCameraFraming(tx, ty, tz, 'battle', snap, {
+      offset: [BATTLE_CAM_OFFSET.x, BATTLE_CAM_OFFSET.y * bossBack * zoom, BATTLE_CAM_OFFSET.z * bossBack * zoom],
+      fov: BATTLE_CAM_FOV,
     });
   }
 
@@ -294,9 +346,8 @@ export class BattleController {
       shadowRadius: 0.68,
       animateRig: true,
     });
-    const wx = this.center.x + PLAYER_SLOT.x;
-    const wz = this.center.z + PLAYER_SLOT.z;
-    this.playerActor.root.position.set(wx, this.center.y, wz);
+    const groundY = this._groundY(PLAYER_SLOT.x, PLAYER_SLOT.z);
+    this.playerActor.root.position.set(this.center.x + PLAYER_SLOT.x, groundY, this.center.z + PLAYER_SLOT.z);
     this.sceneRoot.add(this.playerActor.root);
 
     this.playerUnit = {
@@ -305,6 +356,7 @@ export class BattleController {
       species: sp,
       actor: this.playerActor,
       homeX: PLAYER_SLOT.x,
+      homeY: groundY - this.center.y,
       homeZ: PLAYER_SLOT.z,
       offsetX: 0,
       offsetY: 0,
@@ -314,7 +366,6 @@ export class BattleController {
       atkBuffTurns: 0,
       hitFlash: 0,
     };
-    this._syncArenaColors();
   }
 
   _spawnEnemyUnit(mon) {
@@ -330,9 +381,8 @@ export class BattleController {
       shadowRadius: isBoss ? 1.15 : 0.68,
       animateRig: true,
     });
-    const wx = this.center.x + ENEMY_SLOT.x;
-    const wz = this.center.z + ENEMY_SLOT.z;
-    this.enemyActor.root.position.set(wx, this.center.y, wz);
+    const groundY = this._groundY(ENEMY_SLOT.x, ENEMY_SLOT.z);
+    this.enemyActor.root.position.set(this.center.x + ENEMY_SLOT.x, groundY, this.center.z + ENEMY_SLOT.z);
     this.sceneRoot.add(this.enemyActor.root);
 
     this.enemyUnit = {
@@ -341,6 +391,7 @@ export class BattleController {
       species: sp,
       actor: this.enemyActor,
       homeX: ENEMY_SLOT.x,
+      homeY: groundY - this.center.y,
       homeZ: ENEMY_SLOT.z,
       offsetX: 0,
       offsetY: 0,
@@ -350,18 +401,6 @@ export class BattleController {
       atkBuffTurns: 0,
       hitFlash: 0,
     };
-    this._syncArenaColors();
-  }
-
-  _syncArenaColors() {
-    if (!this.arenaGroup || !this.arenaGroup.userData.setElementColors) return;
-    const pCol = this.playerUnit
-      ? (ELEMENTS[this.playerUnit.species.element] || ELEMENTS.mug).color
-      : '#f59e0b';
-    const eCol = this.enemyUnit
-      ? (ELEMENTS[this.enemyUnit.species.element] || ELEMENTS.monster).color
-      : '#ef4444';
-    this.arenaGroup.userData.setElementColors(pCol, eCol);
   }
 
   _enterRootMenu() {
@@ -369,10 +408,14 @@ export class BattleController {
     this.menuState = 'root';
     const pName = this.playerUnit ? this.playerUnit.mon.nickname : 'Partner';
     this.bannerText = `Your Turn — Choose ${pName}’s Action!`;
+    // The command buttons already list themselves; use this line for a tip the buttons can't show.
+    const catchPct = this.mode === 'wild' ? this.getLiveCatchPercent(false) : 0;
     this.narrationSub =
       this.mode === 'wild'
-        ? `1-click commands: ⚔️ Attack · ✨ Special · 🐵 Catch (${this.getLiveCatchPercent(false)}%) · 🏃 Run Away`
-        : `1-click commands: ⚔️ Attack · ✨ Special · 🍌 Heal (+40% HP) · 🏃 Run Away`;
+        ? catchPct >= 60
+          ? `Catch chance is ${catchPct}% — a good time to throw a Monkeball!`
+          : `Catch chance is ${catchPct}%. Lower its HP first to raise it.`
+        : `Defeat all of their Monkemon to win. Heal with a Berry if your HP gets low.`;
   }
 
   // =========================================================================
@@ -472,6 +515,8 @@ export class BattleController {
       }
       const finished = this.activeStep;
       this.activeStep = null;
+      if (this.playerUnit) this.playerUnit.displayHp = this.playerUnit.mon.hp;
+      if (this.enemyUnit) this.enemyUnit.displayHp = this.enemyUnit.mon.hp;
       if (finished.onDone) finished.onDone();
     }
   }
@@ -612,13 +657,18 @@ export class BattleController {
   _pickEnemyMove() {
     const moves = getBattleMoves(this.enemyUnit.mon, this.enemyUnit.species);
     const hpRatio = this.enemyUnit.mon.hp / Math.max(1, this.enemyUnit.mon.maxHp);
-    if (hpRatio < 0.38 && Math.random() < 0.32) {
+    if (!this.enemyUnit.usedHeal && hpRatio < 0.28 && Math.random() < 0.25) {
       const healM = moves.find((m) => m.healPct);
-      if (healM) return healM;
+      if (healM) {
+        this.enemyUnit.usedHeal = true;
+        return healM;
+      }
     }
-    // Prefer signature special ~42% of the time, otherwise core moves
-    if (Math.random() < 0.42) return moves[0];
-    return moves[Math.floor(Math.random() * moves.length)];
+    const offensiveMoves = moves.filter((m) => !m.healPct);
+    const pool = offensiveMoves.length > 0 ? offensiveMoves : moves;
+    // Prefer signature special ~42% of the time, otherwise offensive moves
+    if (Math.random() < 0.42) return pool[0];
+    return pool[Math.floor(Math.random() * pool.length)];
   }
 
   _executePlayerMoveTurn(playerMove) {
@@ -684,34 +734,34 @@ export class BattleController {
         this.narrationSub = move.desc || '';
 
         const moveElem = resolveMoveElement(move, atkUnit.species);
-        const elemColor = (ELEMENTS[moveElem] || ELEMENTS.mug).color;
+        const elemMeta = ELEMENTS[moveElem] || ELEMENTS.mug;
+        const elemColor = elemMeta.color;
+        step._elemColor = elemColor;
+        step._elemGlow = elemMeta.glow || '#ffffff';
 
         if (attackerSide === 'player') this.heroCheerTimer = 1.0;
         else this.rivalCheerTimer = 1.0;
 
-        if (this.arenaGroup && this.arenaGroup.userData.flareCombatant) {
-          this.arenaGroup.userData.flareCombatant(attackerSide, 1.35);
-        }
+        // Camera eases toward the defender while the hit lands
+        this._applyBattleCamera({ focus: defUnit });
 
-        // Launch complex 3D GLSL shader attack beam / pillar!
+        // Per-move shader choreography (impact itself is applied at u >= 0.34 in onUpdate)
         if (move.healPct) {
           this.audio.playSfx('eat_snack');
-          this._spawnAuraPillar(atkUnit.homeX, atkUnit.homeZ, '#4ade80', 0.85);
+          this._spawnAuraPillar(atkUnit.homeX, atkUnit.homeZ, '#4ade80', 0.85, atkUnit.homeY);
         } else if (move.id === 'monk_run') {
           this.audio.playSfx('monk_run');
-          this._spawnShaderBeam(atkUnit.homeX, atkUnit.homeZ, defUnit.homeX, defUnit.homeZ, '#fef08a', elemColor);
         } else if (move.id === 'sky_jump') {
           this.audio.playSfx('sky_jump');
         } else if (move.id === 'fake_out') {
           this.audio.playSfx('fake_out');
-          this._spawnShaderBeam(atkUnit.homeX, atkUnit.homeZ, defUnit.homeX, defUnit.homeZ, '#e9d5ff', '#a855f7');
+          this._spawnShockRing(atkUnit, '#e9d5ff', '#a855f7', 2.6, 0.42);
         } else {
+          // Signature elemental special: charge-up aura, then an energy orb flies at the defender
           this.audio.playSfx('special');
-          this._spawnShaderBeam(atkUnit.homeX, atkUnit.homeZ, defUnit.homeX, defUnit.homeZ, '#ffffff', elemColor);
-          this._spawnAuraPillar(atkUnit.homeX, atkUnit.homeZ, elemColor, 0.72);
+          this._spawnAuraPillar(atkUnit.homeX, atkUnit.homeZ, elemColor, 0.6, atkUnit.homeY);
+          this._spawnOrbProjectile(atkUnit, defUnit, elemColor, step._elemGlow, 0.3);
         }
-
-        step._elemColor = elemColor;
       },
       onUpdate: (step, dt) => {
         const atkUnit = attackerSide === 'player' ? this.playerUnit : this.enemyUnit;
@@ -740,7 +790,7 @@ export class BattleController {
           atkUnit.offsetZ *= Math.max(0, 1 - dt * 14);
         }
 
-        // Apply Damage & Impact Shader Wave at `u >= 0.34`!
+        // Apply Damage & hit-burst shader at `u >= 0.34` (when the orb / lunge arrives)
         if (!step.impactApplied && u >= 0.34) {
           step.impactApplied = true;
           this._applyMoveImpact(atkUnit, defUnit, move, step._elemColor);
@@ -753,6 +803,7 @@ export class BattleController {
           atkUnit.offsetY = 0;
           atkUnit.offsetZ = 0;
         }
+        this._applyBattleCamera({ focus: null });
       },
     });
   }
@@ -762,9 +813,14 @@ export class BattleController {
     if (move.healPct) {
       const healAmt = Math.max(8, Math.round(atkUnit.mon.maxHp * move.healPct));
       atkUnit.mon.hp = Math.min(atkUnit.mon.maxHp, atkUnit.mon.hp + healAmt);
+      atkUnit.displayHp = atkUnit.mon.hp;
       atkUnit.atkBuffTurns = 2;
       const pHeal = this.renderer.projectToScreen(
-        new THREE.Vector3(this.center.x + atkUnit.homeX, this.center.y + 1.8, this.center.z + atkUnit.homeZ),
+        new THREE.Vector3(
+          this.center.x + atkUnit.homeX,
+          this.center.y + (atkUnit.homeY || 0) + 1.8,
+          this.center.z + atkUnit.homeZ,
+        ),
       );
       if (pHeal.visible && this.onFloatText) {
         this.onFloatText(pHeal.x, pHeal.y, `+${healAmt} HP · ATK UP!`, '#4ade80');
@@ -774,26 +830,95 @@ export class BattleController {
     // 2. Calculate & apply hit damage
     if (atkUnit.side === 'player') this._bumpPlayerCombo(1);
     const comboMult = atkUnit.side === 'player' ? Math.min(1.3, this.getComboMultiplier()) : 1.0;
-    const hit = calculateHitDamage({
-      attacker: atkUnit.mon,
-      attackerSpecies: atkUnit.species,
-      defender: defUnit.mon,
-      defenderSpecies: defUnit.species,
-      move,
+    const hit = calculateHitDamage(atkUnit.mon, defUnit.mon, move, {
       comboMult,
-      atkBuffed: atkUnit.atkBuffTurns > 0,
+      attackerBuffed: atkUnit.atkBuffTurns > 0,
     });
     if (atkUnit.atkBuffTurns > 0) atkUnit.atkBuffTurns -= 1;
 
-    // Gentle safety cushion on enemy hits vs crisp punchy player damage
+    // Gentle safety cushion on enemy hits vs crisp punchy player damage + Legendary Artifact passives!
+    const keys = Array.isArray(this.state.keyItems) ? this.state.keyItems : [];
+    let artifactAtkMult = 1.0;
+    if (atkUnit.side === 'player') {
+      if (keys.includes('banana_calibur')) artifactAtkMult *= 1.2;
+      if (keys.includes('sky_lance')) artifactAtkMult *= 1.14;
+      if (keys.includes('seven_blade')) artifactAtkMult *= 1.15;
+      artifactAtkMult = Math.min(1.42, artifactAtkMult);
+    }
+    let artifactDefMult = 1.0;
+    if (defUnit.side === 'player') {
+      if (keys.includes('aegis_charm')) artifactDefMult *= 0.78;
+      if (keys.includes('goddess_heart')) artifactDefMult *= 0.88;
+    }
+
+    const rawHitDamage = Number.isFinite(hit.damage) ? hit.damage : 8;
     const dmg =
       defUnit.side === 'player'
-        ? Math.max(2, Math.round(hit.damage * 0.78))
-        : Math.max(4, Math.round(hit.damage * 1.15));
-    defUnit.mon.hp = Math.max(0, defUnit.mon.hp - dmg);
+        ? Math.max(2, Math.round(rawHitDamage * 0.78 * artifactDefMult))
+        : Math.max(4, Math.round(rawHitDamage * 1.15 * artifactAtkMult));
+    defUnit.mon.hp = Math.max(0, Math.round(defUnit.mon.hp - dmg));
+    defUnit.displayHp = defUnit.mon.hp;
     defUnit.hitFlash = 0.42;
     if (defUnit.actor && defUnit.actor.setHitFlash) {
       defUnit.actor.setHitFlash(1.0, 0xff4d4d);
+    }
+
+    // Automatic Guest Companion Follow-Up Strike / Blessing (`Sensei Bob`, `Liana`, `Kai`, `Dad`, `Hana`, `Goddess Liana`)!
+    let assistSummary = '';
+    if (atkUnit.side === 'player' && defUnit.mon.hp > 0) {
+      const guest = getGuestCompanion(this.state);
+      if (guest) {
+        const assistDmg = Math.max(
+          4,
+          Math.round((5 + atkUnit.mon.level * 0.9) * (guest.assistPower || 1.0)),
+        );
+        defUnit.mon.hp = Math.max(0, Math.round(defUnit.mon.hp - assistDmg));
+        defUnit.displayHp = defUnit.mon.hp;
+        let guestHeal = 0;
+        if (guest.assistHealPct > 0 && atkUnit.mon.hp > 0 && atkUnit.mon.hp < atkUnit.mon.maxHp) {
+          guestHeal = Math.max(4, Math.round(atkUnit.mon.maxHp * guest.assistHealPct));
+          atkUnit.mon.hp = Math.min(atkUnit.mon.maxHp, atkUnit.mon.hp + guestHeal);
+          atkUnit.displayHp = atkUnit.mon.hp;
+        }
+        this._spawnAuraPillar(defUnit.homeX, defUnit.homeZ, guest.color || '#38bdf8', 0.55, defUnit.homeY);
+        const pAssist = this.renderer.projectToScreen(
+          new THREE.Vector3(
+            this.center.x + defUnit.homeX,
+            this.center.y + (defUnit.homeY || 0) + 2.55,
+            this.center.z + defUnit.homeZ,
+          ),
+        );
+        if (pAssist.visible && this.onFloatText) {
+          this.onFloatText(
+            pAssist.x,
+            pAssist.y,
+            `🤝 ${guest.assistName} -${assistDmg}${guestHeal > 0 ? ` · +${guestHeal} HP` : ''}!`,
+            guest.color || '#38bdf8',
+          );
+        }
+        assistSummary = ` · 🤝 ${guest.assistName} (-${assistDmg} HP${guestHeal > 0 ? `, +${guestHeal} Heal` : ''})`;
+      }
+    }
+
+    // Endgame Boss Phase Escalations (`Berserk Solar Patron` & `#20 King Monkezilla` Twin Core Stages)!
+    if (defUnit.side === 'enemy' && defUnit.mon.hp > 0) {
+      const hpFrac = defUnit.mon.hp / Math.max(1, defUnit.mon.maxHp);
+      if (this.trainerDef && this.trainerDef.id === 'boss_solar_betrayer' && !defUnit._solarMutated && hpFrac <= 0.65) {
+        defUnit._solarMutated = true;
+        this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fb923c', 1.05, defUnit.homeY);
+        this.bannerText = '⚡ RELIC OVERLOAD! Without the Heart, Solar Patron warps — unleashing Solar Flare!';
+      } else if (this.wildRef && this.wildRef.isFinalBoss) {
+        const curStage = defUnit._coreStage || 1;
+        if (curStage < 2 && hpFrac <= 0.68) {
+          defUnit._coreStage = 2;
+          this._spawnShockRing(defUnit, '#ef4444', '#fde047', 3.6, 0.55);
+          this.bannerText = '🚨 CORE STAGE 2 — "Cannons offline! Deploying SMASHER! unit!"';
+        } else if (curStage < 3 && hpFrac <= 0.35) {
+          defUnit._coreStage = 3;
+          this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, '#ef4444', 1.1, defUnit.homeY);
+          this.bannerText = '🔥 CORE STAGE 3 — "Optical systems degraded — LAUNCHING SMASHER!!"';
+        }
+      }
     }
 
     if (defUnit.side === 'enemy' && this.wildRef) {
@@ -803,36 +928,47 @@ export class BattleController {
     const isSuperEff = hit.effectiveness >= 1.35;
     const isResist = hit.effectiveness <= 0.75;
 
-    // 3. Trigger Supersonic Shader Impact Wave + Arena Floor Shockwave + Sparks + Camera Shake!
-    this._spawnImpactWave(
-      defUnit.homeX,
-      defUnit.homeZ,
-      elemColor,
-      isSuperEff ? '#fde047' : '#ffffff',
-      isSuperEff ? 4.4 : 3.4,
-    );
-    if (this.arenaGroup && this.arenaGroup.userData.triggerShockwave) {
-      this.arenaGroup.userData.triggerShockwave(defUnit.homeX, defUnit.homeZ, elemColor);
+    // 3. Shader hit burst on the defender's body (+ slash / slam accents), light flash, shake
+    const burstSize = isSuperEff ? 3.6 : 2.7;
+    this._spawnHitBurst(defUnit, elemColor, isSuperEff ? '#fde047' : '#ffffff', burstSize);
+    if (move.pattern === 'dash_strike') {
+      this._spawnSlashArc(defUnit, '#fef08a', '#ffffff', 2.4, atkUnit.side === 'player' ? 1 : -1);
+    } else if (move.pattern === 'jump_slam') {
+      this._spawnShockRing(defUnit, elemColor, '#ffffff', 3.4, 0.5);
+    }
+    if (typeof this.renderer.flashLight === 'function') {
+      this.renderer.flashLight(
+        this.center.x + defUnit.homeX,
+        this.center.y + (defUnit.homeY || 0) + 1.2,
+        this.center.z + defUnit.homeZ,
+        elemColor,
+        isSuperEff ? 3.2 : 2.0,
+        0.22,
+      );
     }
     if (isSuperEff) {
-      this._spawnAuraPillar(defUnit.homeX, defUnit.homeZ, '#fde047', 0.8);
+      this._spawnAuraPillar(defUnit.homeX, defUnit.homeZ, '#fde047', 0.8, defUnit.homeY);
       this.audio.playSfx('super_hit');
       if (this.renderer.triggerShake) this.renderer.triggerShake(0.28, 0.24);
-      this.narrationSub = `★ IT'S SUPER EFFECTIVE! (-${dmg} HP · ${defUnit.mon.hp}/${defUnit.mon.maxHp} left)`;
+      this.narrationSub = `★ IT'S SUPER EFFECTIVE! (-${dmg} HP${assistSummary} · ${defUnit.mon.hp}/${defUnit.mon.maxHp} left)`;
     } else if (isResist) {
       this.audio.playSfx('hit');
       if (this.renderer.triggerShake) this.renderer.triggerShake(0.12, 0.16);
-      this.narrationSub = `Not very effective... (-${dmg} HP · ${defUnit.mon.hp}/${defUnit.mon.maxHp} left)`;
+      this.narrationSub = `Not very effective... (-${dmg} HP${assistSummary} · ${defUnit.mon.hp}/${defUnit.mon.maxHp} left)`;
     } else {
       this.audio.playSfx('hit');
       if (this.renderer.triggerShake) this.renderer.triggerShake(0.18, 0.2);
-      this.narrationSub = `Direct hit for -${dmg} HP! (${defUnit.mon.hp}/${defUnit.mon.maxHp} HP left)`;
+      this.narrationSub = `Direct hit for -${dmg} HP!${assistSummary} (${defUnit.mon.hp}/${defUnit.mon.maxHp} HP left)`;
     }
 
-    this._spawnBurstParticles(defUnit.homeX, 0.9, defUnit.homeZ, elemColor, isSuperEff ? 18 : 12);
+    this._spawnBurstParticles(defUnit.homeX, (defUnit.homeY || 0) + 0.9, defUnit.homeZ, elemColor, isSuperEff ? 18 : 12);
 
     const pDef = this.renderer.projectToScreen(
-      new THREE.Vector3(this.center.x + defUnit.homeX, this.center.y + 1.9, this.center.z + defUnit.homeZ),
+      new THREE.Vector3(
+        this.center.x + defUnit.homeX,
+        this.center.y + (defUnit.homeY || 0) + 1.9,
+        this.center.z + defUnit.homeZ,
+      ),
     );
     if (pDef.visible && this.onFloatText) {
       const label = isSuperEff
@@ -895,7 +1031,11 @@ export class BattleController {
       secondaryColor: '#fef9c3',
       shadowRadius: 0.36,
     });
-    ballActor.root.position.set(this.center.x + PLAYER_SLOT.x - 1.5, this.center.y, this.center.z + PLAYER_SLOT.z);
+    ballActor.root.position.set(
+      this.center.x + PLAYER_SLOT.x - 1.5,
+      this.center.y + (this.playerUnit ? this.playerUnit.homeY || 0 : 0),
+      this.center.z + PLAYER_SLOT.z,
+    );
     this.sceneRoot.add(ballActor.root);
 
     this.audio.playSfx('throw_ball');
@@ -927,11 +1067,12 @@ export class BattleController {
     const mon = this.playerUnit.mon;
     const healAmt = Math.max(12, Math.round(mon.maxHp * 0.4));
     mon.hp = Math.min(mon.maxHp, mon.hp + healAmt);
+    this.playerUnit.displayHp = mon.hp;
     if (this.mode === 'wild') this.wildBerryFed = true;
 
-    this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, '#4ade80', 1.0);
+    this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, '#4ade80', 1.0, this.playerUnit ? this.playerUnit.homeY : 0);
     if (this.mode === 'wild') {
-      this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047', 0.85);
+      this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047', 0.85, this.enemyUnit ? this.enemyUnit.homeY : 0);
     }
 
     this.menuState = 'animating';
@@ -967,10 +1108,7 @@ export class BattleController {
         onStart: () => {
           this._spawnPlayerUnit(nextMon);
           const col = (ELEMENTS[this.playerUnit.species.element] || ELEMENTS.mug).color;
-          this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, col, 0.95);
-          if (this.arenaGroup && this.arenaGroup.userData.flareCombatant) {
-            this.arenaGroup.userData.flareCombatant('player', 1.4);
-          }
+          this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, col, 0.95, this.playerUnit ? this.playerUnit.homeY : 0);
         },
         onDone: () => {
           const enemyMove = this._pickEnemyMove();
@@ -994,7 +1132,7 @@ export class BattleController {
 
     if (lvInfo.levelsGained > 0) {
       this.audio.playSfx('level_up');
-      this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, '#fde047', 1.2);
+      this._spawnAuraPillar(PLAYER_SLOT.x, PLAYER_SLOT.z, '#fde047', 1.2, this.playerUnit ? this.playerUnit.homeY : 0);
     }
 
     const expLine =
@@ -1016,7 +1154,7 @@ export class BattleController {
           const nextFoe = this.enemyTeam[this.enemyIndex];
           this._spawnEnemyUnit(nextFoe);
           const eCol = (ELEMENTS[this.enemyUnit.species.element] || ELEMENTS.monster).color;
-          this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, eCol, 0.95);
+          this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, eCol, 0.95, this.enemyUnit ? this.enemyUnit.homeY : 0);
           this.stepQueue.push({
             duration: 1.05,
             text: `⚔️ ${this.trainerDef.name} sent out ${nextFoe.nickname} (Lv.${nextFoe.level})!`,
@@ -1092,49 +1230,75 @@ export class BattleController {
   }
 
   // =========================================================================
-  // 3D GLSL SHADER VFX HELPERS (Beams, Impact Shockwaves, Aura Pillars, Sparks)
+  // SHADER VFX HELPERS (camera-facing bursts / orbs / arcs / rings, aura pillars, sparks)
+  // All positions are battle-local (relative to `fxGroup` at the battle centre).
   // =========================================================================
 
-  _spawnShaderBeam(x0, z0, x1, z1, coreColor = '#ffffff', glowColor = '#38bdf8') {
-    if (!this.fxGroup) return;
-    const start = new THREE.Vector3(x0, 0.95, z0);
-    const end = new THREE.Vector3(x1, 0.95, z1);
-    const dir = new THREE.Vector3().subVectors(end, start);
-    const dist = Math.max(0.5, dir.length());
-
-    const mat = createElementalBeamShaderMaterial({ coreColor, glowColor, twist: 6.5 });
-    const mesh = new THREE.Mesh(SHARED_BEAM_GEO, mat);
-    mesh.position.copy(start);
-    mesh.scale.set(1.15, dist, 1.15);
-    mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir.clone().normalize());
-    this.fxGroup.add(mesh);
-
-    this.shaderBeams.push({ mesh, mat, t: 0, dur: 0.58 });
+  /** Chest-height local position of a combatant, including any lunge / jump offset. */
+  _unitFxPos(unit, lift = 0.95) {
+    return new THREE.Vector3(
+      unit.homeX + (unit.offsetX || 0),
+      (unit.homeY || 0) + (unit.offsetY || 0) + lift,
+      unit.homeZ + (unit.offsetZ || 0),
+    );
   }
 
-  _spawnImpactWave(lx, lz, color = '#fde047', accentColor = '#ffffff', maxRadius = 3.6) {
-    if (!this.fxGroup) return;
-    const mat = createBattleImpactWaveShaderMaterial({ color, accentColor });
-    const mesh = new THREE.Mesh(SHARED_WAVE_GEO, mat);
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.position.set(lx, 0.09, lz);
-    mesh.scale.setScalar(maxRadius * 2);
+  _addBillboard(mesh, mat, dur, extra = {}) {
     this.fxGroup.add(mesh);
-
-    this.shaderWaves.push({ mesh, mat, t: 0, dur: 0.62 });
+    orientBillboard(mesh, this.renderer.camera);
+    this.fxBillboards.push({ mesh, mat, t: 0, dur, ...extra });
   }
 
-  _spawnAuraPillar(lx, lz, glowColor = '#4ade80', dur = 0.85) {
+  /** Starburst hit flash centred on the defender's body. */
+  _spawnHitBurst(unit, color = '#fde047', accentColor = '#ffffff', size = 2.8) {
+    if (!this.fxGroup || !unit) return;
+    const mat = createHitBurstShaderMaterial({ color, accentColor, seed: Math.random() * 6.28 });
+    const mesh = makeBillboardQuad(mat, size);
+    mesh.position.copy(this._unitFxPos(unit, 0.95));
+    this._addBillboard(mesh, mat, 0.55);
+  }
+
+  /** Crescent slash across the defender (physical strikes). `flip` mirrors the sweep. */
+  _spawnSlashArc(unit, color = '#fef08a', accentColor = '#ffffff', size = 2.4, flip = 1) {
+    if (!this.fxGroup || !unit) return;
+    const mat = createSlashArcShaderMaterial({ color, accentColor, flip });
+    const mesh = makeBillboardQuad(mat, size);
+    mesh.position.copy(this._unitFxPos(unit, 1.0));
+    this._addBillboard(mesh, mat, 0.38);
+  }
+
+  /** Clean expanding ring (clap / slam shock) centred on a combatant, facing the camera. */
+  _spawnShockRing(unit, color = '#e9d5ff', accentColor = '#ffffff', size = 3.0, dur = 0.45) {
+    if (!this.fxGroup || !unit) return;
+    const mat = createShockRingShaderMaterial({ color, accentColor });
+    const mesh = makeBillboardQuad(mat, size);
+    mesh.position.copy(this._unitFxPos(unit, 0.9));
+    this._addBillboard(mesh, mat, dur);
+  }
+
+  /** Elemental energy orb that flies attacker → defender along a shallow arc with a comet tail. */
+  _spawnOrbProjectile(fromUnit, toUnit, color = '#38bdf8', coreColor = '#ffffff', flightDur = 0.3) {
+    if (!this.fxGroup || !fromUnit || !toUnit) return;
+    const mat = createEnergyOrbShaderMaterial({ color, coreColor });
+    const mesh = makeBillboardQuad(mat, 1.9);
+    const from = this._unitFxPos(fromUnit, 1.05);
+    const to = this._unitFxPos(toUnit, 1.0);
+    mesh.position.copy(from);
+    this._addBillboard(mesh, mat, flightDur + 0.08, { orb: { from, to, flightDur } });
+  }
+
+  _spawnAuraPillar(lx, lz, glowColor = '#4ade80', dur = 0.85, ly = 0) {
     if (!this.fxGroup) return;
     const mat = createElementalBeamShaderMaterial({
       coreColor: '#ffffff',
       glowColor,
       twist: 4.0,
     });
-    const geo = new THREE.CylinderGeometry(1.05, 1.25, 2.8, 24, 10, true);
-    geo.translate(0, 1.4, 0);
+    // Slim column: the camera is close now, so a wide bright pillar would hide the Monkemon.
+    const geo = new THREE.CylinderGeometry(0.58, 0.74, 2.3, 24, 10, true);
+    geo.translate(0, 1.15, 0);
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(lx, 0.05, lz);
+    mesh.position.set(lx, (ly || 0) + 0.05, lz);
     this.fxGroup.add(mesh);
 
     this.shaderPillars.push({ mesh, geo, mat, t: 0, dur });
@@ -1189,7 +1353,8 @@ export class BattleController {
       const x = startX + (targetX - startX) * u;
       const z = startZ + (targetZ - startZ) * u;
       const arcY = 0.8 * (1 - u) + Math.sin(u * Math.PI) * 2.85 + 0.25;
-      ca.ballActor.root.position.set(x, this.center.y, z);
+      const groundY = this.center.y + (this.playerUnit ? this.playerUnit.homeY || 0 : 0) * (1 - u) + (this.enemyUnit ? this.enemyUnit.homeY || 0 : 0) * u;
+      ca.ballActor.root.position.set(x, groundY, z);
       ca.ballActor.animRoot.position.y = arcY;
       ca.ballActor.animRoot.rotation.x += dt * 13;
 
@@ -1198,10 +1363,7 @@ export class BattleController {
         ca.t = 0;
         this.audio.playSfx('ball_bounce');
         if (this.enemyActor) this.enemyActor.root.visible = false;
-        this._spawnImpactWave(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047', '#ffffff', 3.4);
-        if (this.arenaGroup && this.arenaGroup.userData.triggerShockwave) {
-          this.arenaGroup.userData.triggerShockwave(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047');
-        }
+        this._spawnHitBurst(this.enemyUnit, '#fde047', '#ffffff', 3.0);
       }
       return;
     }
@@ -1219,8 +1381,8 @@ export class BattleController {
           this.narrationSub = `Wiggle ${ca.wigglesDone}...`;
         } else if (ca.caught) {
           this.audio.playSfx('catch_fanfare');
-          this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047', 1.1);
-          this._spawnBurstParticles(ENEMY_SLOT.x, 0.8, ENEMY_SLOT.z, '#fde047', 22);
+          this._spawnAuraPillar(ENEMY_SLOT.x, ENEMY_SLOT.z, '#fde047', 1.1, this.enemyUnit ? this.enemyUnit.homeY : 0);
+          this._spawnBurstParticles(ENEMY_SLOT.x, (this.enemyUnit ? this.enemyUnit.homeY || 0 : 0) + 0.8, ENEMY_SLOT.z, '#fde047', 22);
 
           const capturedMon = this.enemyUnit.mon;
           capturedMon.hp = capturedMon.maxHp;
@@ -1357,21 +1519,11 @@ export class BattleController {
     if (!this.active) return;
     this.time += dt;
 
-    if (this.arenaGroup && this.arenaGroup.userData.update) {
-      this.arenaGroup.userData.update(this.time);
-    }
-
     // Smoothly tween displayed HP values on both plaques!
     for (const unit of [this.playerUnit, this.enemyUnit]) {
       if (!unit) continue;
-      const targetHp = unit.mon.hp;
-      const diff = targetHp - unit.displayHp;
-      if (Math.abs(diff) > 0.05) {
-        const speed = Math.max(24, unit.mon.maxHp * 1.25);
-        unit.displayHp += Math.sign(diff) * Math.min(Math.abs(diff), speed * dt);
-      } else {
-        unit.displayHp = targetHp;
-      }
+      // Keep displayed HP directly synced with unit HP (CSS transition smoothly animates the bar)
+      unit.displayHp = unit.mon.hp;
 
       // Position & animate 3D Combatant Rig + Hit Flash & Flinch
       const prevFlash = unit.hitFlash || 0;
@@ -1383,7 +1535,7 @@ export class BattleController {
         const shakeX = unit.hitFlash > 0 ? Math.sin(this.time * 55) * 0.18 : 0;
         unit.actor.root.position.set(
           this.center.x + unit.homeX + unit.offsetX + shakeX,
-          this.center.y + unit.offsetY,
+          this.center.y + (unit.homeY || 0) + unit.offsetY,
           this.center.z + unit.homeZ + unit.offsetZ,
         );
         if (unit.actor.updateMotion) {
@@ -1397,45 +1549,55 @@ export class BattleController {
       }
     }
 
-    // Animate Rim Coaches (`ALEX` & Rival Trainer)
+    // Animate the trainers standing behind their Monkemon (both face the foe's side)
     this.heroCheerTimer = Math.max(0, this.heroCheerTimer - dt);
     this.rivalCheerTimer = Math.max(0, this.rivalCheerTimer - dt);
     if (this.heroCoachActor && this.heroCoachActor.updateMotion) {
       this.heroCoachActor.updateMotion(dt, {
-        targetYaw: Math.PI * 0.42,
+        targetYaw: Math.atan2(ENEMY_SLOT.x - HERO_COACH_SLOT.x, ENEMY_SLOT.z - HERO_COACH_SLOT.z),
         moveSpeed: 0,
         cheer: this.heroCheerTimer > 0 ? 1.0 : 0.2,
       });
     }
+    if (this.companionCoachActor && this.companionCoachActor.updateMotion) {
+      this.companionCoachActor.updateMotion(dt, {
+        targetYaw: Math.atan2(ENEMY_SLOT.x - COMPANION_COACH_SLOT.x, ENEMY_SLOT.z - COMPANION_COACH_SLOT.z),
+        moveSpeed: 0,
+        cheer: this.heroCheerTimer > 0 ? 1.0 : 0.35,
+      });
+    }
     if (this.rivalCoachActor && this.rivalCoachActor.updateMotion) {
       this.rivalCoachActor.updateMotion(dt, {
-        targetYaw: -Math.PI * 0.42,
+        targetYaw: Math.atan2(PLAYER_SLOT.x - RIVAL_COACH_SLOT.x, PLAYER_SLOT.z - RIVAL_COACH_SLOT.z),
         moveSpeed: 0,
         cheer: this.rivalCheerTimer > 0 ? 1.0 : 0.2,
       });
     }
 
-    // Update Active 3D Shader Beams, Shockwaves, Aura Pillars & Particles!
-    for (let i = this.shaderBeams.length - 1; i >= 0; i--) {
-      const b = this.shaderBeams[i];
-      b.t += dt;
-      b.mat.uniforms.uTime.value = this.time;
-      b.mat.uniforms.uProgress.value = Math.min(1, b.t / b.dur);
-      if (b.t >= b.dur) {
-        if (this.fxGroup) this.fxGroup.remove(b.mesh);
-        b.mat.dispose();
-        this.shaderBeams.splice(i, 1);
+    // Update camera-facing shader effects (bursts, arcs, rings, flying orbs)
+    const cam = this.renderer.camera;
+    for (let i = this.fxBillboards.length - 1; i >= 0; i--) {
+      const fx = this.fxBillboards[i];
+      fx.t += dt;
+      const u = Math.min(1, fx.t / fx.dur);
+      if (fx.mat.uniforms.uTime) fx.mat.uniforms.uTime.value = this.time;
+      if (fx.mat.uniforms.uProgress) fx.mat.uniforms.uProgress.value = u;
+      if (fx.orb) {
+        // Shallow arc from attacker to defender; tail points away from the travel direction
+        const f = Math.min(1, fx.t / fx.orb.flightDur);
+        fx.mesh.position.lerpVectors(fx.orb.from, fx.orb.to, f);
+        fx.mesh.position.y += Math.sin(f * Math.PI) * 0.7;
+        if (fx.mat.uniforms.uDir && cam) {
+          const fromW = fx.orb.from.clone().add(this.fxGroup.position);
+          const toW = fx.orb.to.clone().add(this.fxGroup.position);
+          screenSpaceDirection(fromW, toW, cam, fx.mat.uniforms.uDir.value);
+        }
       }
-    }
-
-    for (let i = this.shaderWaves.length - 1; i >= 0; i--) {
-      const w = this.shaderWaves[i];
-      w.t += dt;
-      w.mat.uniforms.uProgress.value = Math.min(1, w.t / w.dur);
-      if (w.t >= w.dur) {
-        if (this.fxGroup) this.fxGroup.remove(w.mesh);
-        w.mat.dispose();
-        this.shaderWaves.splice(i, 1);
+      orientBillboard(fx.mesh, cam);
+      if (fx.t >= fx.dur) {
+        if (this.fxGroup) this.fxGroup.remove(fx.mesh);
+        fx.mat.dispose();
+        this.fxBillboards.splice(i, 1);
       }
     }
 
@@ -1538,9 +1700,9 @@ export class BattleController {
 
   cleanupSceneObjects() {
     for (const obj of [
-      this.arenaGroup,
       this.fxGroup,
       this.heroCoachActor && this.heroCoachActor.root,
+      this.companionCoachActor && this.companionCoachActor.root,
       this.rivalCoachActor && this.rivalCoachActor.root,
       this.playerActor && this.playerActor.root,
       this.enemyActor && this.enemyActor.root,
@@ -1548,15 +1710,20 @@ export class BattleController {
     ]) {
       if (obj) this.sceneRoot.remove(obj);
     }
-    this.arenaGroup = null;
+    for (const fx of this.fxBillboards) fx.mat.dispose();
+    for (const p of this.shaderPillars) {
+      p.geo.dispose();
+      p.mat.dispose();
+    }
+    for (const pt of this.particles) pt.mat.dispose();
     this.fxGroup = null;
     this.heroCoachActor = null;
+    this.companionCoachActor = null;
     this.rivalCoachActor = null;
     this.playerActor = null;
     this.enemyActor = null;
     this.catchAnim = null;
-    this.shaderBeams = [];
-    this.shaderWaves = [];
+    this.fxBillboards = [];
     this.shaderPillars = [];
     this.particles = [];
   }

@@ -127,9 +127,9 @@ def _run_forge_job(job_id: str, name: str, element: str, prompt: str, zone_id: s
         req = Trellis2Request(
             image_paths=[concept_path],
             output_glb_path=glb_path,
-            preset="lowpoly",
-            decimation_target=8500,
-            texture_size=1024,
+            preset="hero",
+            decimation_target=30000,
+            texture_size=2048,
             seed=int(time.time()) % 10000,
             prompt_metadata={"name": name, "element": element, "prompt": prompt},
         )

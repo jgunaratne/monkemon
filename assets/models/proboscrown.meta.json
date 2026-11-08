@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:466e3d4f-7429-4bdf-b8c6-afae21df9e82",
+  "job_id": "STEP_ID_TRELLIS2:d200c1ee-a449-4ffd-9e3f-923f48904fa2",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 36.82,
+  "elapsed_seconds": 54.18,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/proboscrown.concept.png"
   ],
   "input_sha256_prefix": [
     "fcaebabf97a45cdf"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 210,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "regal coral-pink and turquoise sea-monkey proboscis creature wearing iridescent spiral seashell shoulder armor, a small golden pearl crown, and holding a miniature coral reed scepter",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/proboscrown.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/proboscrown.glb",
-    "file_size_bytes": 2891892,
+    "file_size_bytes": 9911320,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 8593,
-    "triangle_count": 8476,
+    "vertex_count": 26496,
+    "triangle_count": 28850,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.34121,
-      -0.49624,
-      -0.49806
+      -0.33541,
+      -0.49994,
+      -0.49838
     ],
     "bbox_max": [
-      0.33994,
-      0.49767,
-      0.4999
+      0.33544,
+      0.50019,
+      0.50072
     ],
     "bbox_extents": [
-      0.68115,
-      0.99391,
-      0.99796
+      0.67085,
+      1.00013,
+      0.9991
     ]
   }
 }

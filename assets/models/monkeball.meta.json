@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:fa456a49-e2e6-462f-83b6-c104158313d0",
+  "job_id": "STEP_ID_TRELLIS2:78ed91f8-7cfd-4c1c-9cad-2f0d48a0985d",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 124.45,
+  "elapsed_seconds": 132.94,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/monkeball.concept.png"
   ],
   "input_sha256_prefix": [
     "4a9c074280efe46a"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 401,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 6500,
-    "texture_size": 1024
+    "decimation_target": 22000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "adorable spherical red-and-cream glossy toy capture ball shaped like a smiling happy monkey face with two round monkey ears on the sides, shiny black button eyes, cheerful open grin, and golden clasp band",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/monkeball.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/monkeball.glb",
-    "file_size_bytes": 2477364,
+    "file_size_bytes": 9253292,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 5821,
-    "triangle_count": 6355,
+    "vertex_count": 18979,
+    "triangle_count": 21604,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.48614,
-      -0.49643,
-      -0.49111
+      -0.48769,
+      -0.49697,
+      -0.49997
     ],
     "bbox_max": [
-      0.48355,
-      0.49701,
-      0.49366
+      0.48785,
+      0.49842,
+      0.49878
     ],
     "bbox_extents": [
-      0.96969,
-      0.99344,
-      0.98477
+      0.97554,
+      0.99539,
+      0.99875
     ]
   }
 }

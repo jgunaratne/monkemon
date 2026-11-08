@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:2f153fae-8962-488c-8dd9-484f44c79cc5",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 114.06,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_potted_plant.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "281bcf3ca6c9c7fb"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 619,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 22000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "decorative glazed terracotta planter pot with relief patterns holding a lush tropical monstera and palm indoor plant accented by bright pink hibiscus blossoms",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_potted_plant.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_potted_plant.glb",
+    "file_size_bytes": 10554824,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 23150,
+    "triangle_count": 20817,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.32936,
+      -0.5009,
+      -0.35001
+    ],
+    "bbox_max": [
+      0.34483,
+      0.49897,
+      0.34448
+    ],
+    "bbox_extents": [
+      0.67419,
+      0.99987,
+      0.69449
+    ]
+  }
+}

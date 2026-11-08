@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:81e05ef5-6fbd-427a-9ccd-b37bf0b09007",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 74.67,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_sky_vine_pillar.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "78bc181abd0b1199"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 605,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 30000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "towering ancient carved ivory-and-gold celestial temple column wrapped in thick spiraling emerald-green sky-vines with glowing golden blossoms, stepped golden rune pedestal base",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_sky_vine_pillar.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_sky_vine_pillar.glb",
+    "file_size_bytes": 11656856,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 30261,
+    "triangle_count": 28076,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.17501,
+      -0.50097,
+      -0.17505
+    ],
+    "bbox_max": [
+      0.17499,
+      0.49768,
+      0.17519
+    ],
+    "bbox_extents": [
+      0.35,
+      0.99865,
+      0.35024
+    ]
+  }
+}

@@ -10,6 +10,7 @@
 // - `createHoloArenaShaderMaterial`: Animated tactical holographic battle field shader.
 
 import * as THREE from 'three';
+import { GLSL_NOISE, GLSL_CLOUD_SHADOW } from './atmosphere.js';
 
 /**
  * Shared JS + GLSL Organic Island Coastline Radius (normalized around `(halfW, halfD)` ellipse).
@@ -37,28 +38,34 @@ export function createOceanMagmaShaderMaterial({
   deepColor = '#0a4a78',
   skyColor = '#9be4ff',
   fogColor = '#9be4ff',
-  fogNear = 38,
-  fogFar = 86,
+  fogNear = 88,
+  fogFar = 175,
   sunDir = new THREE.Vector3(0.45, 0.78, 0.42).normalize(),
+  sunColor = '#fff4d6',
   islandHalfW = 24,
   islandHalfD = 20,
   coastParams = [0.1, 0.08, 0.05, 0.7],
   lobeDirs = [],
   theme = 'tropical',
+  normalMap = null,
+  seabedMap = null,
+  seabedColor = '#e8d3a0',
+  cloudCoverage = 0.46,
+  cloudShadowStrength = 0.3,
+  reflectionStrength = 0.85,
+  quality = 2,
 }) {
   const isVolcano = theme === 'volcano';
   const isSnow = theme === 'snow';
 
   const shallow = new THREE.Color(waterColor);
-  const deep = new THREE.Color(
-    isVolcano ? '#290d06' : isSnow ? '#1e567c' : deepColor,
-  );
+  const deep = new THREE.Color(isVolcano ? '#290d06' : isSnow ? '#1e567c' : deepColor);
   const sky = new THREE.Color(skyColor);
   const fogC = new THREE.Color(fogColor);
   const lobesPadded = [-99, -99, -99, -99];
   for (let i = 0; i < Math.min(4, lobeDirs.length); i++) lobesPadded[i] = lobeDirs[i];
 
-  return new THREE.ShaderMaterial({
+  const mat = new THREE.ShaderMaterial({
     uniforms: {
       uTime: { value: 0 },
       uShallowColor: { value: shallow },
@@ -68,6 +75,7 @@ export function createOceanMagmaShaderMaterial({
       uFogNear: { value: fogNear },
       uFogFar: { value: fogFar },
       uSunDir: { value: sunDir.clone().normalize() },
+      uSunColor: { value: new THREE.Color(sunColor) },
       uIslandHalf: { value: new THREE.Vector2(islandHalfW + 0.9, islandHalfD + 0.9) },
       uCoastParams: {
         value: new THREE.Vector4(
@@ -81,28 +89,59 @@ export function createOceanMagmaShaderMaterial({
         value: new THREE.Vector4(lobesPadded[0], lobesPadded[1], lobesPadded[2], lobesPadded[3]),
       },
       uIsVolcano: { value: isVolcano ? 1.0 : 0.0 },
+      uNormalMap: { value: normalMap },
+      uNormalStrength: { value: 0.0 },
+      uSeabedMap: { value: seabedMap },
+      uSeabedStrength: { value: 0.0 },
+      uSeabedColor: { value: new THREE.Color(seabedColor) },
+      uReflectionMap: { value: null },
+      uReflectionMatrix: { value: new THREE.Matrix4() },
+      uHasReflection: { value: 0.0 },
+      uReflectionStrength: { value: reflectionStrength },
+      uCloudCoverage: { value: cloudCoverage },
+      uCloudShadow: { value: cloudShadowStrength },
+      uHorizonFade: { value: new THREE.Vector2(112.0, 156.0) },
+      uQuality: { value: quality },
     },
     vertexShader: /* glsl */ `
       uniform float uTime;
       uniform float uIsVolcano;
+      uniform mat4 uReflectionMatrix;
       varying vec3 vWorldPos;
       varying vec3 vWaveNormal;
       varying float vFogDepth;
+      varying float vCrest;
+      varying vec4 vReflectCoord;
+
+      // Three-direction Gerstner swell: horizontal + vertical displacement, analytic normal
+      void gerstner(vec2 dir, float wavelength, float steepness, float speed, vec2 xz, float t,
+                    inout vec3 disp, inout vec3 tangentAcc, inout vec3 binormalAcc) {
+        float k = 6.2831853 / wavelength;
+        float a = steepness / k;
+        float f = k * (dot(dir, xz) - speed * t);
+        float s = sin(f);
+        float c = cos(f);
+        disp += vec3(dir.x * a * c, a * s, dir.y * a * c);
+        tangentAcc += vec3(-dir.x * dir.x * steepness * s, dir.x * steepness * c, -dir.x * dir.y * steepness * s);
+        binormalAcc += vec3(-dir.x * dir.y * steepness * s, dir.y * steepness * c, -dir.y * dir.y * steepness * s);
+      }
 
       void main() {
         vec4 wp = modelMatrix * vec4(position, 1.0);
-        float speed = uIsVolcano > 0.5 ? 0.85 : 1.75;
-        float amp = uIsVolcano > 0.5 ? 0.055 : 0.11;
-
-        float w1 = sin(wp.x * 0.34 + uTime * speed) * cos(wp.z * 0.28 + uTime * speed * 0.82);
-        float w2 = sin((wp.x * 0.62 - wp.z * 0.51) + uTime * speed * 1.35) * 0.5;
-        wp.y += (w1 + w2) * amp;
-
-        // Analytical wave slope for vertex normal base
-        float dx = cos(wp.x * 0.34 + uTime * speed) * 0.34 * amp;
-        float dz = -sin(wp.z * 0.28 + uTime * speed * 0.82) * 0.28 * amp;
-        vWaveNormal = normalize(vec3(-dx, 1.0, -dz));
+        float speedMul = uIsVolcano > 0.5 ? 0.35 : 1.0;
+        float ampMul = uIsVolcano > 0.5 ? 0.45 : 1.0;
+        vec3 disp = vec3(0.0);
+        vec3 tangent = vec3(1.0, 0.0, 0.0);
+        vec3 binormal = vec3(0.0, 0.0, 1.0);
+        float t = uTime * speedMul;
+        gerstner(normalize(vec2(0.82, 0.57)), 9.5, 0.085 * ampMul, 1.9, wp.xz, t, disp, tangent, binormal);
+        gerstner(normalize(vec2(-0.35, 0.94)), 5.8, 0.07 * ampMul, 1.45, wp.xz, t, disp, tangent, binormal);
+        gerstner(normalize(vec2(0.55, -0.83)), 3.4, 0.055 * ampMul, 1.1, wp.xz, t, disp, tangent, binormal);
+        wp.xyz += disp;
+        vWaveNormal = normalize(cross(binormal, tangent));
+        vCrest = disp.y;
         vWorldPos = wp.xyz;
+        vReflectCoord = uReflectionMatrix * vec4(wp.xyz, 1.0);
 
         vec4 mvPosition = viewMatrix * wp;
         vFogDepth = -mvPosition.z;
@@ -118,20 +157,32 @@ export function createOceanMagmaShaderMaterial({
       uniform float uFogNear;
       uniform float uFogFar;
       uniform vec3 uSunDir;
+      uniform vec3 uSunColor;
       uniform vec2 uIslandHalf;
       uniform vec4 uCoastParams;
       uniform vec4 uLobeDirs;
       uniform float uIsVolcano;
+      uniform sampler2D uNormalMap;
+      uniform float uNormalStrength;
+      uniform sampler2D uSeabedMap;
+      uniform float uSeabedStrength;
+      uniform vec3 uSeabedColor;
+      uniform sampler2D uReflectionMap;
+      uniform float uHasReflection;
+      uniform float uReflectionStrength;
+      uniform float uCloudCoverage;
+      uniform float uCloudShadow;
+      uniform vec2 uHorizonFade;
+      uniform float uQuality;
 
       varying vec3 vWorldPos;
       varying vec3 vWaveNormal;
       varying float vFogDepth;
+      varying float vCrest;
+      varying vec4 vReflectCoord;
 
-      float hash21(vec2 p) {
-        p = fract(p * vec2(123.34, 456.21));
-        p += dot(p, p + 45.32);
-        return fract(p.x * p.y);
-      }
+      ${GLSL_NOISE}
+      ${GLSL_CLOUD_SHADOW}
 
       // Fast cellular caustic / magma crack pattern
       float voronoiCaustic(vec2 uv, float t) {
@@ -141,7 +192,7 @@ export function createOceanMagmaShaderMaterial({
         for (int y = -1; y <= 1; y++) {
           for (int x = -1; x <= 1; x++) {
             vec2 lattice = vec2(float(x), float(y));
-            float h = hash21(g + lattice);
+            float h = mkHash21(g + lattice);
             vec2 offset = 0.5 + 0.42 * sin(t + 6.2831 * vec2(h, fract(h * 17.3)));
             float d = length(lattice + offset - f);
             minDist = min(minDist, d);
@@ -151,8 +202,7 @@ export function createOceanMagmaShaderMaterial({
       }
 
       float wrapAngleDiff(float a, float b) {
-        float d = mod(a - b + 3.14159265, 6.2831853) - 3.14159265;
-        return d;
+        return mod(a - b + 3.14159265, 6.2831853) - 3.14159265;
       }
 
       float organicCoastShoreDist(vec2 xz) {
@@ -162,26 +212,23 @@ export function createOceanMagmaShaderMaterial({
           + uCoastParams.x * cos(2.0 * theta + uCoastParams.w)
           + uCoastParams.y * sin(3.0 * theta - uCoastParams.w * 1.35)
           + uCoastParams.z * cos(5.0 * theta + uCoastParams.w * 2.1);
-
-        if (uLobeDirs.x > -50.0) {
-          float d0 = wrapAngleDiff(theta, uLobeDirs.x);
-          rNorm = max(rNorm, 1.03 * exp(-(d0 * d0) / 0.11));
-        }
-        if (uLobeDirs.y > -50.0) {
-          float d1 = wrapAngleDiff(theta, uLobeDirs.y);
-          rNorm = max(rNorm, 1.03 * exp(-(d1 * d1) / 0.11));
-        }
-        if (uLobeDirs.z > -50.0) {
-          float d2 = wrapAngleDiff(theta, uLobeDirs.z);
-          rNorm = max(rNorm, 1.03 * exp(-(d2 * d2) / 0.11));
-        }
-        if (uLobeDirs.w > -50.0) {
-          float d3 = wrapAngleDiff(theta, uLobeDirs.w);
-          rNorm = max(rNorm, 1.03 * exp(-(d3 * d3) / 0.11));
-        }
+        if (uLobeDirs.x > -50.0) { float d0 = wrapAngleDiff(theta, uLobeDirs.x); rNorm = max(rNorm, 1.03 * exp(-(d0 * d0) / 0.11)); }
+        if (uLobeDirs.y > -50.0) { float d1 = wrapAngleDiff(theta, uLobeDirs.y); rNorm = max(rNorm, 1.03 * exp(-(d1 * d1) / 0.11)); }
+        if (uLobeDirs.z > -50.0) { float d2 = wrapAngleDiff(theta, uLobeDirs.z); rNorm = max(rNorm, 1.03 * exp(-(d2 * d2) / 0.11)); }
+        if (uLobeDirs.w > -50.0) { float d3 = wrapAngleDiff(theta, uLobeDirs.w); rNorm = max(rNorm, 1.03 * exp(-(d3 * d3) / 0.11)); }
         rNorm = clamp(rNorm, 0.72, 1.16);
         float avgScale = 0.5 * (uIslandHalf.x + uIslandHalf.y);
         return (length(normP) - rNorm) * avgScale;
+      }
+
+      vec3 sampleWaterNormal(vec2 xz) {
+        // Dual-scrolling tileable ripple normal map in world space (OpenGL convention: xy tangent, z up)
+        vec2 uv1 = xz * 0.11 + uTime * vec2(0.021, 0.013);
+        vec2 uv2 = xz * 0.047 - uTime * vec2(0.012, 0.018);
+        vec3 n1 = texture2D(uNormalMap, uv1).xyz * 2.0 - 1.0;
+        vec3 n2 = texture2D(uNormalMap, uv2).xyz * 2.0 - 1.0;
+        vec2 blend = (n1.xy * 0.65 + n2.xy * 0.5) * uNormalStrength;
+        return normalize(vec3(blend.x, 1.0, blend.y));
       }
 
       void main() {
@@ -194,71 +241,218 @@ export function createOceanMagmaShaderMaterial({
           float cell = voronoiCaustic(flowUv, uTime * 0.55);
           float crack = smoothstep(0.36, 0.04, cell);
           float pulse = 0.85 + 0.15 * sin(uTime * 2.6 + xz.x * 0.4);
-
           vec3 crust = vec3(0.11, 0.08, 0.07);
           vec3 lavaMid = vec3(0.94, 0.34, 0.06);
           vec3 lavaCore = vec3(1.0, 0.88, 0.32);
-
           vec3 col = mix(crust, lavaMid, smoothstep(0.12, 0.65, crack));
           col = mix(col, lavaCore, smoothstep(0.62, 0.96, crack) * pulse);
-
-          // Glowing shoreline heat rim around volcanic island base
+          // Crust plates catch a dim sky reflection at grazing angles
+          vec3 Vv = normalize(cameraPosition - vWorldPos);
+          float fres = pow(1.0 - max(dot(vec3(0.0, 1.0, 0.0), Vv), 0.0), 5.0);
+          col = mix(col, uSkyColor * 0.35, fres * 0.25 * (1.0 - crack));
           float rimHeat = exp(-max(0.0, shoreDist) * 0.55);
           col += vec3(1.0, 0.48, 0.1) * rimHeat * (0.65 + 0.25 * sin(uTime * 3.2 - shoreDist * 2.0));
-
-          float fogFactor = smoothstep(uFogNear, uFogFar, vFogDepth);
-          col = mix(col, uFogColor, fogFactor * 0.85);
+          float fogFactor = smoothstep(uFogNear, uFogFar, vFogDepth) * 0.85;
+          fogFactor = max(fogFactor, smoothstep(uHorizonFade.x, uHorizonFade.y, vFogDepth));
+          col = mix(col, uFogColor, fogFactor);
           gl_FragColor = vec4(col, 1.0);
+          #include <tonemapping_fragment>
+          #include <colorspace_fragment>
           return;
         }
 
-        // Dual scrolling micro-ripple normal perturbation
-        vec2 uv1 = xz * 0.42 + vec2(uTime * 0.22, uTime * 0.16);
-        vec2 uv2 = xz * 0.67 + vec2(-uTime * 0.18, uTime * 0.25);
-        float n1x = sin(uv1.x * 3.1 + cos(uv1.y * 2.7));
-        float n1z = cos(uv1.y * 3.3 + sin(uv1.x * 2.5));
-        float n2x = cos(uv2.x * 4.1 - uv2.y * 2.9);
-        float n2z = sin(uv2.y * 3.9 + uv2.x * 3.2);
-
-        vec3 N = normalize(vWaveNormal + vec3((n1x + n2x * 0.6) * 0.11, 0.0, (n1z + n2z * 0.6) * 0.11));
+        // --- Surface normal: Gerstner swell + tileable ripple normal map (+ sine fallback while loading) ---
+        vec3 N = vWaveNormal;
+        if (uNormalStrength > 0.001) {
+          vec3 nm = sampleWaterNormal(xz);
+          N = normalize(vec3(N.x + nm.x, N.y, N.z + nm.z));
+        } else {
+          vec2 uv1 = xz * 0.42 + vec2(uTime * 0.22, uTime * 0.16);
+          vec2 uv2 = xz * 0.67 + vec2(-uTime * 0.18, uTime * 0.25);
+          float n1x = sin(uv1.x * 3.1 + cos(uv1.y * 2.7));
+          float n1z = cos(uv1.y * 3.3 + sin(uv1.x * 2.5));
+          float n2x = cos(uv2.x * 4.1 - uv2.y * 2.9);
+          float n2z = sin(uv2.y * 3.9 + uv2.x * 3.2);
+          N = normalize(N + vec3((n1x + n2x * 0.6) * 0.11, 0.0, (n1z + n2z * 0.6) * 0.11));
+        }
         vec3 V = normalize(cameraPosition - vWorldPos);
         vec3 H = normalize(uSunDir + V);
+        float NdotV = max(dot(N, V), 0.0);
 
-        // Shallow shelf -> deep ocean color absorption
+        // --- Analytic water depth from the organic coastline SDF ---
+        float depthM = mix(0.06, 3.8, smoothstep(-1.2, 13.0, shoreDist));
         float shelfFactor = exp(-max(0.0, shoreDist) * 0.16);
-        vec3 baseWater = mix(uDeepColor, uShallowColor, shelfFactor);
 
-        // Animated cellular caustics visible in clear shallow shelf water
-        float c1 = voronoiCaustic(xz * 0.52 + N.xz * 0.35, uTime * 0.95);
-        float caustic = pow(clamp(c1 * 1.18, 0.0, 1.0), 3.6);
-        baseWater += vec3(0.36, 0.88, 0.98) * caustic * (0.18 + 0.42 * shelfFactor);
+        // --- Refracted sandy seabed with caustics, absorbed by Beer-Lambert through the water column ---
+        vec3 absorb = vec3(1.05, 0.42, 0.26);
+        vec3 transmit = exp(-depthM * absorb);
+        vec2 refractUv = xz * 0.34 + N.xz * (0.35 + depthM * 0.25);
+        vec3 seabed = uSeabedColor;
+        if (uSeabedStrength > 0.001) {
+          seabed = mix(uSeabedColor, texture2D(uSeabedMap, refractUv).rgb * 1.05, uSeabedStrength);
+        }
+        float caustic;
+        if (uQuality > 0.5) {
+          float c1 = voronoiCaustic(xz * 0.52 + N.xz * 0.35, uTime * 0.95);
+          caustic = pow(clamp(c1 * 1.18, 0.0, 1.0), 3.6);
+        } else {
+          // Mobile: two scrolling sine ridges instead of the 9-cell Voronoi search
+          vec2 cu = xz * 0.9 + N.xz * 0.5;
+          float s1 = 0.5 + 0.5 * sin(cu.x * 3.1 + cos(cu.y * 2.6 + uTime * 1.4) + uTime * 0.9);
+          float s2 = 0.5 + 0.5 * sin(cu.y * 3.4 - cos(cu.x * 2.2 - uTime * 1.1) - uTime * 0.7);
+          caustic = pow(s1 * s2, 2.2);
+        }
+        seabed += vec3(0.42, 0.84, 0.95) * caustic * (0.35 + 0.45 * exp(-depthM * 0.9));
+        vec3 waterBody = mix(uDeepColor, uShallowColor, shelfFactor * 0.55);
+        vec3 col = mix(waterBody, seabed * uShallowColor * 1.35, transmit);
+        // Sub-surface turquoise glow in sunlit shallows
+        col += uShallowColor * 0.18 * exp(-depthM * 1.4) * max(dot(N, uSunDir), 0.0);
 
-        // Schlick Fresnel sky reflection
-        float fresnel = 0.04 + 0.96 * pow(1.0 - max(dot(N, V), 0.0), 4.2);
-        vec3 col = mix(baseWater, uSkyColor * 1.04, clamp(fresnel * 0.68, 0.0, 0.72));
+        // --- Fresnel sky / planar scene reflection ---
+        float fresnel = 0.03 + 0.97 * pow(1.0 - NdotV, 4.6);
+        vec3 reflCol = uSkyColor * 1.04;
+        if (uHasReflection > 0.5) {
+          vec2 ruv = vReflectCoord.xy / max(vReflectCoord.w, 1e-4);
+          ruv += N.xz * 0.055;
+          ruv = clamp(ruv, vec2(0.002), vec2(0.998));
+          vec3 mirrored = texture2D(uReflectionMap, ruv).rgb;
+          reflCol = mix(reflCol, mirrored, uReflectionStrength);
+        }
+        col = mix(col, reflCol, clamp(fresnel * 0.82, 0.0, 0.86));
 
-        // Crisp sparkling solar specular highlights
-        float specTight = pow(max(dot(N, H), 0.0), 140.0);
-        float specBroad = pow(max(dot(N, H), 0.0), 26.0);
-        col += vec3(1.0, 0.97, 0.86) * (specTight * 1.35 + specBroad * 0.16);
+        // --- Crisp sparkling solar glints + broad sheen ---
+        float specTight = pow(max(dot(N, H), 0.0), 220.0);
+        float specBroad = pow(max(dot(N, H), 0.0), 28.0);
+        col += uSunColor * (specTight * 1.6 + specBroad * 0.14);
 
-        // Animated multi-band breaking shoreline surf foam around island cliff!
+        // --- Whitecaps on steep crests + animated multi-band breaking surf around the island ---
+        float cap = smoothstep(0.085, 0.16, vCrest) * smoothstep(0.985, 0.955, N.y);
+        col = mix(col, vec3(0.96, 0.99, 1.0), cap * 0.6);
         if (shoreDist > -0.8 && shoreDist < 4.2) {
           float waveOsc = sin(shoreDist * 3.4 - uTime * 3.1 + sin(xz.x * 0.8 + xz.y * 0.8) * 0.9);
           float primarySurf = smoothstep(0.65, 0.0, abs(shoreDist - 0.35 - 0.22 * sin(uTime * 2.1 + xz.x * 0.5)));
           float secondaryRipple = smoothstep(0.55, 0.92, waveOsc) * exp(-max(0.0, shoreDist) * 0.62);
-          float foamMask = clamp(primarySurf * 0.92 + secondaryRipple * 0.68, 0.0, 1.0);
+          float foamTex = 0.55 + 0.45 * mkNoise2D(xz * 2.6 + uTime * 0.4);
+          float foamMask = clamp((primarySurf * 0.92 + secondaryRipple * 0.68) * foamTex, 0.0, 1.0);
           col = mix(col, vec3(0.95, 0.99, 1.0), foamMask);
         }
 
+        // --- Drifting cumulus shadows matching the sky (skipped on the software tier) ---
+        if (uCloudShadow > 0.001) {
+          col *= mkCloudShadow(xz * 3.6, uTime * 2.4, uCloudCoverage, uCloudShadow);
+        }
+
         float fogFactor = smoothstep(uFogNear, uFogFar, vFogDepth);
+        // Always dissolve into the horizon colour before the far plane so the ocean plane edge never shows
+        fogFactor = max(fogFactor, smoothstep(uHorizonFade.x, uHorizonFade.y, vFogDepth));
         col = mix(col, uFogColor, fogFactor);
         gl_FragColor = vec4(col, 1.0);
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
       }
     `,
   });
+  mat.userData.setNormalMap = (tex) => {
+    mat.uniforms.uNormalMap.value = tex;
+    mat.uniforms.uNormalStrength.value = tex ? 1.0 : 0.0;
+  };
+  mat.userData.setSeabedMap = (tex) => {
+    mat.uniforms.uSeabedMap.value = tex;
+    mat.uniforms.uSeabedStrength.value = tex ? 1.0 : 0.0;
+  };
+  return mat;
 }
 
+/** Shared organic island coastline SDF (GLSL) – needs `uIslandHalf`, `uCoastParams`, `uLobeDirs` uniforms. */
+export const GLSL_COAST_SDF = /* glsl */ `
+  float mkWrapAngleDiff(float a, float b) {
+    return mod(a - b + 3.14159265, 6.2831853) - 3.14159265;
+  }
+  float mkCoastShoreDist(vec2 xz, vec2 islandHalf, vec4 coastParams, vec4 lobeDirs) {
+    vec2 normP = xz / max(vec2(1.0), islandHalf);
+    float theta = atan(normP.y, normP.x);
+    float rNorm = 0.96
+      + coastParams.x * cos(2.0 * theta + coastParams.w)
+      + coastParams.y * sin(3.0 * theta - coastParams.w * 1.35)
+      + coastParams.z * cos(5.0 * theta + coastParams.w * 2.1);
+    if (lobeDirs.x > -50.0) { float d = mkWrapAngleDiff(theta, lobeDirs.x); rNorm = max(rNorm, 1.03 * exp(-(d * d) / 0.11)); }
+    if (lobeDirs.y > -50.0) { float d = mkWrapAngleDiff(theta, lobeDirs.y); rNorm = max(rNorm, 1.03 * exp(-(d * d) / 0.11)); }
+    if (lobeDirs.z > -50.0) { float d = mkWrapAngleDiff(theta, lobeDirs.z); rNorm = max(rNorm, 1.03 * exp(-(d * d) / 0.11)); }
+    if (lobeDirs.w > -50.0) { float d = mkWrapAngleDiff(theta, lobeDirs.w); rNorm = max(rNorm, 1.03 * exp(-(d * d) / 0.11)); }
+    rNorm = clamp(rNorm, 0.72, 1.16);
+    float avgScale = 0.5 * (islandHalf.x + islandHalf.y);
+    return (length(normP) - rNorm) * avgScale;
+  }
+`;
+
+/**
+ * Stochastic hex-tiling (Heitz & Neyret triangle lattice with per-vertex random rotation + offset).
+ * Three rotated samples blended with sharpened barycentric weights erase visible texture repetition.
+ * `mkHexSample*` return the blended texel; `mkHexNormal` also un-rotates the tangent-space normal.
+ */
+export const GLSL_HEX_TILING = /* glsl */ `
+  mat2 mkRot2(float a) {
+    float c = cos(a);
+    float s = sin(a);
+    return mat2(c, -s, s, c);
+  }
+  void mkHexCells(vec2 uv, out vec2 c1, out vec2 c2, out vec2 c3, out vec3 w) {
+    const mat2 skew = mat2(1.0, 0.0, -0.57735027, 1.15470054);
+    vec2 sk = skew * uv;
+    vec2 base = floor(sk);
+    vec3 tmp = vec3(fract(sk), 0.0);
+    tmp.z = 1.0 - tmp.x - tmp.y;
+    if (tmp.z > 0.0) {
+      w = vec3(tmp.z, tmp.y, tmp.x);
+      c1 = base;
+      c2 = base + vec2(0.0, 1.0);
+      c3 = base + vec2(1.0, 0.0);
+    } else {
+      w = vec3(-tmp.z, 1.0 - tmp.y, 1.0 - tmp.x);
+      c1 = base + vec2(1.0, 1.0);
+      c2 = base + vec2(1.0, 0.0);
+      c3 = base + vec2(0.0, 1.0);
+    }
+    w = w * w;
+    w /= (w.x + w.y + w.z);
+  }
+  vec2 mkHexUv(vec2 uv, vec2 cell, float seed, out float ang) {
+    ang = mkHash21(cell + seed) * 6.2831853;
+    vec2 off = mkHash22(cell * 1.7 + seed + 11.0) * 9.0;
+    return mkRot2(ang) * uv + off;
+  }
+  vec4 mkHexSample(sampler2D tex, vec2 uv, float gridScale, float seed) {
+    vec2 c1; vec2 c2; vec2 c3; vec3 w;
+    mkHexCells(uv * gridScale, c1, c2, c3, w);
+    float a1; float a2; float a3;
+    vec2 uv1 = mkHexUv(uv, c1, seed, a1);
+    vec2 uv2 = mkHexUv(uv, c2, seed, a2);
+    vec2 uv3 = mkHexUv(uv, c3, seed, a3);
+    return texture2D(tex, uv1) * w.x + texture2D(tex, uv2) * w.y + texture2D(tex, uv3) * w.z;
+  }
+  vec3 mkHexNormal(sampler2D tex, vec2 uv, float gridScale, float seed) {
+    vec2 c1; vec2 c2; vec2 c3; vec3 w;
+    mkHexCells(uv * gridScale, c1, c2, c3, w);
+    float a1; float a2; float a3;
+    vec2 uv1 = mkHexUv(uv, c1, seed, a1);
+    vec2 uv2 = mkHexUv(uv, c2, seed, a2);
+    vec2 uv3 = mkHexUv(uv, c3, seed, a3);
+    vec3 n1 = texture2D(tex, uv1).xyz * 2.0 - 1.0;
+    vec3 n2 = texture2D(tex, uv2).xyz * 2.0 - 1.0;
+    vec3 n3 = texture2D(tex, uv3).xyz * 2.0 - 1.0;
+    n1.xy = mkRot2(-a1) * n1.xy;
+    n2.xy = mkRot2(-a2) * n2.xy;
+    n3.xy = mkRot2(-a3) * n3.xy;
+    return normalize(n1 * w.x + n2 * w.y + n3 * w.z);
+  }
+`;
+
+/**
+ * Lawn / terrace / plaza terrain material enhancer (v2):
+ * - Stochastic hex-tiling of albedo + normal + packed ORM (zero visible repetition on 2048² maps)
+ * - Optional second splat layer (dirt / sand / rock) driven by world FBM noise + coastline fringe distance
+ * - Anti-tiling macro lushness, FBM cumulus cloud-dapple matching the sky, perimeter cliff-rim grounding
+ */
 export function attachTerrainDetailShader(
   material,
   {
@@ -268,14 +462,46 @@ export function attachTerrainDetailShader(
     warmTint = '#fffbeb',
     coolShade = '#1e3a5f',
     dappleStrength = 0.15,
+    coastParams = [0.1, 0.08, 0.05, 0.7],
+    lobeDirs = [],
+    hexTiling = false,
+    hexGridScale = 1.15,
+    splat = null,
+    cloudCoverage = 0.46,
+    patchFeather = false,
+    featherWidth = 1.1,
+    featherWobble = 1.4,
   } = {},
 ) {
+  const lobesPadded = [-99, -99, -99, -99];
+  for (let i = 0; i < Math.min(4, lobeDirs.length); i++) lobesPadded[i] = lobeDirs[i];
+  const hasSplat = Boolean(splat && splat.map);
+  const splatHasNormal = Boolean(hasSplat && splat.normalMap);
+  const splatHasOrm = Boolean(hasSplat && splat.ormMap);
+  const hasOrm = Boolean(material.roughnessMap);
+
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = uTime || { value: 0 };
     shader.uniforms.uIslandHalf = { value: new THREE.Vector2(islandHalfW, islandHalfD) };
+    shader.uniforms.uCoastParams = {
+      value: new THREE.Vector4(coastParams[0] ?? 0.1, coastParams[1] ?? 0.08, coastParams[2] ?? 0.05, coastParams[3] ?? 0.7),
+    };
+    shader.uniforms.uLobeDirs = { value: new THREE.Vector4(lobesPadded[0], lobesPadded[1], lobesPadded[2], lobesPadded[3]) };
     shader.uniforms.uWarmTint = { value: new THREE.Color(warmTint) };
     shader.uniforms.uCoolShade = { value: new THREE.Color(coolShade) };
     shader.uniforms.uDappleStrength = { value: dappleStrength };
+    shader.uniforms.uCloudCoverage = { value: cloudCoverage };
+    shader.uniforms.uHexGrid = { value: hexGridScale };
+    shader.uniforms.uSplatMap = { value: hasSplat ? splat.map : null };
+    shader.uniforms.uSplatNormal = { value: splatHasNormal ? splat.normalMap : null };
+    shader.uniforms.uSplatOrm = { value: splatHasOrm ? splat.ormMap : null };
+    shader.uniforms.uSplatScale = { value: hasSplat ? splat.scale ?? 1.0 : 1.0 };
+    shader.uniforms.uSplatNoise = { value: hasSplat ? splat.noiseScale ?? 0.09 : 0.09 };
+    shader.uniforms.uSplatThreshold = { value: hasSplat ? splat.threshold ?? 0.56 : 0.56 };
+    shader.uniforms.uSplatFringe = { value: hasSplat ? splat.coastFringe ?? 0.0 : 0.0 };
+    shader.uniforms.uSplatTint = { value: new THREE.Color(hasSplat ? splat.tint || '#ffffff' : '#ffffff') };
+    shader.uniforms.uFeatherWidth = { value: featherWidth };
+    shader.uniforms.uFeatherWobble = { value: featherWobble };
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -283,6 +509,10 @@ export function attachTerrainDetailShader(
         /* glsl */ `
         #include <common>
         varying vec3 vMonkeWorldPos;
+        #if ${patchFeather ? 1 : 0}
+          attribute float aPatchEdge;
+          varying float vPatchEdge;
+        #endif
         `,
       )
       .replace(
@@ -290,36 +520,119 @@ export function attachTerrainDetailShader(
         /* glsl */ `
         #include <worldpos_vertex>
         vMonkeWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        #if ${patchFeather ? 1 : 0}
+          vPatchEdge = aPatchEdge;
+        #endif
         `,
       );
+
+    const defs = `
+      #define MK_PATCH_FEATHER ${patchFeather ? 1 : 0}
+      #define MK_HEX ${hexTiling ? 1 : 0}
+      #define MK_SPLAT ${hasSplat ? 1 : 0}
+      #define MK_SPLAT_NORMAL ${splatHasNormal ? 1 : 0}
+      #define MK_SPLAT_ORM ${splatHasOrm ? 1 : 0}
+      #define MK_ORM ${hasOrm ? 1 : 0}
+    `;
 
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
         /* glsl */ `
         #include <common>
+        ${defs}
         uniform float uTime;
         uniform vec2 uIslandHalf;
+        uniform vec4 uCoastParams;
+        uniform vec4 uLobeDirs;
         uniform vec3 uWarmTint;
         uniform vec3 uCoolShade;
         uniform float uDappleStrength;
+        uniform float uCloudCoverage;
+        uniform float uHexGrid;
+        uniform sampler2D uSplatMap;
+        uniform sampler2D uSplatNormal;
+        uniform sampler2D uSplatOrm;
+        uniform float uSplatScale;
+        uniform float uSplatNoise;
+        uniform float uSplatThreshold;
+        uniform float uSplatFringe;
+        uniform vec3 uSplatTint;
+        uniform float uFeatherWidth;
+        uniform float uFeatherWobble;
         varying vec3 vMonkeWorldPos;
+        #if MK_PATCH_FEATHER
+          varying float vPatchEdge;
+        #endif
+        ${GLSL_NOISE}
+        ${GLSL_CLOUD_SHADOW}
+        ${GLSL_COAST_SDF}
+        ${GLSL_HEX_TILING}
+        float mkSplatWeight() {
+          #if MK_SPLAT
+            vec2 wp = vMonkeWorldPos.xz;
+            float n = mkFbm(wp * uSplatNoise + 7.3);
+            float s = smoothstep(uSplatThreshold - 0.07, uSplatThreshold + 0.07, n);
+            if (uSplatFringe > 0.01) {
+              float shore = mkCoastShoreDist(wp, uIslandHalf, uCoastParams, uLobeDirs);
+              float fringe = 1.0 - smoothstep(-uSplatFringe, -uSplatFringe * 0.22, shore);
+              fringe *= 0.75 + 0.25 * mkNoise2D(wp * 0.6);
+              s = max(s, fringe);
+            }
+            return s;
+          #else
+            return 0.0;
+          #endif
+        }
         `,
       )
       .replace(
         '#include <map_fragment>',
         /* glsl */ `
-        #include <map_fragment>
         {
-          // Anti-tiling macro organic lushness + drifting cloud-dappled sunlight
+          #if MK_PATCH_FEATHER
+          {
+            // Organic patch boundary: signed inside-distance (metres) eroded by world noise, then a soft alpha band
+            vec2 fp = vMonkeWorldPos.xz;
+            float fn = mkNoise2D(fp * 0.75 + 3.0) * 0.6 + mkNoise2D(fp * 2.2 + 9.0) * 0.4;
+            float feather = vPatchEdge + (fn - 0.5) * uFeatherWobble;
+            if (feather < 0.0) discard;
+            diffuseColor.a *= smoothstep(0.0, uFeatherWidth, feather);
+          }
+          #endif
+          #ifdef USE_MAP
+            #if MK_HEX
+              vec4 baseTexel = mkHexSample(map, vMapUv, uHexGrid, 1.0);
+            #else
+              vec4 baseTexel = texture2D(map, vMapUv);
+            #endif
+            #if MK_SPLAT
+              float sw = mkSplatWeight();
+              if (sw > 0.001) {
+                #if MK_HEX
+                  vec4 splatTexel = mkHexSample(uSplatMap, vMapUv * uSplatScale, uHexGrid, 5.0);
+                #else
+                  vec4 splatTexel = texture2D(uSplatMap, vMapUv * uSplatScale);
+                #endif
+                splatTexel.rgb *= uSplatTint;
+                baseTexel = mix(baseTexel, splatTexel, sw);
+              }
+            #endif
+            diffuseColor *= baseTexel;
+          #endif
+
+          // Anti-tiling macro organic lushness + drifting FBM cumulus cloud-dapple matching the sky
           vec2 wp = vMonkeWorldPos.xz;
           float macro = sin(wp.x * 0.23 + cos(wp.y * 0.19)) * cos(wp.y * 0.21 - sin(wp.x * 0.17));
           diffuseColor.rgb *= (0.95 + 0.09 * macro);
-
-          float cloud1 = sin(wp.x * 0.14 + uTime * 0.28 + cos(wp.y * 0.12 - uTime * 0.18));
-          float cloud2 = cos((wp.x - wp.y) * 0.11 + uTime * 0.21);
-          float sunlit = smoothstep(-0.35, 0.55, cloud1 * 0.6 + cloud2 * 0.4);
-          vec3 dappleTint = mix(mix(vec3(1.0), uCoolShade, 0.28), uWarmTint, sunlit);
+          #if MK_HEX
+            float sunlit = mkCloudShadow(wp * 3.6, uTime * 2.4, uCloudCoverage, 1.0);
+          #else
+            float cloud1 = sin(wp.x * 0.14 + uTime * 0.28 + cos(wp.y * 0.12 - uTime * 0.18));
+            float cloud2 = cos((wp.x - wp.y) * 0.11 + uTime * 0.21);
+            float sunlit = smoothstep(-0.35, 0.55, cloud1 * 0.6 + cloud2 * 0.4);
+          #endif
+          vec3 dappleTint = mix(mix(vec3(1.0), uCoolShade, 0.3), uWarmTint, sunlit);
           diffuseColor.rgb *= mix(vec3(1.0), dappleTint, uDappleStrength);
 
           // Subtle perimeter cliff-rim ambient grounding
@@ -328,9 +641,445 @@ export function attachTerrainDetailShader(
           diffuseColor.rgb *= (1.0 - edgeRim * 0.14);
         }
         `,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        /* glsl */ `
+        #ifdef USE_NORMALMAP_TANGENTSPACE
+        {
+          #if MK_HEX
+            vec3 mapN = mkHexNormal(normalMap, vNormalMapUv, uHexGrid, 1.0);
+          #else
+            vec3 mapN = texture2D(normalMap, vNormalMapUv).xyz * 2.0 - 1.0;
+          #endif
+          #if MK_SPLAT && MK_SPLAT_NORMAL
+            float swN = mkSplatWeight();
+            if (swN > 0.001) {
+              #if MK_HEX
+                vec3 splatN = mkHexNormal(uSplatNormal, vNormalMapUv * uSplatScale, uHexGrid, 5.0);
+              #else
+                vec3 splatN = texture2D(uSplatNormal, vNormalMapUv * uSplatScale).xyz * 2.0 - 1.0;
+              #endif
+              mapN = normalize(mix(mapN, splatN, swN));
+            }
+          #endif
+          mapN.xy *= normalScale;
+          normal = normalize(tbn * mapN);
+        }
+        #else
+          #include <normal_fragment_maps>
+        #endif
+        `,
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        /* glsl */ `
+        float roughnessFactor = roughness;
+        #if MK_ORM
+        {
+          #if MK_HEX
+            vec4 ormTexel = mkHexSample(roughnessMap, vRoughnessMapUv, uHexGrid, 1.0);
+          #else
+            vec4 ormTexel = texture2D(roughnessMap, vRoughnessMapUv);
+          #endif
+          #if MK_SPLAT && MK_SPLAT_ORM
+            float swR = mkSplatWeight();
+            if (swR > 0.001) {
+              #if MK_HEX
+                vec4 splatOrm = mkHexSample(uSplatOrm, vRoughnessMapUv * uSplatScale, uHexGrid, 5.0);
+              #else
+                vec4 splatOrm = texture2D(uSplatOrm, vRoughnessMapUv * uSplatScale);
+              #endif
+              ormTexel = mix(ormTexel, splatOrm, swR);
+            }
+          #endif
+          roughnessFactor *= ormTexel.g;
+        }
+        #endif
+        `,
+      )
+      .replace(
+        '#include <aomap_fragment>',
+        /* glsl */ `
+        #if MK_ORM && defined( USE_AOMAP )
+        {
+          #if MK_HEX
+            float aoTexel = mkHexSample(aoMap, vAoMapUv, uHexGrid, 1.0).r;
+          #else
+            float aoTexel = texture2D(aoMap, vAoMapUv).r;
+          #endif
+          #if MK_SPLAT && MK_SPLAT_ORM
+            float swA = mkSplatWeight();
+            if (swA > 0.001) {
+              #if MK_HEX
+                float splatAo = mkHexSample(uSplatOrm, vAoMapUv * uSplatScale, uHexGrid, 5.0).r;
+              #else
+                float splatAo = texture2D(uSplatOrm, vAoMapUv * uSplatScale).r;
+              #endif
+              aoTexel = mix(aoTexel, splatAo, swA);
+            }
+          #endif
+          float ambientOcclusion = (aoTexel - 1.0) * aoMapIntensity + 1.0;
+          reflectedLight.indirectDiffuse *= ambientOcclusion;
+          #if defined( USE_CLEARCOAT )
+            clearcoatSpecularIndirect *= ambientOcclusion;
+          #endif
+          #if defined( USE_SHEEN )
+            sheenSpecularIndirect *= ambientOcclusion;
+          #endif
+          #if defined( USE_ENVMAP ) && defined( STANDARD )
+            float dotNV = saturate( dot( geometryNormal, geometryViewDir ) );
+            reflectedLight.indirectSpecular *= computeSpecularOcclusion( dotNV, ambientOcclusion, material.roughness );
+          #endif
+        }
+        #else
+          #include <aomap_fragment>
+        #endif
+        `,
       );
   };
-  material.customProgramCacheKey = () => `monke-terrain-detail-${dappleStrength.toFixed(2)}`;
+  material.customProgramCacheKey = () =>
+    `monke-terrain-v2-${dappleStrength.toFixed(2)}-${hexTiling ? 1 : 0}-${hasSplat ? 1 : 0}-${splatHasNormal ? 1 : 0}-${splatHasOrm ? 1 : 0}-${hasOrm ? 1 : 0}-${patchFeather ? 1 : 0}`;
+  return material;
+}
+
+/**
+ * World-space triplanar rock / cliff material enhancer – no UV stretching on extruded cliffs, cone crags,
+ * noise-displaced boulders or islets. Includes the coastal wetness band, mossy upper lips (or magma heat
+ * glow for volcano themes) and packed ORM roughness/AO.
+ */
+export function attachTriplanarRockShader(
+  material,
+  {
+    uTime,
+    scale = 3.4,
+    waterLevel = -0.82,
+    mossColor = '#4d7c0f',
+    isVolcano = false,
+    wetness = true,
+    normalStrength = 1.0,
+  } = {},
+) {
+  const hasOrm = Boolean(material.roughnessMap);
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uTime = uTime || { value: 0 };
+    shader.uniforms.uTriScale = { value: scale };
+    shader.uniforms.uWaterLevel = { value: waterLevel };
+    shader.uniforms.uMossColor = { value: new THREE.Color(mossColor) };
+    shader.uniforms.uIsVolcano = { value: isVolcano ? 1.0 : 0.0 };
+    shader.uniforms.uWetness = { value: wetness ? 1.0 : 0.0 };
+    shader.uniforms.uTriNormalStrength = { value: normalStrength };
+
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        /* glsl */ `
+        #include <common>
+        varying vec3 vTriWorldPos;
+        varying vec3 vTriWorldNormal;
+        `,
+      )
+      .replace(
+        '#include <worldpos_vertex>',
+        /* glsl */ `
+        #include <worldpos_vertex>
+        vTriWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        vTriWorldNormal = normalize(mat3(modelMatrix) * objectNormal);
+        `,
+      );
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        /* glsl */ `
+        #include <common>
+        #define MK_ORM ${hasOrm ? 1 : 0}
+        uniform float uTime;
+        uniform float uTriScale;
+        uniform float uWaterLevel;
+        uniform vec3 uMossColor;
+        uniform float uIsVolcano;
+        uniform float uWetness;
+        uniform float uTriNormalStrength;
+        varying vec3 vTriWorldPos;
+        varying vec3 vTriWorldNormal;
+        ${GLSL_NOISE}
+        vec3 mkTriWeights(vec3 n) {
+          vec3 w = pow(abs(n), vec3(4.0));
+          return w / max(w.x + w.y + w.z, 1e-4);
+        }
+        vec4 mkTriSample(sampler2D tex, vec3 wp, vec3 bw) {
+          vec2 uvX = wp.zy / uTriScale;
+          vec2 uvY = wp.xz / uTriScale;
+          vec2 uvZ = wp.xy / uTriScale;
+          return texture2D(tex, uvX) * bw.x + texture2D(tex, uvY) * bw.y + texture2D(tex, uvZ) * bw.z;
+        }
+        float mkWetnessAt(vec3 wp) {
+          float heightAboveSea = wp.y - uWaterLevel;
+          float tideLine = 0.28 + 0.07 * sin(uTime * 1.9 + wp.x * 0.6);
+          return (1.0 - smoothstep(0.0, tideLine, heightAboveSea)) * uWetness;
+        }
+        `,
+      )
+      .replace(
+        '#include <map_fragment>',
+        /* glsl */ `
+        {
+          vec3 bw = mkTriWeights(normalize(vTriWorldNormal));
+          #ifdef USE_MAP
+            vec4 texel = mkTriSample(map, vTriWorldPos, bw);
+            diffuseColor *= texel;
+          #endif
+          // Large-scale strata / mineral variation so cliffs never look uniform
+          float strata = mkFbm3(vec2(vTriWorldPos.y * 0.9, (vTriWorldPos.x + vTriWorldPos.z) * 0.12));
+          diffuseColor.rgb *= 0.9 + 0.2 * strata;
+          float wet = mkWetnessAt(vTriWorldPos);
+          if (uIsVolcano > 0.5) {
+            diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.98, 0.42, 0.08), wet * 0.58);
+          } else {
+            diffuseColor.rgb *= mix(1.0, 0.56, wet);
+            float upMask = smoothstep(0.35, 0.85, vTriWorldNormal.y) * smoothstep(-0.35, 0.15, vTriWorldPos.y);
+            float mossNoise = smoothstep(0.42, 0.72, mkFbm3(vTriWorldPos.xz * 0.55 + vTriWorldPos.y));
+            diffuseColor.rgb = mix(diffuseColor.rgb, uMossColor, upMask * mossNoise * 0.55);
+          }
+        }
+        `,
+      )
+      .replace(
+        '#include <normal_fragment_maps>',
+        /* glsl */ `
+        #ifdef USE_NORMALMAP
+        {
+          vec3 wn = normalize(vTriWorldNormal);
+          vec3 bw = mkTriWeights(wn);
+          vec3 tnX = texture2D(normalMap, vTriWorldPos.zy / uTriScale).xyz * 2.0 - 1.0;
+          vec3 tnY = texture2D(normalMap, vTriWorldPos.xz / uTriScale).xyz * 2.0 - 1.0;
+          vec3 tnZ = texture2D(normalMap, vTriWorldPos.xy / uTriScale).xyz * 2.0 - 1.0;
+          float ns = normalScale.x * uTriNormalStrength;
+          tnX.xy *= ns; tnY.xy *= ns; tnZ.xy *= ns;
+          // Whiteout blend: project each tangent-space normal onto the world axes
+          tnX = vec3(tnX.xy + wn.zy, abs(tnX.z) * wn.x);
+          tnY = vec3(tnY.xy + wn.xz, abs(tnY.z) * wn.y);
+          tnZ = vec3(tnZ.xy + wn.xy, abs(tnZ.z) * wn.z);
+          vec3 worldN = normalize(tnX.zyx * bw.x + tnY.xzy * bw.y + tnZ.xyz * bw.z);
+          normal = normalize((viewMatrix * vec4(worldN, 0.0)).xyz);
+        }
+        #else
+          #include <normal_fragment_maps>
+        #endif
+        `,
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        /* glsl */ `
+        float roughnessFactor = roughness;
+        #if MK_ORM
+        {
+          vec3 bwR = mkTriWeights(normalize(vTriWorldNormal));
+          roughnessFactor *= mkTriSample(roughnessMap, vTriWorldPos, bwR).g;
+        }
+        #endif
+        {
+          float wetR = mkWetnessAt(vTriWorldPos);
+          roughnessFactor = mix(roughnessFactor, 0.16, wetR * (1.0 - uIsVolcano));
+        }
+        `,
+      )
+      .replace(
+        '#include <aomap_fragment>',
+        /* glsl */ `
+        #if MK_ORM && defined( USE_AOMAP )
+        {
+          vec3 bwA = mkTriWeights(normalize(vTriWorldNormal));
+          float aoTexel = mkTriSample(aoMap, vTriWorldPos, bwA).r;
+          float ambientOcclusion = (aoTexel - 1.0) * aoMapIntensity + 1.0;
+          reflectedLight.indirectDiffuse *= ambientOcclusion;
+          #if defined( USE_ENVMAP ) && defined( STANDARD )
+            float dotNV = saturate( dot( geometryNormal, geometryViewDir ) );
+            reflectedLight.indirectSpecular *= computeSpecularOcclusion( dotNV, ambientOcclusion, material.roughness );
+          #endif
+        }
+        #else
+          #include <aomap_fragment>
+        #endif
+        `,
+      );
+  };
+  material.customProgramCacheKey = () =>
+    `monke-triplanar-rock-${isVolcano ? 1 : 0}-${wetness ? 1 : 0}-${hasOrm ? 1 : 0}`;
+  return material;
+}
+
+/**
+ * Cascading waterfall sheet + churning plunge-pool foam for the spots where island streams spill into the sea.
+ * `mode` 0 = vertical sheet (uv.y 0 at the lip → 1 at the plunge pool), 1 = horizontal foam disc.
+ */
+export function createWaterfallShaderMaterial({ color = '#7dd3fc', foamColor = '#f0fbff', mode = 0 } = {}) {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uTime: { value: 0 },
+      uColor: { value: new THREE.Color(color) },
+      uFoam: { value: new THREE.Color(foamColor) },
+      uMode: { value: mode },
+    },
+    vertexShader: /* glsl */ `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform float uTime;
+      uniform vec3 uColor;
+      uniform vec3 uFoam;
+      uniform float uMode;
+      varying vec2 vUv;
+      ${GLSL_NOISE}
+      void main() {
+        vec3 col;
+        float alpha;
+        if (uMode < 0.5) {
+          // Falling sheet: accelerating streaks + aerated foam towards the plunge pool
+          float v = 1.0 - vUv.y;
+          float streak = mkNoise2D(vec2(vUv.x * 9.0, v * 3.5 + uTime * 2.6));
+          float streak2 = mkNoise2D(vec2(vUv.x * 19.0 + 3.1, v * 7.0 + uTime * 4.1));
+          float body = smoothstep(0.32, 0.78, streak * 0.6 + streak2 * 0.4);
+          float lip = smoothstep(0.0, 0.22, v);
+          float foamBase = smoothstep(0.55, 1.0, v) * (0.6 + 0.4 * mkNoise2D(vec2(vUv.x * 14.0, uTime * 5.0)));
+          col = mix(uColor, uFoam, clamp(body * 0.65 + foamBase * 0.7, 0.0, 1.0));
+          alpha = (0.42 + 0.5 * body) * lip + foamBase * 0.5;
+          alpha *= smoothstep(0.0, 0.1, vUv.x) * smoothstep(1.0, 0.9, vUv.x);
+        } else {
+          // Plunge-pool foam disc: expanding rings + boiling noise, fading radially
+          vec2 p = vUv * 2.0 - 1.0;
+          float r = length(p);
+          float rings = 0.5 + 0.5 * sin(r * 16.0 - uTime * 6.0);
+          float boil = mkFbm3(p * 4.0 + vec2(uTime * 0.9, -uTime * 0.7));
+          float foam = smoothstep(1.0, 0.25, r) * (0.45 + 0.4 * boil + 0.25 * rings * (1.0 - r));
+          col = mix(uColor, uFoam, clamp(foam * 1.4, 0.0, 1.0));
+          alpha = clamp(foam * 1.25, 0.0, 0.9) * smoothstep(1.0, 0.7, r);
+        }
+        gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.95));
+        #include <tonemapping_fragment>
+        #include <colorspace_fragment>
+      }
+    `,
+  });
+}
+
+/**
+ * Soft natural edges for terrain ribbons (spline roads, riverbeds, paths): the outer band of the ribbon
+ * (u near 0 / 1) is eroded with world-space noise so the outline is irregular, and fades through a
+ * dirt "shoulder" tint into the surrounding grass instead of ending in a hard rectangle.
+ * Expects the material to have a `map` (uses `vMapUv.x` across the ribbon).
+ */
+export function attachRibbonEdgeShader(
+  material,
+  {
+    shoulderColor = '#8a6d46',
+    edgeWidth = 0.075,
+    shoulderWidth = 0.22,
+    wobble = 0.16,
+    noiseScale = 1.7,
+    roughen = 0.18,
+    // Optional: geometry provides `aRibbonEnd` (metres to the nearest ribbon end) so the ends erode/round off
+    // too instead of being square-cut. `endScale` converts metres into the 0..0.5 across-ribbon edge space.
+    endFade = false,
+    endScale = 0.28,
+  } = {},
+) {
+  material.onBeforeCompile = (shader) => {
+    shader.uniforms.uShoulderColor = { value: new THREE.Color(shoulderColor) };
+    shader.uniforms.uEdgeWidth = { value: edgeWidth };
+    shader.uniforms.uShoulderWidth = { value: shoulderWidth };
+    shader.uniforms.uEdgeWobble = { value: wobble };
+    shader.uniforms.uEdgeNoiseScale = { value: noiseScale };
+    shader.uniforms.uEdgeRoughen = { value: roughen };
+    shader.uniforms.uEndScale = { value: endScale };
+
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        /* glsl */ `
+        #include <common>
+        varying vec3 vRibbonWorldPos;
+        #if ${endFade ? 1 : 0}
+          attribute float aRibbonEnd;
+        #endif
+        varying float vRibbonEnd;
+        `,
+      )
+      .replace(
+        '#include <worldpos_vertex>',
+        /* glsl */ `
+        #include <worldpos_vertex>
+        vRibbonWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        #if ${endFade ? 1 : 0}
+          vRibbonEnd = aRibbonEnd;
+        #else
+          vRibbonEnd = 1e3;
+        #endif
+        `,
+      );
+
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        /* glsl */ `
+        #include <common>
+        uniform vec3 uShoulderColor;
+        uniform float uEdgeWidth;
+        uniform float uShoulderWidth;
+        uniform float uEdgeWobble;
+        uniform float uEdgeNoiseScale;
+        uniform float uEdgeRoughen;
+        uniform float uEndScale;
+        varying vec3 vRibbonWorldPos;
+        varying float vRibbonEnd;
+        ${GLSL_NOISE}
+        // (takes the uv as a parameter: vMapUv is only declared by three.js after the common chunk)
+        float mkRibbonEdge(vec2 uv) {
+          float ex = min(uv.x, 1.0 - uv.x);
+          ex = min(ex, vRibbonEnd * uEndScale);
+          float n = mkNoise2D(vRibbonWorldPos.xz * uEdgeNoiseScale) * 0.6 + mkNoise2D(vRibbonWorldPos.xz * uEdgeNoiseScale * 2.7 + 11.0) * 0.4;
+          return ex + (n - 0.5) * uEdgeWobble;
+        }
+        `,
+      )
+      .replace(
+        '#include <map_fragment>',
+        /* glsl */ `
+        #include <map_fragment>
+        {
+          float edge = mkRibbonEdge(vMapUv);
+          if (edge < uEdgeWidth) discard;
+          float shoulder = smoothstep(uEdgeWidth, uEdgeWidth + uShoulderWidth, edge);
+          float grit = 0.82 + 0.36 * mkNoise2D(vRibbonWorldPos.xz * 6.1);
+          // Sunken / missing stones near the verge, then dirt shoulder feathering into the grass
+          float wear = smoothstep(0.35, 0.75, mkNoise2D(vRibbonWorldPos.xz * 2.3 + 5.0)) * (1.0 - shoulder) * 0.6;
+          vec3 shoulderCol = uShoulderColor * grit;
+          diffuseColor.rgb = mix(shoulderCol, diffuseColor.rgb, shoulder);
+          diffuseColor.rgb = mix(diffuseColor.rgb, shoulderCol * 0.9, wear);
+        }
+        `,
+      )
+      .replace(
+        '#include <roughnessmap_fragment>',
+        /* glsl */ `
+        #include <roughnessmap_fragment>
+        {
+          float edgeR = mkRibbonEdge(vMapUv);
+          float shoulderR = smoothstep(uEdgeWidth, uEdgeWidth + uShoulderWidth, edgeR);
+          roughnessFactor = clamp(roughnessFactor + (1.0 - shoulderR) * uEdgeRoughen, 0.0, 1.0);
+        }
+        `,
+      );
+  };
+  material.customProgramCacheKey = () => `monke-ribbon-edge-${edgeWidth.toFixed(3)}-${shoulderWidth.toFixed(2)}-${endFade ? 1 : 0}`;
   return material;
 }
 
@@ -412,14 +1161,23 @@ export function attachCliffWetnessShader(
   return material;
 }
 
+/** Camera -> hero sight line shared by canopy materials so foliage above the player dithers away. */
+export const FOLIAGE_SIGHT_UNIFORMS = {
+  a: { value: new THREE.Vector3(0, 50, 0) },
+  b: { value: new THREE.Vector3(0, 50, 1) },
+};
+
 export function attachFoliageSubsurfaceShader(
   material,
-  { uTime, windAmp = 0.065, sssColor = '#bef264' } = {},
+  { uTime, windAmp = 0.065, sssColor = '#bef264', sightFade = false, sightRadius = 1.7 } = {},
 ) {
   material.onBeforeCompile = (shader) => {
     shader.uniforms.uTime = uTime || { value: 0 };
     shader.uniforms.uWindAmp = { value: windAmp };
     shader.uniforms.uSssColor = { value: new THREE.Color(sssColor) };
+    shader.uniforms.uSightA = FOLIAGE_SIGHT_UNIFORMS.a;
+    shader.uniforms.uSightB = FOLIAGE_SIGHT_UNIFORMS.b;
+    shader.uniforms.uSightRadius = { value: sightRadius };
 
     shader.vertexShader = shader.vertexShader
       .replace(
@@ -437,9 +1195,15 @@ export function attachFoliageSubsurfaceShader(
         #include <begin_vertex>
         {
           vec4 wp0 = modelMatrix * vec4(transformed, 1.0);
-          float sway = sin(uTime * 2.1 + wp0.x * 0.65 + wp0.z * 0.52) * uWindAmp;
+          #ifdef USE_INSTANCING
+            wp0 = modelMatrix * instanceMatrix * vec4(transformed, 1.0);
+          #endif
+          // Leaves high in the crown swing more than low undergrowth; trunks (y≈0) barely move
+          float heightMask = mix(0.3, 1.0, smoothstep(0.0, 2.2, position.y));
+          float sway = sin(uTime * 2.1 + wp0.x * 0.65 + wp0.z * 0.52) * uWindAmp * heightMask;
           transformed.x += sway;
-          transformed.z += cos(uTime * 1.7 + wp0.z * 0.6) * (uWindAmp * 0.7);
+          transformed.z += cos(uTime * 1.7 + wp0.z * 0.6) * (uWindAmp * 0.7) * heightMask;
+          transformed.y += sin(uTime * 2.6 + wp0.x * 0.9) * uWindAmp * 0.25 * heightMask;
         }
         `,
       )
@@ -447,7 +1211,11 @@ export function attachFoliageSubsurfaceShader(
         '#include <worldpos_vertex>',
         /* glsl */ `
         #include <worldpos_vertex>
-        vFolWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        #ifdef USE_INSTANCING
+          vFolWorldPos = (modelMatrix * instanceMatrix * vec4(transformed, 1.0)).xyz;
+        #else
+          vFolWorldPos = (modelMatrix * vec4(transformed, 1.0)).xyz;
+        #endif
         `,
       );
 
@@ -457,7 +1225,30 @@ export function attachFoliageSubsurfaceShader(
         /* glsl */ `
         #include <common>
         uniform vec3 uSssColor;
+        uniform vec3 uSightA;
+        uniform vec3 uSightB;
+        uniform float uSightRadius;
         varying vec3 vFolWorldPos;
+        #define MK_SIGHT_FADE ${sightFade ? 1 : 0}
+        float mkFolSegDist(vec3 p, vec3 a, vec3 b) {
+          vec3 ab = b - a;
+          float t = clamp(dot(p - a, ab) / max(dot(ab, ab), 1e-4), 0.0, 1.0);
+          return length(p - (a + ab * t));
+        }
+        `,
+      )
+      .replace(
+        '#include <alphatest_fragment>',
+        /* glsl */ `
+        #if MK_SIGHT_FADE
+        {
+          // Dithered see-through hole where the canopy crosses the camera -> hero sight line
+          float sd = mkFolSegDist(vFolWorldPos, uSightA, uSightB);
+          float keep = smoothstep(uSightRadius, uSightRadius + 1.4, sd);
+          if (keep < 0.999 && rand(gl_FragCoord.xy) > keep) discard;
+        }
+        #endif
+        #include <alphatest_fragment>
         `,
       )
       .replace(
@@ -474,7 +1265,7 @@ export function attachFoliageSubsurfaceShader(
         `,
       );
   };
-  material.customProgramCacheKey = () => `monke-foliage-sss-${windAmp.toFixed(3)}`;
+  material.customProgramCacheKey = () => `monke-foliage-sss-${windAmp.toFixed(3)}-${sightFade ? 1 : 0}`;
   return material;
 }
 
@@ -552,9 +1343,9 @@ export function attachWindGrassShader(
         /* glsl */ `
         #include <color_fragment>
         {
-          // Root-to-tip ambient occlusion + warm sunlit tip translucency!
-          float ao = mix(0.46, 1.18, smoothstep(0.0, 0.92, vBladeH));
-          vec3 tipGlow = vec3(0.95, 1.02, 0.65) * smoothstep(0.45, 1.0, vBladeH) * (0.16 + 0.08 * max(0.0, vGust));
+          // Root-to-tip ambient occlusion (dark, grounded roots) + warm sunlit tip translucency
+          float ao = mix(0.34, 1.08, smoothstep(0.0, 0.85, vBladeH));
+          vec3 tipGlow = vec3(0.95, 1.02, 0.6) * smoothstep(0.5, 1.0, vBladeH) * (0.09 + 0.06 * max(0.0, vGust));
           diffuseColor.rgb = diffuseColor.rgb * ao + tipGlow * diffuseColor.rgb;
         }
         `,
@@ -1022,8 +1813,8 @@ export function createStreamChannelShaderMaterial({
   deepColor = '#0369a1',
   skyColor = '#9be4ff',
   fogColor = '#9be4ff',
-  fogNear = 46,
-  fogFar = 104,
+  fogNear = 92,
+  fogFar = 185,
   islandHalfW = 28,
   islandHalfD = 23,
   coastParams = [0.1, 0.08, 0.05, 0.7],
@@ -1117,6 +1908,7 @@ export function createStreamChannelShaderMaterial({
       varying vec2 vUv;
       varying vec3 vWorldPos;
       varying float vFogDepth;
+      ${GLSL_NOISE}
 
       float hash21(vec2 p) {
         p = fract(p * vec2(123.34, 456.21));
@@ -1173,8 +1965,11 @@ export function createStreamChannelShaderMaterial({
           if (shoreDist > 1.35) discard;
         }
 
-        // Cross-channel coordinate: 0 = center of stream, 1 = bank edge
-        float bankDist = abs(vUv.x - 0.5) * 2.0;
+        // Cross-channel coordinate: 0 = center of stream, 1 = bank edge. The bank line itself meanders
+        // with world-space noise so the water never ends in a straight rectangle.
+        float bankLimit = 0.86 + 0.14 * mkNoise2D(vWorldPos.xz * 0.9 + 3.0) - 0.06 * mkNoise2D(vWorldPos.xz * 3.1);
+        float bankDist = abs(vUv.x - 0.5) * 2.0 / bankLimit;
+        if (bankDist > 1.0) discard;
 
         if (uIsVolcano > 0.5) {
           vec2 lavaUv = vec2(vUv.x * 2.6, vWorldPos.z * 0.35 + vWorldPos.x * 0.25 - uTime * 0.45);

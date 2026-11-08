@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:b018ca85-854a-4956-9052-f47dc6947b8a",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 62.12,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_desert_cactus.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "c411e4ff8eee118c"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 603,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 22000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "vibrant sculpted desert saguaro cactus cluster with ribbed emerald-green stems, two cheerful raised cactus arms, blooming golden-yellow desert crown flowers, and warm sandstone pebble base",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_desert_cactus.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_desert_cactus.glb",
+    "file_size_bytes": 10925160,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 24253,
+    "triangle_count": 21503,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.35404,
+      -0.50077,
+      -0.3536
+    ],
+    "bbox_max": [
+      0.35391,
+      0.49996,
+      0.35394
+    ],
+    "bbox_extents": [
+      0.70795,
+      1.00073,
+      0.70754
+    ]
+  }
+}

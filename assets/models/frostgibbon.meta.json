@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:0f38cf81-d6a3-479f-9834-1066b97ba59a",
+  "job_id": "STEP_ID_TRELLIS2:ef2e2c39-3986-42d5-8e6a-34b5a65c847f",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 45.74,
+  "elapsed_seconds": 51.45,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/frostgibbon.concept.png"
   ],
   "input_sha256_prefix": [
     "26413a80fe105799"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 206,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8000,
-    "texture_size": 1024
+    "decimation_target": 28000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "fluffy snow-white alpine macaque monkey creature with sky-blue face, crystalline cyan icicle brow horns, rosy cheeks, and a chunky knitted frost-blue winter scarf",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/frostgibbon.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/frostgibbon.glb",
-    "file_size_bytes": 2485124,
+    "file_size_bytes": 8755352,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 6193,
-    "triangle_count": 7994,
+    "vertex_count": 18003,
+    "triangle_count": 26183,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.33579,
-      -0.50093,
-      -0.36482
+      -0.33479,
+      -0.50049,
+      -0.37624
     ],
     "bbox_max": [
-      0.34337,
-      0.49783,
-      0.36693
+      0.33482,
+      0.49894,
+      0.37695
     ],
     "bbox_extents": [
-      0.67916,
-      0.99876,
-      0.73175
+      0.66961,
+      0.99943,
+      0.75319
     ]
   }
 }

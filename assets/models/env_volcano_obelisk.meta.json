@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:e62648aa-90a8-4982-ae84-92c21d7346d4",
+  "job_id": "STEP_ID_TRELLIS2:9f5fa17c-5c52-4cfd-b4ed-f1392375c6f1",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 46.41,
+  "elapsed_seconds": 71.01,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_volcano_obelisk.concept.png"
   ],
   "input_sha256_prefix": [
     "caa7ae7e3a52992c"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 508,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8000,
-    "texture_size": 1024
+    "decimation_target": 26000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "dramatic ancient dark basalt and obsidian volcanic ruin pillar carved with glowing molten amber runes, jagged orange magma crystal clusters sprouting from the base",
-    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_volcano_obelisk.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_volcano_obelisk.glb",
-    "file_size_bytes": 3166076,
+    "file_size_bytes": 10256596,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 6898,
-    "triangle_count": 7353,
+    "vertex_count": 20277,
+    "triangle_count": 24619,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.35557,
-      -0.50084,
-      -0.33991
+      -0.35228,
+      -0.50081,
+      -0.33658
     ],
     "bbox_max": [
-      0.3567,
-      0.5006,
-      0.33939
+      0.35114,
+      0.50076,
+      0.33771
     ],
     "bbox_extents": [
-      0.71227,
-      1.00144,
-      0.6793
+      0.70342,
+      1.00157,
+      0.67429
     ]
   }
 }

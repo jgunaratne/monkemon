@@ -6,11 +6,12 @@ export function setupTouchControls(container, input, params) {
   const touchParam = params.get('touch');
   const forceOff = touchParam === '0';
   const forceOn = touchParam === '1';
-  const hasTouch =
-    forceOn ||
-    (!forceOff &&
-      (('ontouchstart' in window) ||
-        (navigator.maxTouchPoints && navigator.maxTouchPoints > 0)));
+  const isCoarseOnly =
+    typeof window !== 'undefined' &&
+    window.matchMedia &&
+    window.matchMedia('(pointer: coarse)').matches &&
+    !window.matchMedia('(pointer: fine)').matches;
+  const hasTouch = forceOn || (!forceOff && isCoarseOnly);
 
   if (!container) return { enabled: false, updateMode() {} };
   if (!hasTouch) {
@@ -97,25 +98,23 @@ export function setupTouchControls(container, input, params) {
   return {
     enabled: true,
     updateMode(inBattle) {
+      // Battle HUD already provides large touch/mouse JRPG buttons — hide virtual stick/diamond during battle!
+      if (inBattle) {
+        container.classList.add('hidden');
+        input.setTouchStick(0, 0);
+        return;
+      }
+      container.classList.remove('hidden');
       const setLbl = (id, txt) => {
         const el = container.querySelector('#' + id);
         if (el && el.textContent !== txt) el.textContent = txt;
       };
-      if (inBattle) {
-        setLbl('tlbl-a', 'Select');
-        setLbl('tlbl-b', 'Back');
-        setLbl('tlbl-x', 'Berry');
-        setLbl('tlbl-y', 'Catch');
-        setLbl('tlbl-rb', 'Fight');
-        setLbl('tlbl-lb', 'Switch');
-      } else {
-        setLbl('tlbl-a', 'Act');
-        setLbl('tlbl-b', 'Sprint');
-        setLbl('tlbl-x', 'Berry');
-        setLbl('tlbl-y', 'Aim Ball');
-        setLbl('tlbl-rb', 'Battle');
-        setLbl('tlbl-lb', 'Menu');
-      }
+      setLbl('tlbl-a', 'Act');
+      setLbl('tlbl-b', 'Sprint');
+      setLbl('tlbl-x', 'Berry');
+      setLbl('tlbl-y', 'Aim Ball');
+      setLbl('tlbl-rb', 'Battle');
+      setLbl('tlbl-lb', 'Menu');
     },
   };
 }

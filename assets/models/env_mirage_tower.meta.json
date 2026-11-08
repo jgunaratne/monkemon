@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:e33c4307-0a72-4436-877b-b98d1270244c",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 56.97,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_mirage_tower.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "70643a082ac81ef0"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 608,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 38000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "whimsical multi-tiered stepped desert sandstone mirage ziggurat tower inlaid with glossy turquoise oasis tiles, arched brass entrance gate, fluttering amber silk banners, and golden sun finial",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_mirage_tower.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_mirage_tower.glb",
+    "file_size_bytes": 10440380,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 29997,
+    "triangle_count": 35992,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.43193,
+      -0.50081,
+      -0.4179
+    ],
+    "bbox_max": [
+      0.43191,
+      0.49587,
+      0.41791
+    ],
+    "bbox_extents": [
+      0.86384,
+      0.99668,
+      0.83581
+    ]
+  }
+}

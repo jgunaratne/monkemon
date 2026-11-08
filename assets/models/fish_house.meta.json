@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:d8bf83a5-882f-46e2-a456-2423a702f730",
+  "job_id": "STEP_ID_TRELLIS2:2cd63a65-8a34-43c5-8d61-d6dbce1791e7",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 117.22,
+  "elapsed_seconds": 134.99,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/fish_house.concept.png"
   ],
   "input_sha256_prefix": [
     "47317f0866a31fe2"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 503,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 9500,
-    "texture_size": 1024
+    "decimation_target": 38000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "whimsical miniature toy-diorama seaside house with a giant glossy turquoise-and-coral tropical fish sculpted across the roof, porthole windows, wooden dock porch, life-preserver ring and warm lanterns",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/fish_house.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/fish_house.glb",
-    "file_size_bytes": 2952496,
+    "file_size_bytes": 10140480,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 11492,
-    "triangle_count": 9289,
+    "vertex_count": 34391,
+    "triangle_count": 37899,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.49916,
-      -0.48923,
-      -0.44599
+      -0.50016,
+      -0.49112,
+      -0.43819
     ],
     "bbox_max": [
-      0.49322,
-      0.48696,
-      0.4376
+      0.49964,
+      0.49172,
+      0.45892
     ],
     "bbox_extents": [
-      0.99238,
-      0.97619,
-      0.88359
+      0.9998,
+      0.98284,
+      0.89711
     ]
   }
 }

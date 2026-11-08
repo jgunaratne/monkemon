@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:54131c60-3641-4ccc-b426-7c57fcfb424d",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 107.48,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_ancient_pyramid.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "8b9b6ac4b9c92dd2"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 607,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 36000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "miniature stepped golden sandstone ancient relic pyramid temple with lush jungle vines, carved monkey sun-emblem lintel above a glowing mysterious stone doorway, and twin torch braziers",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_ancient_pyramid.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_ancient_pyramid.glb",
+    "file_size_bytes": 11556724,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 42336,
+    "triangle_count": 35247,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.49909,
+      -0.32009,
+      -0.50013
+    ],
+    "bbox_max": [
+      0.4996,
+      0.31824,
+      0.49896
+    ],
+    "bbox_extents": [
+      0.99869,
+      0.63833,
+      0.99909
+    ]
+  }
+}

@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:9189a398-a9a5-4916-aa5d-c963439e9dbd",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 83.68,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_fortress_keep.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "088903451fdd38f7"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 609,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 40000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "imposing miniature multi-tiered stone castle fortress keep with curved dark-slate shogun roofs, golden ridge ornaments, crimson war banners, iron-studded wooden gate, and stone ramparts",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_fortress_keep.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_fortress_keep.glb",
+    "file_size_bytes": 11991372,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 48987,
+    "triangle_count": 39293,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.43252,
+      -0.38432,
+      -0.50011
+    ],
+    "bbox_max": [
+      0.43473,
+      0.37677,
+      0.50089
+    ],
+    "bbox_extents": [
+      0.86725,
+      0.76109,
+      1.001
+    ]
+  }
+}

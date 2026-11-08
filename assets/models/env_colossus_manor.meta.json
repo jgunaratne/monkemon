@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:1371c6a8-8cbf-46eb-b619-c0cfd4f839fd",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 97.12,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_colossus_manor.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "b9e0e59d143cf80a"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 610,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 38000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "grand miniature classical cream-marble and carved oak colossus estate manor house with tall fluted columns, oversized double doors with brass knockers, royal blue Mansard roof, and golden cupola",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_colossus_manor.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_colossus_manor.glb",
+    "file_size_bytes": 10430564,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 33621,
+    "triangle_count": 35764,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.39632,
+      -0.50096,
+      -0.25808
+    ],
+    "bbox_max": [
+      0.39562,
+      0.48619,
+      0.25812
+    ],
+    "bbox_extents": [
+      0.79194,
+      0.98715,
+      0.5162
+    ]
+  }
+}

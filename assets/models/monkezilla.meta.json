@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:6119fc43-a1b1-4a93-91d9-028fcc2648c2",
+  "job_id": "STEP_ID_TRELLIS2:dcf288e2-b753-4060-9d63-9183a8838633",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 61.46,
+  "elapsed_seconds": 40.95,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/monkezilla.concept.png"
   ],
   "input_sha256_prefix": [
     "8e0ce361b51d6fae"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 420,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 11500,
-    "texture_size": 1024
+    "decimation_target": 45000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "colossal legendary monster-king gorilla boss creature with purple-and-charcoal scales, glowing neon-green dorsal spikes, twin curved monster horns, golden crown, roaring heroically in toy-diorama vinyl style",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/monkezilla.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/monkezilla.glb",
-    "file_size_bytes": 2819732,
+    "file_size_bytes": 9732396,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 9475,
-    "triangle_count": 11386,
+    "vertex_count": 31385,
+    "triangle_count": 44852,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.27834,
-      -0.41256,
-      -0.49854
+      -0.27926,
+      -0.41593,
+      -0.5002
     ],
     "bbox_max": [
-      0.27624,
-      0.41168,
-      0.49894
+      0.28076,
+      0.41179,
+      0.50042
     ],
     "bbox_extents": [
-      0.55458,
-      0.82424,
-      0.99748
+      0.56002,
+      0.82772,
+      1.00062
     ]
   }
 }

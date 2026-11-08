@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:31e81a7d-69ed-4e8d-823a-ede327d28a3e",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 85.42,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_bookcase.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "bf7c1018466a30f7"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 618,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 28000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "tall carved warm walnut wooden adventure bookcase packed with colorful leather-bound encyclopedias, rolled parchment map scrolls, a tiny brass globe, and a glowing crystal jar",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_bookcase.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_bookcase.glb",
+    "file_size_bytes": 9326676,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 26285,
+    "triangle_count": 27536,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.15084,
+      -0.50097,
+      -0.29689
+    ],
+    "bbox_max": [
+      0.15082,
+      0.50041,
+      0.29911
+    ],
+    "bbox_extents": [
+      0.30166,
+      1.00138,
+      0.596
+    ]
+  }
+}

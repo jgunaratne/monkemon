@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:85ad843d-1d00-4ee0-9c23-eb6672de6e5f",
+  "job_id": "STEP_ID_TRELLIS2:923da093-f07f-4f6f-a896-d2ebff413b9a",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 35.6,
+  "elapsed_seconds": 50.27,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/duckaque.concept.png"
   ],
   "input_sha256_prefix": [
     "ef67f9d3676eba68"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 405,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "cheerful tropical macaque monkey wearing a shiny bright-yellow squeaky rubber ducky inflatable ring around its waist and a tiny rubber duck perched on its head, splashing water droplets",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/duckaque.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/duckaque.glb",
-    "file_size_bytes": 2820156,
+    "file_size_bytes": 9857236,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7976,
-    "triangle_count": 8476,
+    "vertex_count": 22522,
+    "triangle_count": 28640,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.45252,
-      -0.49869,
-      -0.42901
+      -0.44181,
+      -0.49988,
+      -0.42915
     ],
     "bbox_max": [
-      0.45246,
-      0.49834,
-      0.42657
+      0.45782,
+      0.50016,
+      0.42946
     ],
     "bbox_extents": [
-      0.90498,
-      0.99703,
-      0.85558
+      0.89963,
+      1.00004,
+      0.85861
     ]
   }
 }

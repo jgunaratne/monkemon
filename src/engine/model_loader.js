@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { ASSET_VERSION } from './audio.js';
+import { REFLECTION_LAYER } from './reflection.js';
 
 function withVer(url) {
   if (!url) return url;
@@ -150,9 +151,10 @@ function attachCharacterLimbShader(mesh, uniforms) {
 }
 
 export class ModelBank {
-  constructor(isSoftwareGl = false) {
+  constructor(isSoftwareGl = false, maxAnisotropy = 8) {
     this.loader = new GLTFLoader();
     this.isSoftwareGl = isSoftwareGl;
+    this.maxAnisotropy = isSoftwareGl ? Math.min(4, maxAnisotropy || 4) : Math.min(16, Math.max(8, maxAnisotropy || 16));
     this.cache = new Map();     // url -> normalized THREE.Group prototype
     this.inflight = new Map();  // url -> Promise<THREE.Group|null>
     this.shadowTex = this._makeBlobShadowTexture();
@@ -208,17 +210,42 @@ export class ModelBank {
 
           raw.traverse((child) => {
             if (child.isMesh) {
+              if (child.geometry && !child.geometry.attributes.normal) {
+                child.geometry.computeVertexNormals();
+              }
               if (!this.isSoftwareGl) {
+                // Cast crisp terrain shadows without dense generative-mesh self-shadow flicker!
                 child.castShadow = true;
-                child.receiveShadow = true;
+                child.receiveShadow = false;
               }
               const mats = Array.isArray(child.material) ? child.material : [child.material];
               for (const m of mats) {
                 if (!m) continue;
-                if ('envMapIntensity' in m) m.envMapIntensity = 1.02;
-                if ('roughness' in m && typeof m.roughness === 'number') {
-                  m.roughness = Math.min(0.78, Math.max(0.24, m.roughness * 0.9));
+                if (!m.alphaTest) {
+                  m.transparent = false;
+                  m.depthWrite = true;
                 }
+                m.side = THREE.FrontSide;
+                for (const slot of ['map', 'emissiveMap', 'normalMap', 'metalnessMap', 'roughnessMap', 'aoMap']) {
+                  const tex = m[slot];
+                  if (!tex) continue;
+                  if (slot === 'map' || slot === 'emissiveMap') {
+                    tex.colorSpace = THREE.SRGBColorSpace;
+                  }
+                  tex.anisotropy = this.maxAnisotropy;
+                  tex.generateMipmaps = true;
+                  tex.minFilter = THREE.LinearMipmapLinearFilter;
+                  tex.magFilter = THREE.LinearFilter;
+                  tex.needsUpdate = true;
+                }
+                if (m.normalMap && m.normalScale) {
+                  m.normalScale.set(1.06, 1.06);
+                }
+                if ('envMapIntensity' in m) m.envMapIntensity = 1.15;
+                if ('roughness' in m && typeof m.roughness === 'number') {
+                  m.roughness = Math.min(0.8, Math.max(0.22, m.roughness * 0.92));
+                }
+                m.needsUpdate = true;
               }
             }
           });
@@ -283,23 +310,35 @@ export class ModelBank {
     shadowRadius = 0.55,
     animateRig = false,
     standInKind = 'creature',
+    showShadow = undefined,
   }) {
     const root = new THREE.Group();
     const animRoot = new THREE.Group();
     const meshHolder = new THREE.Group();
     meshHolder.scale.setScalar(scale);
 
+    // On hardware WebGL, real PCFSoftShadowMap sun shadows already ground every 3D object
+    // cleanly without flat ground-plane vs road/plaza z-fighting. Only show blob shadow on
+    // software GL overworld creatures when not explicitly disabled (`showShadow: false`).
+    const enableBlobShadow =
+      showShadow === true ||
+      (showShadow !== false && this.isSoftwareGl && shadowRadius > 0 && standInKind !== 'prop');
     const shadow = new THREE.Mesh(
       new THREE.PlaneGeometry(shadowRadius * 2.2, shadowRadius * 2.2),
       new THREE.MeshBasicMaterial({
         map: this.shadowTex,
         transparent: true,
         depthWrite: false,
+        polygonOffset: true,
+        polygonOffsetFactor: -4,
+        polygonOffsetUnits: -4,
       }),
     );
     shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.02;
-    root.add(shadow);
+    shadow.position.y = 0.055;
+    shadow.renderOrder = 2;
+    shadow.visible = enableBlobShadow;
+    if (enableBlobShadow) root.add(shadow);
 
     const rigUniforms = {
       uWalkPhase: { value: Math.random() * Math.PI * 2 },
@@ -308,7 +347,10 @@ export class ModelBank {
       uAttackTwist: { value: 0.0 },
     };
 
+    // Mirror only static set dressing + the hero: wild creatures / NPC rigs skip the reflection pass (perf)
+    const reflective = !animateRig || /hero_tamer/.test(glbUrl || '');
     const standIn = this._buildToyStandIn(primaryColor, secondaryColor, standInKind);
+    if (reflective) standIn.traverse((c) => c.layers.enable(REFLECTION_LAYER));
     if (animateRig) {
       standIn.traverse((c) => {
         if (c.isMesh) attachCharacterLimbShader(c, rigUniforms);
@@ -380,6 +422,7 @@ export class ModelBank {
       if (proto) {
         meshHolder.remove(standIn);
         const inst = proto.clone(true);
+        if (reflective) inst.traverse((child) => child.layers.enable(REFLECTION_LAYER));
         if (animateRig) {
           inst.traverse((child) => {
             if (child.isMesh) attachCharacterLimbShader(child, rigUniforms);

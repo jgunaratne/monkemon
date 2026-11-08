@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:387e76ca-8598-4352-a4f5-bd1c8b410959",
+  "job_id": "STEP_ID_TRELLIS2:c35781e8-a71f-4aee-858a-41a01519d104",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 36.49,
+  "elapsed_seconds": 95.09,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mooboon.concept.png"
   ],
   "input_sha256_prefix": [
     "996e05d47cf977e8"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 404,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "cute chubby black-and-white spotted cow-monkey creature with pink cow snout, small curved cream horns, big round monkey ears, golden cowbell on ribbon around neck, curled tufted tail",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mooboon.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/mooboon.glb",
-    "file_size_bytes": 2135836,
+    "file_size_bytes": 7345500,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 6057,
-    "triangle_count": 7962,
+    "vertex_count": 19364,
+    "triangle_count": 28662,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.39925,
-      -0.50093,
-      -0.33192
+      -0.40032,
+      -0.50076,
+      -0.34265
     ],
     "bbox_max": [
-      0.39979,
-      0.49989,
-      0.33419
+      0.40101,
+      0.50046,
+      0.34246
     ],
     "bbox_extents": [
-      0.79904,
-      1.00082,
-      0.66611
+      0.80133,
+      1.00122,
+      0.68511
     ]
   }
 }

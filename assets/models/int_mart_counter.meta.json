@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:5462de62-b4e1-40e2-bb54-5b073c5c4266",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 159.99,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_mart_counter.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "26a743615e9ed82a"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 614,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 28000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "cozy carved honey-wood adventure shop counter displaying neat stacks of glossy red-and-gold capture balls, woven baskets of plump golden berries, a brass shop bell, and striped awning trim",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_mart_counter.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_mart_counter.glb",
+    "file_size_bytes": 10199420,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 30739,
+    "triangle_count": 26875,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.50013,
+      -0.39818,
+      -0.26848
+    ],
+    "bbox_max": [
+      0.50089,
+      0.39774,
+      0.26789
+    ],
+    "bbox_extents": [
+      1.00102,
+      0.79592,
+      0.53637
+    ]
+  }
+}

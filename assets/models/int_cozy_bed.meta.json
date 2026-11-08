@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:10a53876-ce76-4507-b991-6640b262f6ed",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 114.99,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_cozy_bed.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "ab6c428185ad62d0"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 617,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 26000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "charming miniature cottage carved oak wooden bed with a plump crimson-and-gold patchwork quilted blanket, two fluffy cream pillows, and a cute carved monkey-crest headboard",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_cozy_bed.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_cozy_bed.glb",
+    "file_size_bytes": 11726752,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 23030,
+    "triangle_count": 25486,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.49793,
+      -0.39066,
+      -0.44505
+    ],
+    "bbox_max": [
+      0.49863,
+      0.39343,
+      0.44572
+    ],
+    "bbox_extents": [
+      0.99656,
+      0.78409,
+      0.89077
+    ]
+  }
+}

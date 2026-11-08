@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:9af3c6cb-239b-492d-829b-8dccfc333a77",
+  "job_id": "STEP_ID_TRELLIS2:2583f225-6ab5-423e-89b2-720185af1ce1",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 36.07,
+  "elapsed_seconds": 112.15,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/voltamarin.concept.png"
   ],
   "input_sha256_prefix": [
     "e8a70a7c882d8c0d"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 204,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8000,
-    "texture_size": 1024
+    "decimation_target": 28000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "energetic golden-yellow lion tamarin monkey creature with spiky electric lightning-bolt mane around its face, cobalt-blue cheek markings, and a sharp zigzagging thunderbolt tail",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/voltamarin.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/voltamarin.glb",
-    "file_size_bytes": 2734808,
+    "file_size_bytes": 9310100,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 8342,
-    "triangle_count": 7932,
+    "vertex_count": 23934,
+    "triangle_count": 26889,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.24787,
-      -0.36209,
-      -0.48903
+      -0.2483,
+      -0.36119,
+      -0.47532
     ],
     "bbox_max": [
-      0.24614,
-      0.34702,
-      0.49548
+      0.24769,
+      0.35417,
+      0.49663
     ],
     "bbox_extents": [
-      0.49401,
-      0.70911,
-      0.98451
+      0.49599,
+      0.71536,
+      0.97195
     ]
   }
 }

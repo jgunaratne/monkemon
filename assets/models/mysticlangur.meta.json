@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:993e5ad7-02d0-4518-9d07-abec75d6ee31",
+  "job_id": "STEP_ID_TRELLIS2:530a7bd3-4512-427c-962a-076f08b1191b",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 40.84,
+  "elapsed_seconds": 102.13,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mysticlangur.concept.png"
   ],
   "input_sha256_prefix": [
     "9aeaddca8b3e6a80"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 208,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "serene lavender and silver sage langur monkey creature sitting cross-legged atop a sculpted swirling white cloud cushion, glowing purple amethyst gem circlet on forehead, long graceful tail",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/mysticlangur.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/mysticlangur.glb",
-    "file_size_bytes": 2474332,
+    "file_size_bytes": 8761608,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 6997,
-    "triangle_count": 8337,
+    "vertex_count": 20934,
+    "triangle_count": 27844,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.38518,
-      -0.49934,
-      -0.41721
+      -0.38813,
+      -0.49905,
+      -0.42212
     ],
     "bbox_max": [
-      0.38467,
-      0.49714,
-      0.41923
+      0.3886,
+      0.49974,
+      0.42215
     ],
     "bbox_extents": [
-      0.76985,
-      0.99648,
-      0.83644
+      0.77673,
+      0.99879,
+      0.84427
     ]
   }
 }

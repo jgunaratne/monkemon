@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:9f94eac2-6791-4417-8e8a-f83294ba5024",
+  "job_id": "STEP_ID_TRELLIS2:66b89e0b-f518-4638-aa81-092a56b40629",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 88.5,
+  "elapsed_seconds": 112.05,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_treasure_chest.concept.png"
   ],
   "input_sha256_prefix": [
     "0ce0aea265be5c04"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 509,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 7000,
-    "texture_size": 1024
+    "decimation_target": 24000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "ornate curved adventure wooden treasure chest with rich mahogany planks, thick gleaming gold metal trim bands, corner rivets, and a cheerful golden monkey-emblem padlock clasp",
-    "style": "charming glossy toy-diorama miniature scenery prop, smooth sculpted vinyl, carved wood, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single prop on clean base",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/env_treasure_chest.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/env_treasure_chest.glb",
-    "file_size_bytes": 2528964,
+    "file_size_bytes": 10402340,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7857,
-    "triangle_count": 6690,
+    "vertex_count": 20880,
+    "triangle_count": 23350,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.49297,
-      -0.41373,
-      -0.42645
+      -0.49848,
+      -0.41502,
+      -0.42927
     ],
     "bbox_max": [
-      0.49368,
-      0.40213,
-      0.43422
+      0.49896,
+      0.41316,
+      0.42693
     ],
     "bbox_extents": [
-      0.98665,
-      0.81586,
-      0.86067
+      0.99744,
+      0.82818,
+      0.8562
     ]
   }
 }

@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:c6ef3d36-fe1b-4d8a-82c6-9aa736ff59e5",
+  "job_id": "STEP_ID_TRELLIS2:0fb4c3ae-7b10-41b2-b2e6-37fa65e0def5",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 42.44,
+  "elapsed_seconds": 87.99,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/howlshade.concept.png"
   ],
   "input_sha256_prefix": [
     "f6a4408a9c4ad96b"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 209,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8000,
-    "texture_size": 1024
+    "decimation_target": 28000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "mischievous midnight-indigo howler monkey creature with glowing violet soundwave ring markings on chest and ears, bright golden eyes, and a silver crescent-moon tip on its prehensile tail",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/howlshade.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/howlshade.glb",
-    "file_size_bytes": 2347652,
+    "file_size_bytes": 7855700,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7503,
-    "triangle_count": 7837,
+    "vertex_count": 21582,
+    "triangle_count": 26551,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.42751,
-      -0.49687,
-      -0.29555
+      -0.43241,
+      -0.50046,
+      -0.29797
     ],
     "bbox_max": [
-      0.4176,
-      0.4935,
-      0.29525
+      0.41803,
+      0.49883,
+      0.29752
     ],
     "bbox_extents": [
-      0.84511,
-      0.99037,
-      0.5908
+      0.85044,
+      0.99929,
+      0.59549
     ]
   }
 }

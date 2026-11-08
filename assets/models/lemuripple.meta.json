@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:d6c8908c-a676-4aea-bc02-11294da1a08c",
+  "job_id": "STEP_ID_TRELLIS2:2542af95-2cda-4536-92d1-3b327e94a83b",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 68.72,
+  "elapsed_seconds": 46.23,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/lemuripple.concept.png"
   ],
   "input_sha256_prefix": [
     "a7d018315d61f940"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 202,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 9000,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "cute sleek cerulean-blue and pearl-white ring-tailed water lemur creature, bubbly sea-foam ruff collar around neck, big glossy sapphire eyes, long striped aqua tail ending in a playful wave fin",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/lemuripple.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/lemuripple.glb",
-    "file_size_bytes": 2768700,
+    "file_size_bytes": 9066104,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 7154,
-    "triangle_count": 8594,
+    "vertex_count": 21840,
+    "triangle_count": 29789,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.22483,
-      -0.35962,
-      -0.49926
+      -0.20507,
+      -0.35338,
+      -0.50031
     ],
     "bbox_max": [
-      0.2938,
-      0.35906,
-      0.46215
+      0.29783,
+      0.3551,
+      0.46702
     ],
     "bbox_extents": [
-      0.51863,
-      0.71868,
-      0.96141
+      0.5029,
+      0.70848,
+      0.96733
     ]
   }
 }

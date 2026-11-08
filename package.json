@@ -11,6 +11,7 @@
     "assets:3d": "bash tools/generate_3d_assets.sh",
     "assets:music": "bash tools/generate_music.sh",
     "assets:voice": "bash tools/generate_voices.sh",
+    "assets:textures": "bash tools/generate_textures.sh",
     "smoke": "python3 tools/smoke_test.py"
   },
   "license": "UNLICENSED"

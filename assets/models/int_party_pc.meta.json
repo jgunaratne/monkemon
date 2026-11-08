@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:9f937e06-62e3-4376-82eb-29c9c3285574",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 65.37,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_party_pc.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "ee66c4601a87cb6c"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 613,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 26000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "whimsical retro-futuristic miniature cobalt-blue and brass creature storage PC terminal kiosk with a glowing sky-blue CRT screen, chunky colorful mechanical keys, and cute monkey-ear antenna",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_party_pc.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_party_pc.glb",
+    "file_size_bytes": 11358648,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 29864,
+    "triangle_count": 25401,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.47295,
+      -0.50097,
+      -0.47282
+    ],
+    "bbox_max": [
+      0.47363,
+      0.49853,
+      0.47285
+    ],
+    "bbox_extents": [
+      0.94658,
+      0.9995,
+      0.94567
+    ]
+  }
+}

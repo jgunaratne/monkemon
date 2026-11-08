@@ -43,7 +43,7 @@ export function createInitialGameState(playerName = 'ALEX', starterId = 'mugchim
     version: 1,
     playerName: String(playerName || 'ALEX').toUpperCase().slice(0, 12),
     zoneId: 'sunpalm',
-    pos: { x: 14.5, z: 16.5 },
+    pos: { x: 28.0, z: 31.5 },
     party: [starter],
     storage: [],
     activeIndex: 0,
@@ -51,19 +51,43 @@ export function createInitialGameState(playerName = 'ALEX', starterId = 'mugchim
     superBalls: 2,
     berries: 10,
     coins: 280,
-    bananaRelics: 0,
-    collectedRelicIds: [],
-    keyItems: [],
+    bananaRelics: 1,
+    collectedRelicIds: ['relic:dad_prism'],
+    keyItems: ['prism_detector'],
     storyFlags: [],
+    seenStoryScenes: [],
+    guestCompanion: null,
+    derbyMount: null,
     badges: [],
     defeatedTrainers: [],
     openedChests: [],
     pickedUpBalls: [],
+    discoveredSubregions: [],
     seenDex: [starterId],
     caughtDex: [starterId],
     starterChosen: false,
     playSeconds: 0,
   };
+}
+
+export function recruitSchoolClassmates(state) {
+  if (!state || !Array.isArray(state.party)) return 0;
+  if (!Array.isArray(state.storyFlags)) state.storyFlags = [];
+  if (state.storyFlags.includes('recruited_classmates')) return 0;
+  state.storyFlags.push('recruited_classmates');
+  const haveIds = new Set(state.party.map((m) => m.speciesId));
+  const pool = ['puppuchin', 'plushaki', 'duckaque', 'mooboon'];
+  let added = 0;
+  for (const sid of pool) {
+    if (state.party.length >= 4) break;
+    if (haveIds.has(sid)) continue;
+    const rookie = createMonkemonInstance(sid, 4, { caughtZone: 'sunpalm' });
+    state.party.push(rookie);
+    markDexCaught(state, sid);
+    haveIds.add(sid);
+    added += 1;
+  }
+  return added;
 }
 
 export function grantStoryProgress(state, { relics = 0, relicId = null, keyItem = null, flag = null } = {}) {
@@ -271,14 +295,19 @@ export function loadGameFromStorage(storage = globalThis.localStorage) {
     parsed.superBalls = typeof parsed.superBalls === 'number' ? parsed.superBalls : 2;
     parsed.berries = typeof parsed.berries === 'number' ? parsed.berries : 8;
     parsed.coins = typeof parsed.coins === 'number' ? parsed.coins : 250;
-    parsed.bananaRelics = typeof parsed.bananaRelics === 'number' ? parsed.bananaRelics : 0;
-    parsed.collectedRelicIds = Array.isArray(parsed.collectedRelicIds) ? parsed.collectedRelicIds : [];
-    parsed.keyItems = Array.isArray(parsed.keyItems) ? parsed.keyItems : [];
+    parsed.bananaRelics = typeof parsed.bananaRelics === 'number' ? parsed.bananaRelics : 1;
+    parsed.collectedRelicIds = Array.isArray(parsed.collectedRelicIds) ? parsed.collectedRelicIds : ['relic:dad_prism'];
+    parsed.keyItems = Array.isArray(parsed.keyItems) ? parsed.keyItems : ['prism_detector'];
+    if (!parsed.keyItems.includes('prism_detector')) parsed.keyItems.unshift('prism_detector');
     parsed.storyFlags = Array.isArray(parsed.storyFlags) ? parsed.storyFlags : [];
+    parsed.seenStoryScenes = Array.isArray(parsed.seenStoryScenes) ? parsed.seenStoryScenes : [];
+    parsed.guestCompanion = typeof parsed.guestCompanion === 'string' ? parsed.guestCompanion : null;
+    parsed.derbyMount = typeof parsed.derbyMount === 'string' ? parsed.derbyMount : null;
     parsed.badges = Array.isArray(parsed.badges) ? parsed.badges : [];
     parsed.defeatedTrainers = Array.isArray(parsed.defeatedTrainers) ? parsed.defeatedTrainers : [];
     parsed.openedChests = Array.isArray(parsed.openedChests) ? parsed.openedChests : [];
     parsed.pickedUpBalls = Array.isArray(parsed.pickedUpBalls) ? parsed.pickedUpBalls : [];
+    parsed.discoveredSubregions = Array.isArray(parsed.discoveredSubregions) ? parsed.discoveredSubregions : [];
     parsed.seenDex = Array.isArray(parsed.seenDex) ? parsed.seenDex : CORE_SPECIES.slice(0, 1).map((s) => s.id);
     parsed.caughtDex = Array.isArray(parsed.caughtDex) ? parsed.caughtDex : [parsed.party[0].speciesId];
     return parsed;

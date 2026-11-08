@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:2d127da0-52a3-41b2-90bc-433c41e4086c",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 67.42,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_rock_boulder.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "9024203409c9a976"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 621,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 20000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "sculpted dark cavern stalagmite and boulder cluster with layered basalt rock facets and warm glowing amber-orange mineral crystal veins",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_rock_boulder.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_rock_boulder.glb",
+    "file_size_bytes": 9565584,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 15130,
+    "triangle_count": 18869,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.4988,
+      -0.46194,
+      -0.48221
+    ],
+    "bbox_max": [
+      0.49866,
+      0.46246,
+      0.48087
+    ],
+    "bbox_extents": [
+      0.99746,
+      0.9244,
+      0.96308
+    ]
+  }
+}

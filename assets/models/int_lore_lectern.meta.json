@@ -1,0 +1,72 @@
+{
+  "job_id": "STEP_ID_TRELLIS2:daa68f96-a918-4358-9e00-9277bd666117",
+  "backend": "hosted:staging",
+  "model": "microsoft/TRELLIS.2-4B",
+  "elapsed_seconds": 86.64,
+  "input_images": [
+    "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_lore_lectern.concept.png"
+  ],
+  "input_sha256_prefix": [
+    "3f101e24c1887a30"
+  ],
+  "preset": "hero",
+  "generation": {
+    "pipeline_type": "1024_cascade",
+    "seed": 616,
+    "preprocess_image": true,
+    "sparse_structure": {
+      "steps": 16,
+      "guidance_strength": 7.5
+    },
+    "shape_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    },
+    "tex_slat": {
+      "steps": 16,
+      "guidance_strength": 3.0
+    }
+  },
+  "postprocessing": {
+    "decimation_target": 24000,
+    "texture_size": 2048
+  },
+  "prompt_metadata": {
+    "prompt": "ornate carved mahogany and gleaming brass adventure lore lectern stand holding a thick open leather-bound tome with illuminated golden pages and a crimson ribbon bookmark",
+    "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
+    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/int_lore_lectern.concept.png"
+  },
+  "glb": {
+    "path": "/usr/local/google/home/junius/git/monkemon/assets/models/int_lore_lectern.glb",
+    "file_size_bytes": 10572052,
+    "gltf_version": 2,
+    "mesh_count": 1,
+    "primitive_count": 1,
+    "vertex_count": 26290,
+    "triangle_count": 23390,
+    "material_count": 1,
+    "texture_count": 2,
+    "image_count": 2,
+    "has_normals": true,
+    "has_uvs": true,
+    "pbr_features": [
+      "baseColorTexture",
+      "metallicRoughnessTexture"
+    ],
+    "bbox_min": [
+      -0.4985,
+      -0.47441,
+      -0.49894
+    ],
+    "bbox_max": [
+      0.49981,
+      0.47151,
+      0.4986
+    ],
+    "bbox_extents": [
+      0.99831,
+      0.94592,
+      0.99754
+    ]
+  }
+}

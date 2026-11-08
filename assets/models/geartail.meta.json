@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:70f0ce86-9d85-4ce5-9bd1-25ed4952d834",
+  "job_id": "STEP_ID_TRELLIS2:b449411c-22a8-4399-9bf2-49cd36b435f3",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 57.59,
+  "elapsed_seconds": 78.1,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/geartail.concept.png"
   ],
   "input_sha256_prefix": [
     "ee57ae9da03e7f3c"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 211,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 8500,
-    "texture_size": 1024
+    "decimation_target": 30000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "charming polished brass and copper clockwork capuchin monkey automaton creature with visible bronze cogs on back, glowing turquoise crystal core in chest, big glass lens eyes, coiled brass spring tail",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/geartail.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/geartail.glb",
-    "file_size_bytes": 3860896,
+    "file_size_bytes": 13457920,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 14967,
-    "triangle_count": 8190,
+    "vertex_count": 43226,
+    "triangle_count": 29759,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.36687,
-      -0.49705,
-      -0.41197
+      -0.36569,
+      -0.49925,
+      -0.41346
     ],
     "bbox_max": [
-      0.36869,
-      0.4952,
-      0.45175
+      0.36374,
+      0.49563,
+      0.44653
     ],
     "bbox_extents": [
-      0.73556,
-      0.99225,
-      0.86372
+      0.72943,
+      0.99488,
+      0.85999
     ]
   }
 }

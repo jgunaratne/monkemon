@@ -1,49 +1,45 @@
 {
-  "job_id": "STEP_ID_TRELLIS2:65c4b934-a5f5-40fc-b6d0-032328ba20e6",
+  "job_id": "STEP_ID_TRELLIS2:4a9fb2a2-eea7-4a56-a70e-9096671e45df",
   "backend": "hosted:staging",
   "model": "microsoft/TRELLIS.2-4B",
-  "elapsed_seconds": 111.37,
+  "elapsed_seconds": 204.25,
   "input_images": [
     "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/capture_capsule.concept.png"
   ],
   "input_sha256_prefix": [
     "5f60de945a1e2e7f"
   ],
-  "preset": "lowpoly",
+  "preset": "hero",
   "generation": {
     "pipeline_type": "1024_cascade",
     "seed": 303,
     "preprocess_image": true,
     "sparse_structure": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 7.5
     },
     "shape_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     },
     "tex_slat": {
-      "steps": 12,
+      "steps": 16,
       "guidance_strength": 3.0
     }
   },
   "postprocessing": {
-    "decimation_target": 6000,
-    "texture_size": 1024
+    "decimation_target": 20000,
+    "texture_size": 2048
   },
-  "prompt_metadata": {
-    "prompt": "glossy crimson-red top and pearl-white bottom spherical creature capture capsule pod with a polished gold equatorial band and circular front clasp button embossed with a tiny banana icon",
-    "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant tropical colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
-    "concept_image_path": "/usr/local/google/home/junius/git/monkemon/assets/models/concepts/capture_capsule.concept.png"
-  },
+  "prompt_metadata": {},
   "glb": {
     "path": "/usr/local/google/home/junius/git/monkemon/assets/models/capture_capsule.glb",
-    "file_size_bytes": 2206992,
+    "file_size_bytes": 7724520,
     "gltf_version": 2,
     "mesh_count": 1,
     "primitive_count": 1,
-    "vertex_count": 6227,
-    "triangle_count": 5792,
+    "vertex_count": 16887,
+    "triangle_count": 19461,
     "material_count": 1,
     "texture_count": 2,
     "image_count": 2,
@@ -54,19 +50,19 @@
       "metallicRoughnessTexture"
     ],
     "bbox_min": [
-      -0.49319,
-      -0.48622,
-      -0.50037
+      -0.49659,
+      -0.48921,
+      -0.5001
     ],
     "bbox_max": [
-      0.49384,
-      0.48644,
-      0.495
+      0.4965,
+      0.48887,
+      0.50048
     ],
     "bbox_extents": [
-      0.98703,
-      0.97266,
-      0.99537
+      0.99309,
+      0.97808,
+      1.00058
     ]
   }
 }
