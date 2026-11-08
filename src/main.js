@@ -204,6 +204,22 @@ async function boot() {
     },
   });
 
+  // Preload bundled creature-adventure display & UI fonts so 3D world signboards pick them up on frame 1
+  if (document.fonts && document.fonts.load) {
+    try {
+      await Promise.race([
+        Promise.all([
+          document.fonts.load("400 35px 'Lilita One'"),
+          document.fonts.load("600 22px 'Fredoka'"),
+          document.fonts.load("400 48px 'Luckiest Guy'"),
+        ]),
+        new Promise((r) => setTimeout(r, 500)),
+      ]);
+    } catch {
+      // font fallback safe
+    }
+  }
+
   // Boot diorama in background right away so even the Title Screen shows a live lush 3D Cove!
   const initialZone = ZONES[params.get('zone')] ? params.get('zone') : state.zoneId || 'sunpalm';
   world.initHeroActors();

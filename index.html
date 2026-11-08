@@ -14,6 +14,30 @@
     }
   </script>
   <style>
+    @font-face {
+      font-family: 'Luckiest Guy';
+      src: url('./assets/fonts/LuckiestGuy-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Lilita One';
+      src: url('./assets/fonts/LilitaOne-Regular.ttf') format('truetype');
+      font-weight: 400;
+      font-style: normal;
+      font-display: swap;
+    }
+
+    @font-face {
+      font-family: 'Fredoka';
+      src: url('./assets/fonts/Fredoka-Variable.ttf') format('truetype');
+      font-weight: 300 700;
+      font-style: normal;
+      font-display: swap;
+    }
+
     :root {
       --ink: #0f172a;
       --panel: #101c2efa;
@@ -25,13 +49,19 @@
       --coral: #f87171;
       --text: #f8fafc;
       --muted: #cbd5e1;
-      --font: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --font-logo: 'Luckiest Guy', 'Lilita One', cursive, sans-serif;
+      --font-display: 'Lilita One', 'Fredoka', system-ui, sans-serif;
+      --font: 'Fredoka', 'Segoe UI', system-ui, -apple-system, sans-serif;
     }
 
     * {
       box-sizing: border-box;
       user-select: none;
       -webkit-user-select: none;
+    }
+
+    button, input, select, textarea {
+      font-family: inherit;
     }
 
     html, body {
@@ -43,6 +73,8 @@
       background: #0c1726;
       color: var(--text);
       font-family: var(--font);
+      font-weight: 600;
+      letter-spacing: 0.01em;
     }
 
     #game-canvas {
@@ -88,10 +120,12 @@
 
     .zone-plaque h2 {
       margin: 0;
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: 0.02em;
+      font-family: var(--font-display);
+      font-size: 21px;
+      font-weight: 400;
+      letter-spacing: 0.03em;
       color: var(--cream);
+      text-shadow: 0 2px 0 #09111e;
     }
 
     .zone-plaque p {
@@ -178,13 +212,18 @@
     .ps-top {
       display: flex;
       justify-content: space-between;
-      font-size: 12px;
+      align-items: baseline;
+      gap: 6px;
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.02em;
       margin-bottom: 4px;
+      text-shadow: 0 1.5px 0 #09111e;
     }
 
     .ps-top span {
       color: var(--gold);
-      font-weight: 700;
+      font-weight: 400;
     }
 
     .hp-track {
@@ -221,12 +260,15 @@
       bottom: 88px;
       transform: translateX(-50%);
       background: #0f172af7;
-      border: 2px solid var(--gold);
+      border: 2.5px solid var(--gold);
       color: var(--cream);
-      padding: 9px 20px;
+      padding: 9px 22px;
       border-radius: 999px;
-      font-size: 14px;
-      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      text-shadow: 0 2px 0 #09111e;
       z-index: 15;
       pointer-events: none;
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
@@ -268,13 +310,15 @@
 
     .battle-center-badge {
       background: #132238f8;
-      border: 2px solid #475569;
+      border: 2.5px solid #475569;
       border-radius: 999px;
-      padding: 6px 14px;
-      font-size: 12px;
-      font-weight: 900;
-      letter-spacing: 0.04em;
+      padding: 7px 16px;
+      font-family: var(--font-logo);
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 0.05em;
       color: #bae6fd;
+      text-shadow: 0 2px 0 #09111e;
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
       align-self: center;
       white-space: nowrap;
@@ -290,7 +334,7 @@
 
     .fc-coach {
       font-size: 11px;
-      font-weight: 800;
+      font-weight: 700;
       letter-spacing: 0.06em;
       color: var(--gold);
       margin-bottom: 3px;
@@ -300,8 +344,11 @@
       display: flex;
       justify-content: space-between;
       align-items: baseline;
-      font-size: 18px;
-      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: 21px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 0 #09111e;
       margin-bottom: 6px;
     }
 
@@ -339,12 +386,15 @@
 
     .battle-banner {
       background: #0f172af7;
-      border: 2px solid var(--gold);
+      border: 2.5px solid var(--gold);
       color: var(--cream);
       border-radius: 999px;
-      padding: 7px 22px;
-      font-size: 14px;
-      font-weight: 800;
+      padding: 8px 24px;
+      font-family: var(--font-display);
+      font-size: 16px;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      text-shadow: 0 2px 0 #09111e;
       box-shadow: 0 8px 18px rgba(0, 0, 0, 0.45);
     }
 
@@ -407,8 +457,11 @@
     }
 
     .bm-name {
-      font-size: 15px;
-      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      text-shadow: 0 1.5px 0 #09111e;
     }
 
     .bm-key {
@@ -494,12 +547,16 @@
     }
 
     .game-logo {
-      margin: 4px 0;
-      font-size: clamp(34px, 5vw, 54px);
-      font-weight: 900;
-      letter-spacing: 0.06em;
-      color: var(--gold);
-      text-shadow: 0 4px 0 #78350f, 0 8px 20px rgba(0, 0, 0, 0.6);
+      margin: 4px 0 6px;
+      font-family: var(--font-logo);
+      font-size: clamp(44px, 6.2vw, 72px);
+      font-weight: 400;
+      letter-spacing: 0.055em;
+      line-height: 1.04;
+      color: #facc15;
+      -webkit-text-stroke: 4.5px #1d4ed8;
+      paint-order: stroke fill;
+      text-shadow: 0 6px 0 #172554, 0 12px 26px rgba(0, 0, 0, 0.72);
     }
 
     .game-sub {
@@ -590,8 +647,10 @@
     }
 
     .starter-name {
-      font-size: 13px;
-      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
     }
 
     .type-pill {
@@ -623,11 +682,12 @@
     .cta-btn {
       border: none;
       border-radius: 999px;
-      padding: 11px 24px;
-      font-size: 15px;
-      font-weight: 900;
+      padding: 11px 26px;
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 400;
       cursor: pointer;
-      letter-spacing: 0.02em;
+      letter-spacing: 0.03em;
     }
 
     .cta-primary {
@@ -680,8 +740,12 @@
 
     .modal-header h2 {
       margin: 0;
-      font-size: 20px;
+      font-family: var(--font-display);
+      font-size: 23px;
+      font-weight: 400;
+      letter-spacing: 0.03em;
       color: var(--gold);
+      text-shadow: 0 2px 0 #09111e;
     }
 
     .modal-header p {
@@ -786,8 +850,10 @@
     }
 
     .bt-name {
-      font-size: 11px;
-      font-weight: 800;
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.015em;
       text-align: center;
     }
 
@@ -830,12 +896,17 @@
 
     .dex-title-row h3 {
       margin: 0;
-      font-size: 20px;
+      font-family: var(--font-display);
+      font-size: 23px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
     }
 
     .dex-num {
+      font-family: var(--font-logo);
+      font-size: 21px;
       color: var(--gold);
-      font-weight: 900;
+      font-weight: 400;
     }
 
     .dex-subtitle {
@@ -927,7 +998,10 @@
 
     .zone-map-card h3 {
       margin: 0;
-      font-size: 18px;
+      font-family: var(--font-display);
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
     }
 
     .zone-map-card p {
@@ -1078,12 +1152,15 @@
       left: 50%;
       transform: translateX(-50%);
       background: #0f172af8;
-      border: 2px solid var(--gold);
+      border: 2.5px solid var(--gold);
       color: var(--cream);
       border-radius: 999px;
-      padding: 8px 20px;
-      font-size: 13px;
-      font-weight: 800;
+      padding: 8px 22px;
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      text-shadow: 0 2px 0 #09111e;
       z-index: 35;
       pointer-events: none;
       box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
@@ -1099,9 +1176,13 @@
     .float-popup {
       position: absolute;
       transform: translate(-50%, -50%);
-      font-size: 16px;
-      font-weight: 900;
-      text-shadow: 0 2px 6px rgba(0, 0, 0, 0.9);
+      font-family: var(--font-logo);
+      font-size: 20px;
+      font-weight: 400;
+      letter-spacing: 0.04em;
+      -webkit-text-stroke: 2.5px #09111e;
+      paint-order: stroke fill;
+      text-shadow: 0 3px 8px rgba(0, 0, 0, 0.9);
       animation: floatUp 0.92s ease-out forwards;
       white-space: nowrap;
     }
