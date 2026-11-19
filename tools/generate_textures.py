@@ -1032,7 +1032,7 @@ def main():
     parser.add_argument('--output_dir', type=str, default='assets/textures', help='Output directory for textures')
     parser.add_argument('--sources_dir', type=str, default='tools/texture_sources', help='Directory with 512x512 sources')
     parser.add_argument('--preview_dir', type=str,
-                        default='/tmp/scratch',
+                        default='/tmp/monkemon_texture_previews',
                         help='Scratch directory for 2x2 tiled previews')
     args = parser.parse_args()
 

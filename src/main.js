@@ -1,6 +1,6 @@
 // Monkemon 2.5D Main Bootstrapper & Game Loop
 // Orchestrates Three.js r170 Toy-Diorama rendering, TRELLIS.2 PBR `.glb` assets,
-// Organic Non-Square Islands, Walkable Cutaway House Interiors, ElevenLabs SFX + Lyria 3 + Gemini TTS TTS,
+// Organic Non-Square Islands, Walkable Cutaway House Interiors, ElevenLabs SFX + Lyria 3 + Gemini TTS,
 // Steam Deck Gamepad + Keyboard + Touch controls, Unified 5-Tab Tamer Menu + World Map,
 // and Turn-Based Command-Menu Battles with Multi-Layered Reactive GLSL Shaders!
 

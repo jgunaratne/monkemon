@@ -8,9 +8,6 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 if [ -z "${ELEVENLABS_API_KEY:-}" ] && [ -f "${ROOT}/.env" ]; then
   set -a; . "${ROOT}/.env"; set +a
 fi
-if [ -z "${ELEVENLABS_API_KEY:-}" ] && [ -f ".env" ]; then
-  set -a; . ".env"; set +a
-fi
 ELEVENLABS_API_KEY="${ELEVENLABS_API_KEY:-${ELEVENLABS:-}}"
 : "${ELEVENLABS_API_KEY:?Set ELEVENLABS_API_KEY in .env}"
 

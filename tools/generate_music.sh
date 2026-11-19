@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-# Generates full-length Lyria 3 music tracks for Monkemon's 5 diorama zones,
+# Generates full-length Lyria music tracks for Monkemon's 5 diorama zones,
 # title screen, real-time trainer battles, warden duels, and victory fanfare.
 set -u
-G=tools/genai.py
+GENAI="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/genai.py"
+genai() { python3 "$GENAI" "$@"; }
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT_DIR="${ROOT}/assets/music"
 mkdir -p "${OUT_DIR}"
@@ -14,7 +15,7 @@ gen() {
   if [ -s "${OUT_DIR}/${name}.mp3" ]; then echo "= ${name} exists"; return; fi
   local tmp="/tmp/monkemon_song_${name}.mp3"
   if [ ! -s "${tmp}" ]; then
-    "$G" -prod -timeout=600s -output="${tmp}" music -model=lyria-3-full-song-mp3 "$* ${STYLE}" 2>&1 | grep -E "Successfully|rror|denied" | tail -2 || true
+    genai music --timeout=600 --out="${tmp}" "$* ${STYLE}" 2>&1 | grep -E "Successfully|rror|denied" | tail -2 || true
   fi
   if [ -s "${tmp}" ]; then
     cp "${tmp}" "${OUT_DIR}/${name}.mp3"

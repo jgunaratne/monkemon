@@ -1,6 +1,6 @@
 # Monkemon — 2.5D Toy-Diorama Creature-Taming & Real-Time Arena RPG
 
-**Monkemon** is a browser-based and Steam Deck-ready **2.5D miniature toy-diorama creature-taming and real-time arena battle RPG** powered by the **TRELLIS.2-4B 3D asset pipeline**, **Lyria 3** full-length music, and **Gemini TTS TTS** voice acting.
+**Monkemon** is a browser-based and Steam Deck-ready **2.5D miniature toy-diorama creature-taming and real-time arena battle RPG** powered by the **TRELLIS.2-4B 3D asset pipeline**, **Lyria 3** full-length music, and **Gemini TTS** voice acting.
 
 Step into the shoes of **Alex**, pick your partner Monkemon from the **7 official Monkemon Types**, explore **5 interconnected miniature island zones**, visit all **5 Concept-Spec Houses**, catch roaming wild Monkemon `#01`–`#18` with smiling **Monkeballs**, earn all 4 House Badges, and challenge **Guardian `#19` Titanape** and **Apex Boss `#20` King Monkezilla**!
 
@@ -40,8 +40,8 @@ Step into the shoes of **Alex**, pick your partner Monkemon from the **7 officia
   - Inspect the perimeter `#01`–`#18` loop leading into `#19 Titanape` and center `#20 King Monkezilla`, complete with a live rotating 3D `.glb` turntable!
 - **Live In-Game TRELLIS.2 Sanctuary 3D Forge (`[P]`)**:
   - Synthesize brand-new custom PBR `.glb` Monkemon directly inside the game via `tools/trellis_forge_server.py`.
-- **Lyria 3 Soundtrack & Gemini TTS TTS Voices**:
-  - 11 full-length crossfaded **Lyria 3** tracks (`assets/music/*.mp3`) and **Gemini TTS TTS** character/House Leader/Boss voice clips (`assets/voice/*.mp3`) routed through stereo room acoustics with automatic `0.36×` music ducking.
+- **Lyria 3 Soundtrack & Gemini TTS Voices**:
+  - 11 full-length crossfaded **Lyria 3** tracks (`assets/music/*.mp3`) and **Gemini TTS** character/House Leader/Boss voice clips (`assets/voice/*.mp3`) routed through stereo room acoustics with automatic `0.36×` music ducking.
 - **WebSocket Archipelago Multiplayer (`/ws`)**:
   - Zero-dependency Node HTTP + RFC 6455 WebSocket server (`server.mjs`) renders online Tamers and their following Partner Monkemon across all 5 zones in real time.
 
@@ -55,7 +55,7 @@ Step into the shoes of **Alex**, pick your partner Monkemon from the **7 officia
 ```
 
 Then open:
-- **Desktop / remote host Proxy**: `http://<hostname>:8731/`
+- **Desktop / Remote Host**: `http://<hostname>:8731/`
 - **Steam Deck Kiosk (`1280×800`, Gamepad Mode)**: `http://127.0.0.1:8731/?touch=0` (see [`STEAMDECK_SETUP.md`](./STEAMDECK_SETUP.md) for the full local NVMe SSD edge-cache & Gaming Mode Home installer!)
 
 ---
@@ -90,5 +90,7 @@ npm run smoke          # Headless Chrome WebGL smoke test across all 13 game sce
 bash tools/generate_3d_assets.sh   # Regenerate .glb meshes via TRELLIS.2 pipeline
 npm run assets:textures            # Regenerate all 2048² seamless PBR texture sets (numpy/Pillow via .venv)
 bash tools/generate_music.sh       # Regenerate Lyria 3 music tracks
-bash tools/generate_voices.sh      # Regenerate Gemini TTS TTS voice clips
+bash tools/generate_voices.sh      # Regenerate Gemini TTS voice clips
 ```
+
+The music and voice scripts call `tools/genai.py`, a small client for the public Gemini API (Lyria 3.5, Gemini TTS, Gemini image and Omni models). Set `GEMINI_API_KEY` before running them.

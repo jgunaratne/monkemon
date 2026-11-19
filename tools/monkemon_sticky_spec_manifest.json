@@ -2,7 +2,7 @@
   "style": "charming glossy toy-diorama miniature figurine, smooth sculpted vinyl and satin glazed ceramic PBR materials, vibrant colors, chunky rounded chibi proportions, big expressive eyes, crisp toy-set craftsmanship",
   "preset": "hero",
   "output_dir": "../assets/models",
-  "image_model": "gemini-image-2-flash-lite-png",
+  "image_model": "gemini-3.1-flash-lite-image",
   "assets": [
     {
       "id": "monkeball",

@@ -8,7 +8,7 @@
 # - All Interior 3D Props & Stations (Healing Station, PC, Mart Counter, Jukebox, Lore Lectern, Bed, Bookcase, Potted Plant, Temple Pillar, Rock Boulder)
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-TRELLIS_BIN="${TRELLIS_BIN:-~/git/trellis2-pipeline/bin/trellis2}"
+TRELLIS_BIN="${TRELLIS_BIN:-trellis2}"   # path to your TRELLIS.2 CLI
 CONCURRENCY="${CONCURRENCY:-8}"
 EXTRA_ARGS=()
 if [[ "${FORCE:-0}" == "1" ]]; then

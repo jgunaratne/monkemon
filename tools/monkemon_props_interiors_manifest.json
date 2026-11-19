@@ -2,7 +2,7 @@
   "style": "charming glossy toy-diorama miniature architecture and scenery prop, smooth sculpted vinyl, carved timber, polished brass, and painted stone PBR materials, vibrant colors, chunky readable silhouette, crisp tabletop diorama craftsmanship, isolated single object on clean base",
   "preset": "hero",
   "output_dir": "../assets/models",
-  "image_model": "gemini-image-2-flash-lite-png",
+  "image_model": "gemini-3.1-flash-lite-image",
   "assets": [
     {
       "id": "env_street_lamp",

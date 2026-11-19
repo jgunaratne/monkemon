@@ -1,6 +1,6 @@
 // Monkemon Audio Engine:
 // - Crossfaded seamless Web Audio looper for all 11 Lyria 3 full-song MP3s (`assets/music/*.mp3`)
-// - Gemini TTS TTS character, House Leader, and Boss voice lines (`assets/voice/*.mp3`) routed through
+// - Gemini TTS character, House Leader, and Boss voice lines (`assets/voice/*.mp3`) routed through
 //   a stereo room impulse response (`ConvolverNode`) with automatic 0.36x music ducking
 // - ElevenLabs sample-based creature-adventure SFX (`assets/sfx/*.mp3`) with zero-latency Web Audio
 //   synthesizer fallback while samples decode.
