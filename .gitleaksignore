@@ -1,0 +1,6 @@
+# Reviewed false positives for gitleaks (not secrets):
+# - voiceKey values are audio file identifiers
+477de38753b459fa1686a991eca2ec5bafc59061:src/data/interior_maps.js:generic-api-key:1786
+477de38753b459fa1686a991eca2ec5bafc59061:src/data/interior_maps.js:generic-api-key:1812
+cd0d726aabb8f59c70bbd9b51b148124657df878:src/data/zones.js:generic-api-key:477
+cd0d726aabb8f59c70bbd9b51b148124657df878:src/data/zones.js:generic-api-key:489
